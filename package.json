@@ -1,6 +1,6 @@
 {
   "name": "homebridge-vieramatic",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Homebridge plugin for Panasonic Viera TV's (with support for 2018 and 2019 models)",
   "main": "index.js",
   "scripts": {
@@ -20,14 +20,10 @@
     "tv",
     "automation"
   ],
-  "author": {
-    "name": "António Meireles",
-    "email": "antonio.meireles@reformi.st",
-    "url": "https://reformi.st"
-  },
+  "author": "António Meireles <antonio.meireles@reformi.st> (https://reformi.st)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic"
+    "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic.git"
   },
   "bugs": {
     "url": "https://github.com/AntonioMeireles/homebridge-vieramatic/issues"
@@ -62,5 +58,8 @@
     "node-upnp": "^1.1.1",
     "node-upnp-subscription": "^1.0.6",
     "string-methods-extension": "^0.1.5"
+  },
+  "directories": {
+    "lib": "lib"
   }
 }
