@@ -1,0 +1,13 @@
+
+semi: false
+singleQuote: true
+trailingComma: 'es5'
+tabWidth: 2
+indentChain: false
+bracketSpacing: true
+quoteProps: 'as-needed'
+comma: 'nonTrailing'
+noImplicit: ['objectBraces', 'callParens']
+respectExplicit: ['objectBraces', 'callParens']
+emptyParamListParens: true
+printWidth: 100

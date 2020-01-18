@@ -1,0 +1,66 @@
+{
+  "name": "homebridge-vieramatic",
+  "version": "0.5.0",
+  "description": "Homebridge plugin for Panasonic Viera TV's (with support for 2018 and 2019 models)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo 'Error: no test specified' && exit 1",
+    "docs": "docco lib/*.coffee -l parallel",
+    "postinstall": "patch-package"
+  },
+  "keywords": [
+    "homekit",
+    "homebridge",
+    "homebridge-plugin",
+    "plugin",
+    "panasonic",
+    "viera",
+    "vieramatic",
+    "television",
+    "tv",
+    "automation"
+  ],
+  "author": {
+    "name": "António Meireles",
+    "email": "antonio.meireles@reformi.st",
+    "url": "https://reformi.st"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic"
+  },
+  "bugs": {
+    "url": "https://github.com/AntonioMeireles/homebridge-vieramatic/issues"
+  },
+  "homepage": "https://github.com/AntonioMeireles/homebridge-vieramatic#README",
+  "bin": {
+    "viera-pair": "bin/pair.js"
+  },
+  "engines": {
+    "homebridge": "^0.4.46"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "docco": "^0.8.0",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-config-prettier": "^6.9.0",
+    "eslint-plugin-coffee": "^0.1.12",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-jest": "^23.6.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "eslint-plugin-react": "^7.18.0",
+    "patch-package": "^6.2.0",
+    "prettier": "github:helixbass/prettier#b8818ebd",
+    "prettier-plugin-coffeescript": "^0.1.4"
+  },
+  "dependencies": {
+    "axios": "^0.19.1",
+    "coffeescript": "^2.5.0",
+    "lodash": "^4.17.15",
+    "make-promises-safe": "^5.1.0",
+    "node-upnp": "^1.1.1",
+    "node-upnp-subscription": "^1.0.6",
+    "string-methods-extension": "^0.1.5"
+  }
+}

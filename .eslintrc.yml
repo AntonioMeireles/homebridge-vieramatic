@@ -1,0 +1,61 @@
+parser: eslint-plugin-coffee
+
+extends:
+  - plugin:coffee/eslint-recommended
+  - plugin:coffee/import
+  - plugin:coffee/airbnb-base
+  - plugin:coffee/prettier-run-as-rule
+
+rules:
+  coffee/prefer-destructuring: [error, { object: true }]
+  coffee/no-unused-vars: [error, { varsIgnorePattern: ^_.*$ }]
+  require-jsdoc: error
+  prefer-rest-params: error
+  no-else-return: error
+  coffee/id-length: 0
+  no-multi-assign: error
+  no-self-compare: error
+  coffee/no-magic-numbers: off
+  coffee/no-implicit-coercion: off
+  coffee/vars-on-top: off
+  coffee/max-depth: 1
+  coffee/complexity: 1
+  coffee/max-lines-per-function: off
+  coffee/capitalized-comments: off
+  coffee/spaced-comment: off
+  coffee/no-underscore-dangle: off
+  coffee/no-commonjs: off
+  coffee/valid-jsdoc: off
+  coffee/multiline-comment-style: off
+  coffee/no-return-assign: off
+  coffee/block-scoped-var: off
+  coffee/wrap-regex: off
+  no-sparse-arrays: 0
+  coffee/no-cond-assign: off
+  coffee/spread-direction: off
+  comma-style: 0
+  computed-property-spacing: 1
+  coffee/function-paren-newline: off
+
+  coffee/object-curly-spacing: 0
+  no-global-assign: 0
+  no-restricted-globals: 1
+  coffee/dot-notation: 1
+  coffee/no-await-in-loop: 0
+
+  no-sync: 0
+  sort-keys: 0
+  no-console: 0
+  no-multi-str: 0
+
+  coffee/guard-for-in: 0
+  no-bitwise: 0
+
+  max-params: 0
+  max-statements: 0
+  max-lines: 0
+#
+
+env:
+  node: true
+  es6: true
