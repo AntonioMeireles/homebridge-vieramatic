@@ -1,12 +1,11 @@
 {
   "name": "homebridge-vieramatic",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Homebridge plugin for Panasonic Viera TV's (with support for 2018 and 2019 models)",
   "main": "index.js",
   "scripts": {
     "test": "echo 'Error: no test specified' && exit 1",
-    "docs": "docco lib/*.coffee -l parallel",
-    "postinstall": "patch-package"
+    "docs": "docco lib/*.coffee -l parallel"
   },
   "keywords": [
     "homekit",
