@@ -261,22 +261,22 @@ class Vieramatic
 
   getMute: (callback) =>
     mute = await @device.getMute()
-    @log.debug('getMute', mute)
+    @log.debug('(getMute)', mute)
     callback(null, mute)
 
   setMute: (mute, callback) =>
     await @device.setMute()
-    @log.debug('setMute', mute)
+    @log.debug('(setMute)', mute)
     callback(null, not mute)
 
   setVolume: (value, callback) =>
-    @log.debug('setVolume', value)
+    @log.debug('(setVolume)', value)
     await @device.setVolume(value)
     callback(null, value)
 
   getVolume: (callback) =>
     volume = await @device.getVolume()
-    @log.debug('current volume is ...', volume)
+    @log.debug('(getVolume)', volume)
     callback(null, volume)
 
   getPowerStatus: (callback) =>
