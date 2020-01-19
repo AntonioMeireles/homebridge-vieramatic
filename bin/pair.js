@@ -8,4 +8,4 @@ require('coffeescript/register');
 // vd https://github.com/mcollina/make-promises-safe
 require('make-promises-safe');
 // does what it says ...
-(require('@lib/cli')).run();
+(require('../lib/cli')).run();
