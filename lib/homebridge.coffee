@@ -28,14 +28,15 @@ class Vieramatic
   constructor: (log, config, api) ->
     log.debug('Vieramatic Init')
     # eslint-disable-next-line no-undef
-    [@log, @config, @api, @accessories] = [log, config, api, []]
+    [@log, @api, @accessories] = [log, api, []]
+
+    @config = {
+      tvs: config.tvs || []
+    }
 
     @api.on('didFinishLaunching', @init) if @api
 
   init: () =>
-    unless @config.tvs.length
-      @log.warn('config.json: no TVs defined')
-
     for __, viera of @config.tvs
       @log.debug(viera.ipAddress)
       viera.hdmiInputs = [] unless viera.hdmiInputs?
