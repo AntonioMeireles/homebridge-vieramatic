@@ -31,7 +31,7 @@ class Vieramatic
     [@log, @api, @accessories] = [log, api, []]
 
     @config = {
-      tvs: config.tvs || []
+      tvs: config?.tvs || []
     }
 
     @api.on('didFinishLaunching', @init) if @api
@@ -174,6 +174,18 @@ class Vieramatic
     .on('get', @getVolume)
     .on('set', @setVolume)
 
+    # TV Tuner
+    configuredName = 'TV Tuner'
+    displayName = configuredName.toLowerCase().replace(' ', '')
+    firstTime = false
+    unless svc = _.find(newAccessory.services, { displayName })
+      firstTime = true
+      svc = new Service.InputSource(displayName, 500)
+      tvService.addLinkedService(svc)
+      newAccessory.addService(svc)
+    await @configureInputSource(svc, 'TUNER', configuredName, parseInt(500, 10), firstTime)
+
+    # HDMI inputs
     for __, input of newAccessory.context.inputs.hdmi
       firstTime = false
       configuredName = "HDMI #{input.id}: #{input.name}"
@@ -186,6 +198,7 @@ class Vieramatic
         newAccessory.addService(svc)
       await @configureInputSource(svc, 'HDMI', configuredName, parseInt(input.id, 10), firstTime)
 
+    # Apps
     for id, app of applications
       firstTime = false
       configuredName = "#{app.name}"
@@ -221,23 +234,38 @@ class Vieramatic
   configureInputSource: (source, type, configuredName, identifier, firstTime) =>
     # eslint-disable-next-line default-case
     switch type
+      when 'TUNER'
+        if firstTime
+          source.setCharacteristic(
+            Characteristic.InputSourceType,
+            Characteristic.InputSourceType.TUNER
+          )
       when 'HDMI'
-        source
-        .setCharacteristic(Characteristic.InputSourceType, Characteristic.InputSourceType.HDMI)
-        .setCharacteristic(
-          Characteristic.CurrentVisibilityState,
-          Characteristic.CurrentVisibilityState.SHOWN
-        )
-        .setCharacteristic(
-          Characteristic.TargetVisibilityState,
-          Characteristic.TargetVisibilityState.SHOWN
-        )
+        if firstTime
+          source.setCharacteristic(
+            Characteristic.InputSourceType,
+            Characteristic.InputSourceType.HDMI
+          )
 
       when 'APP'
         source.setCharacteristic(
           Characteristic.InputSourceType,
           Characteristic.InputSourceType.APPLICATION
         )
+
+    switch type
+      when 'TUNER', 'HDMI'
+        if firstTime
+          source
+          .setCharacteristic(
+            Characteristic.CurrentVisibilityState,
+            Characteristic.CurrentVisibilityState.SHOWN
+          )
+          .setCharacteristic(
+            Characteristic.TargetVisibilityState,
+            Characteristic.TargetVisibilityState.SHOWN
+          )
+      else
         if firstTime
           source
           .setCharacteristic(
@@ -248,16 +276,18 @@ class Vieramatic
             Characteristic.TargetVisibilityState,
             Characteristic.TargetVisibilityState.HIDDEN
           )
-        source
-        .getCharacteristic(Characteristic.TargetVisibilityState)
-        .on('set', (state, callback) =>
-          source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
-          callback())
+
+    if firstTime
+      source
+      .setCharacteristic(Characteristic.Identifier, identifier)
+      .setCharacteristic(Characteristic.ConfiguredName, configuredName)
+      .setCharacteristic(Characteristic.IsConfigured, Characteristic.IsConfigured.CONFIGURED)
 
     source
-    .setCharacteristic(Characteristic.Identifier, identifier)
-    .setCharacteristic(Characteristic.ConfiguredName, configuredName)
-    .setCharacteristic(Characteristic.IsConfigured, Characteristic.IsConfigured.CONFIGURED)
+    .getCharacteristic(Characteristic.TargetVisibilityState)
+    .on('set', (state, callback) =>
+      source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
+      callback())
 
   getMute: (callback) =>
     mute = await @device.getMute()
