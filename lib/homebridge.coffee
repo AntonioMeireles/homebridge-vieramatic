@@ -73,9 +73,11 @@ class Vieramatic
 
     if found = _.find(@accessories, { UUID: serialNumber })
       newAccessory = found
-      if @applications.length is 0
+      unless applications.length isnt 0
         @log.debug('TV is in standby - getting (cached) TV apps')
-        @applications = newAccessory.inputs.applications
+        # eslint-disable-next-line no-param-reassign
+        { applications } = newAccessory.context.inputs
+        @applications = applications
     else
       @log.debug('Adding as Accessory', accessory)
 
@@ -277,11 +279,10 @@ class Vieramatic
             Characteristic.TargetVisibilityState.HIDDEN
           )
 
-    if firstTime
-      source
-      .setCharacteristic(Characteristic.Identifier, identifier)
-      .setCharacteristic(Characteristic.ConfiguredName, configuredName)
-      .setCharacteristic(Characteristic.IsConfigured, Characteristic.IsConfigured.CONFIGURED)
+    source
+    .setCharacteristic(Characteristic.Identifier, identifier)
+    .setCharacteristic(Characteristic.ConfiguredName, configuredName)
+    .setCharacteristic(Characteristic.IsConfigured, Characteristic.IsConfigured.CONFIGURED)
 
     source
     .getCharacteristic(Characteristic.TargetVisibilityState)

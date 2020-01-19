@@ -10,7 +10,8 @@ UPnPClient = require('node-upnp')
 axios.default.timeout = 1000
 
 findValue = (xml, tag) ->
-  new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml).groups.found
+  try
+    new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml).groups.found
 
 class Viera
   # Constructor
@@ -395,10 +396,14 @@ class Viera
       null,
       {
         callback: (data) ->
-          raw = await findValue(data, 'X_AppList').decodeXML()
-          re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
-          while match = re.exec(raw)
-            apps.push({ name: match.groups.appName, id: match.groups.id })
+          raw = await findValue(data, 'X_AppList')
+          if raw?
+            raw = raw.decodeXML()
+            re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
+            while match = re.exec(raw)
+              apps.push({ name: match.groups.appName, id: match.groups.id })
+          else
+            []
       }
     ).then(() -> apps)
 
