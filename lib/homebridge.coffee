@@ -60,7 +60,12 @@ class Vieramatic
         @log.error("TV at #{viera.ipAddress} requires encryption but no credentials were supplied.")
         # eslint-disable-next-line no-continue
         continue
-      viera.applications = await tv.getApps()
+      try
+        viera.applications = await tv.getApps()
+      catch err
+        @log.debug(err)
+        viera.applications = []
+
       await @addAccessory(tv, viera.hdmiInputs, viera.applications)
 
     @log.debug('config.json: %s Viera TV defined', @config.tvs.length)

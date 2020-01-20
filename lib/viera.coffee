@@ -10,8 +10,7 @@ UPnPClient = require('node-upnp')
 axios.default.timeout = 1000
 
 findValue = (xml, tag) ->
-  try
-    new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml).groups.found
+  new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml)?.groups.found
 
 class Viera
   # Constructor
@@ -49,7 +48,8 @@ class Viera
     @getSpecs()
     .then(() =>
       if @encrypted
-        @requestPinCode().then(() =>
+        @requestPinCode()
+        .then(() =>
           rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
@@ -61,6 +61,13 @@ class Viera
               renderSampleCfg()
             )
             .finally(() -> rl.close()))
+        )
+        .catch(() ->
+          console.error(
+            '\nAn unexpected error ocurred while attempting to request  a pin code from the TV.',
+            'Please make sure that the TV is powered ON (and NOT in standby).'
+          )
+          process.exitCode = 1
         )
       else
         renderSampleCfg()
@@ -92,19 +99,14 @@ class Viera
 
   requestPinCode: () ->
     if @encrypted
-      @sendRequest(
-        'command',
-        'X_DisplayPinCode',
-        '<X_DeviceName>My Remote</X_DeviceName>',
-        {
-          callback: (data) =>
-            match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
-            unless match is null
-              @_challenge = Buffer.from(match[1], 'base64')
-            else
-              throw new Error('unexpected reply from TV when requesting challenge key')
-        }
-      ).catch((err) -> throw err)
+      @sendRequest('command', 'X_DisplayPinCode', '<X_DeviceName>My Remote</X_DeviceName>', {
+        callback: (data) =>
+          match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
+          unless match is null
+            @_challenge = Buffer.from(match[1], 'base64')
+          else
+            throw new Error('unexpected reply from TV when requesting challenge key')
+      })
 
   deriveSessionKeys: () ->
     iv = Buffer.from(@_encKey, 'base64')
@@ -312,10 +314,6 @@ class Viera
 
       callback(payload)
     )
-    .catch((_err) ->
-      console.debug(_err)
-      _err
-    )
 
   # Send a command to the TV
 
@@ -402,10 +400,12 @@ class Viera
             re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
             while match = re.exec(raw)
               apps.push({ name: match.groups.appName, id: match.groups.id })
-          else
-            []
       }
-    ).then(() -> apps)
+    ).then(() ->
+      if apps.length is 0
+        throw new Error('Unable to fetch apps - TV is not ON')
+      apps
+    )
 
   # Returns the TV specs
 
