@@ -209,16 +209,9 @@ class Viera
     })
 
   # Create and send request to the TV
-
-  # eslint-disable-next-line max-params
-  sendRequest: (type, action, params, options) ->
+  sendRequest: (type, action, params = 'None', options = { callback: () -> }) ->
     neverEncrypted = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
-
-    unless params?
-      # eslint-disable-next-line no-param-reassign
-      params = 'None'
-
-    [url, urn] = [undefined, undefined]
+    [url, urn, { callback }] = [undefined, undefined, options]
 
     # eslint-disable-next-line default-case
     switch type
@@ -280,7 +273,6 @@ class Viera
       action
     )
 
-    # console.log body
     config = {
       method: 'post',
       headers: {
@@ -294,14 +286,8 @@ class Viera
       data: body,
       responseType: 'text'
     }
-    if options?.callback?
-      { callback } = options
-    else
-      # eslint-disable-next-line coffee/no-empty-function
-      callback = () ->
 
-    axios("#{@baseURL}#{url}", config)
-    .then((r) =>
+    axios("#{@baseURL}#{url}", config).then((r) =>
       if encCommand? or action is 'X_GetEncryptSessionId'
         payload = @decryptPayload(
           findValue(r.data, 'X_EncResult'),
