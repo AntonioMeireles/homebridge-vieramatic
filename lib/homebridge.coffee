@@ -6,8 +6,14 @@ events = require('events')
 _ = require('lodash')
 
 { Viera } = require('./viera')
+Storage = require('./storage')
 
 # helpers
+sleep = (ms) ->
+  now = new Date().getTime()
+  # eslint-disable-next-line no-continue
+  continue while new Date().getTime() - now < ms
+
 findVal = (object, key) ->
   value = undefined
   Object.keys(object).some((k) ->
@@ -27,16 +33,18 @@ class Vieramatic
 
   constructor: (log, config, api) ->
     log.debug('Vieramatic Init')
-    # eslint-disable-next-line no-undef
+
     [@log, @api, @accessories] = [log, api, []]
 
     @config = {
       tvs: config?.tvs || []
     }
+    @storage = new Storage(api)
 
     @api.on('didFinishLaunching', @init) if @api
 
   init: () =>
+    await @storage.init()
     for __, viera of @config.tvs
       @log.debug(viera.ipAddress)
       viera.hdmiInputs = [] unless viera.hdmiInputs?
@@ -45,7 +53,7 @@ class Vieramatic
 
       try
         await tv.getSpecs()
-      catch ___
+      catch
         reachable = false
         @log.error(
           "unable to connect to TV (at #{
@@ -60,32 +68,52 @@ class Vieramatic
         @log.error("TV at #{viera.ipAddress} requires encryption but no credentials were supplied.")
         # eslint-disable-next-line no-continue
         continue
-      try
-        viera.applications = await tv.getApps()
-      catch err
-        @log.debug(err)
-        viera.applications = []
 
-      await @addAccessory(tv, viera.hdmiInputs, viera.applications)
+      await @addAccessory(tv, viera.hdmiInputs)
 
     @log.debug('config.json: %s Viera TV defined', @config.tvs.length)
 
     @log('DidFinishLaunching')
 
-  addAccessory: (accessory, hdmiInputs, applications) =>
-    [@device, @applications] = [accessory, applications]
+  addAccessory: (accessory, hdmiInputs) =>
+    [@device, @applications] = [accessory, []]
     { friendlyName, serialNumber, modelName, modelNumber, manufacturer } = accessory.specs
+
+    @device.storage = new Proxy(@storage.get(serialNumber), {
+      set: (obj, prop, value) =>
+        # eslint-disable-next-line no-param-reassign
+        obj[prop] = value
+        @storage.save()
+        return true
+    })
 
     if found = _.find(@accessories, { UUID: serialNumber })
       newAccessory = found
-      unless applications.length isnt 0
+      try
+        @applications = await @device.getApps()
+      unless @applications.length isnt 0
         @log.debug('TV is in standby - getting (cached) TV apps')
-        # eslint-disable-next-line no-param-reassign
-        { applications } = newAccessory.context.inputs
-        @applications = applications
+        @applications = @device.storage.data.inputs.applications
     else
       @log.debug('Adding as Accessory', accessory)
 
+      while @applications.length is 0
+        try
+          @applications = await @device.getApps()
+        catch err
+          @log.warn(
+            'Unable to fetch Application list from TV (as it seems to be in standby). Trying again in 5s.'
+          )
+          @applications = []
+          sleep(5000)
+
+      @device.storage.data = {
+        inputs: {
+          hdmi: hdmiInputs,
+          applications: { ...@applications }
+        }
+        specs: { ...@device.specs }
+      }
       tvService = new Service.Television(friendlyName, 'Television')
       tvService
       .setCharacteristic(Characteristic.ConfiguredName, friendlyName)
@@ -102,7 +130,6 @@ class Vieramatic
       tvService.addLinkedService(speakerService)
       tvService.addLinkedService(volumeService)
 
-      # eslint-disable-next-line new-cap
       newAccessory = new Accessory(friendlyName, serialNumber)
 
       accessoryInformation = newAccessory.getService(Service.AccessoryInformation)
@@ -117,13 +144,10 @@ class Vieramatic
       newAccessory.addService(speakerService)
       newAccessory.addService(volumeService)
 
-      @accessories.push(newAccessory)
-      @api.registerPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
-
     newAccessory.context = {
       inputs: {
         hdmi: hdmiInputs,
-        applications: { ...applications }
+        applications: { ...@applications }
       }
       specs: { ...@device.specs }
     }
@@ -132,7 +156,7 @@ class Vieramatic
       @log.debug(friendlyName, 'Identify!!!')
       callback())
 
-    tvService = newAccessory.getService(Service.Television) unless tvService?
+    tvService = newAccessory.getService(Service.Television)
     tvService
     .getCharacteristic(Characteristic.Active)
     .on('get', @getPowerStatus)
@@ -141,7 +165,7 @@ class Vieramatic
     tvService.getCharacteristic(Characteristic.RemoteKey).on('set', @remoteControl)
     tvService.getCharacteristic(Characteristic.ActiveIdentifier).on('set', @setInput)
 
-    speakerService = newAccessory.getService(Service.TelevisionSpeaker) unless speakerService?
+    speakerService = newAccessory.getService(Service.TelevisionSpeaker)
 
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
@@ -159,7 +183,7 @@ class Vieramatic
     .on('get', @getVolume)
     .on('set', @setVolume)
 
-    volumeService = newAccessory.getService(Service.Lightbulb) unless volumeService?
+    volumeService = newAccessory.getService(Service.Lightbulb)
     volumeService
     .getCharacteristic(Characteristic.On)
     # .on('get', @getMute)
@@ -206,7 +230,7 @@ class Vieramatic
       await @configureInputSource(svc, 'HDMI', configuredName, parseInt(input.id, 10), firstTime)
 
     # Apps
-    for id, app of applications
+    for id, app of @applications
       firstTime = false
       configuredName = "#{app.name}"
       displayName = configuredName.toLowerCase().replace(' ', '')
@@ -231,7 +255,11 @@ class Vieramatic
 
     newAccessory.reachable = true
 
-    @api.updatePlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
+    if not found?
+      @accessories.push(newAccessory)
+      @api.registerPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
+    else
+      @api.updatePlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
 
   configureAccessory: (accessory) =>
     @log.debug('loading (from cache)', accessory.displayName)
@@ -253,7 +281,6 @@ class Vieramatic
             Characteristic.InputSourceType,
             Characteristic.InputSourceType.HDMI
           )
-
       when 'APP'
         source.setCharacteristic(
           Characteristic.InputSourceType,
