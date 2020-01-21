@@ -5,7 +5,6 @@ axios = require('axios')
 printf = require('util').format
 crypto = require('crypto')
 readline = require('readline')
-UPnPClient = require('node-upnp')
 
 axios.default.timeout = 1000
 
@@ -396,17 +395,15 @@ class Viera
   # Returns the TV specs
 
   getSpecs: () ->
-    client = new UPnPClient({ url: "#{@baseURL}/dmr/ddd.xml" })
-
-    client
-    .getDeviceDescription()
-    .then((specs) =>
+    axios
+    .get("#{@baseURL}/dmr/ddd.xml")
+    .then((r) =>
       @specs = {
-        friendlyName: specs.friendlyName,
-        modelName: specs.modelName,
-        modelNumber: specs.modelNumber,
-        manufacturer: specs.manufacturer,
-        serialNumber: specs.UDN.slice(5)
+        friendlyName: findValue(r.data, 'friendlyName'),
+        modelName: findValue(r.data, 'modelName'),
+        modelNumber: findValue(r.data, 'modelNumber'),
+        manufacturer: findValue(r.data, 'manufacturer'),
+        serialNumber: findValue(r.data, 'UDN').slice(5)
       }
       console.log('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
     )
