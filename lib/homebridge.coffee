@@ -32,14 +32,17 @@ class Vieramatic
   tvEvent = new events.EventEmitter()
 
   constructor: (log, config, api) ->
-    log.debug('Vieramatic Init')
+    log.info('Vieramatic Init')
 
-    [@log, @api, @accessories] = [log, api, []]
+    [@log, @api, @previousAccessories] = [log, api, []]
 
     @config = {
       tvs: config?.tvs || []
     }
     @storage = new Storage(api)
+
+    for cached of @previousAccessories
+      @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
 
     @api.on('didFinishLaunching', @init) if @api
 
@@ -87,16 +90,8 @@ class Vieramatic
         return true
     })
 
-    if found = _.find(@accessories, { UUID: serialNumber })
-      newAccessory = found
-      try
-        @applications = await @device.getApps()
-      unless @applications.length isnt 0
-        @log.debug('TV is in standby - getting (cached) TV apps')
-        @applications = @device.storage.data.inputs.applications
-    else
-      @log.debug('Adding as Accessory', accessory)
-
+    unless @device.storage.data?
+      @log.debug("Initializing '#{accessory}' for the first time.")
       while @applications.length is 0
         try
           @applications = await @device.getApps()
@@ -114,49 +109,49 @@ class Vieramatic
         }
         specs: { ...@device.specs }
       }
-      tvService = new Service.Television(friendlyName, 'Television')
-      tvService
-      .setCharacteristic(Characteristic.ConfiguredName, friendlyName)
-      .setCharacteristic(Characteristic.SleepDiscoveryMode, 1)
-      tvService.addCharacteristic(Characteristic.RemoteKey)
-      tvService.addCharacteristic(Characteristic.PowerModeSelection)
+    else
+      @log.debug("Restoring '#{accessory}'.")
+      try
+        @applications = await @device.getApps()
+      unless @applications.length isnt 0
+        @log.debug('TV is in standby - getting (cached) TV apps')
+        @applications = @device.storage.data.inputs.applications
 
-      speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
-      speakerService.addCharacteristic(Characteristic.Volume)
+        # FIXME: smoothly handle modifications from both the hdmi inputs and apps lists
 
-      volumeService = new Service.Lightbulb("#{friendlyName} Volume", 'volumeService')
-      volumeService.addCharacteristic(Characteristic.Brightness)
-
-      tvService.addLinkedService(speakerService)
-      tvService.addLinkedService(volumeService)
-
-      newAccessory = new Accessory(friendlyName, serialNumber)
-
-      accessoryInformation = newAccessory.getService(Service.AccessoryInformation)
-      accessoryInformation
-      .setCharacteristic(Characteristic.Manufacturer, manufacturer)
-      .setCharacteristic(Characteristic.Model, "#{modelName} #{modelNumber}")
-      .setCharacteristic(Characteristic.SerialNumber, serialNumber)
-      accessoryInformation.displayName = friendlyName
-      accessoryInformation.subtype = 'specs'
-
-      newAccessory.addService(tvService)
-      newAccessory.addService(speakerService)
-      newAccessory.addService(volumeService)
-
-    newAccessory.context = {
-      inputs: {
-        hdmi: hdmiInputs,
-        applications: { ...@applications }
-      }
-      specs: { ...@device.specs }
-    }
-
+    newAccessory = new Accessory(friendlyName, serialNumber)
     newAccessory.on('identify', (paired, callback) =>
       @log.debug(friendlyName, 'Identify!!!')
       callback())
 
-    tvService = newAccessory.getService(Service.Television)
+    tvService = new Service.Television(friendlyName, 'Television')
+    tvService
+    .setCharacteristic(Characteristic.ConfiguredName, friendlyName)
+    .setCharacteristic(Characteristic.SleepDiscoveryMode, 1)
+    tvService.addCharacteristic(Characteristic.RemoteKey)
+    tvService.addCharacteristic(Characteristic.PowerModeSelection)
+
+    speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
+    speakerService.addCharacteristic(Characteristic.Volume)
+
+    volumeService = new Service.Lightbulb("#{friendlyName} Volume", 'volumeService')
+    volumeService.addCharacteristic(Characteristic.Brightness)
+
+    tvService.addLinkedService(speakerService)
+    tvService.addLinkedService(volumeService)
+
+    accessoryInformation = newAccessory.getService(Service.AccessoryInformation)
+    accessoryInformation
+    .setCharacteristic(Characteristic.Manufacturer, manufacturer)
+    .setCharacteristic(Characteristic.Model, "#{modelName} #{modelNumber}")
+    .setCharacteristic(Characteristic.SerialNumber, serialNumber)
+    accessoryInformation.displayName = friendlyName
+    accessoryInformation.subtype = 'specs'
+
+    newAccessory.addService(tvService)
+    newAccessory.addService(speakerService)
+    newAccessory.addService(volumeService)
+
     tvService
     .getCharacteristic(Characteristic.Active)
     .on('get', @getPowerStatus)
@@ -165,14 +160,10 @@ class Vieramatic
     tvService.getCharacteristic(Characteristic.RemoteKey).on('set', @remoteControl)
     tvService.getCharacteristic(Characteristic.ActiveIdentifier).on('set', @setInput)
 
-    speakerService = newAccessory.getService(Service.TelevisionSpeaker)
-
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
       Characteristic.VolumeControlType.ABSOLUTE
     )
-
-    speakerService.getCharacteristic(Characteristic.VolumeSelector).on('set', @setVolume)
 
     speakerService
     .getCharacteristic(Characteristic.Mute)
@@ -183,7 +174,6 @@ class Vieramatic
     .on('get', @getVolume)
     .on('set', @setVolume)
 
-    volumeService = newAccessory.getService(Service.Lightbulb)
     volumeService
     .getCharacteristic(Characteristic.On)
     # .on('get', @getMute)
@@ -208,38 +198,33 @@ class Vieramatic
     # TV Tuner
     configuredName = 'TV Tuner'
     displayName = configuredName.toLowerCase().replace(' ', '')
-    firstTime = false
-    unless svc = _.find(newAccessory.services, { displayName })
-      firstTime = true
-      svc = new Service.InputSource(displayName, 500)
-      tvService.addLinkedService(svc)
-      newAccessory.addService(svc)
-    await @configureInputSource(svc, 'TUNER', configuredName, parseInt(500, 10), firstTime)
+
+    svc = new Service.InputSource(displayName, 500)
+    tvService.addLinkedService(svc)
+    newAccessory.addService(svc)
+    await @configureInputSource(svc, 'TUNER', configuredName, parseInt(500, 10))
 
     # HDMI inputs
-    for __, input of newAccessory.context.inputs.hdmi
-      firstTime = false
+    for __, input of hdmiInputs
       configuredName = "HDMI #{input.id}: #{input.name}"
       displayName = configuredName.toLowerCase().replace(' ', '')
 
-      unless svc = _.find(newAccessory.services, { displayName })
-        firstTime = true
+      if _.find(newAccessory.services, { displayName })
+        @log.error('ignored duplicated entry in HDMI inputs list...')
+      else
         svc = new Service.InputSource(displayName, input.id)
         tvService.addLinkedService(svc)
         newAccessory.addService(svc)
-      await @configureInputSource(svc, 'HDMI', configuredName, parseInt(input.id, 10), firstTime)
+        await @configureInputSource(svc, 'HDMI', configuredName, parseInt(input.id, 10))
 
     # Apps
     for id, app of @applications
-      firstTime = false
       configuredName = "#{app.name}"
       displayName = configuredName.toLowerCase().replace(' ', '')
-      unless svc = _.find(newAccessory.services, { displayName })
-        firstTime = true
-        svc = new Service.InputSource(displayName, app.id)
-        tvService.addLinkedService(svc)
-        newAccessory.addService(svc)
-      await @configureInputSource(svc, 'APP', configuredName, 1000 + parseInt(id, 10), firstTime)
+      svc = new Service.InputSource(displayName, app.id)
+      tvService.addLinkedService(svc)
+      newAccessory.addService(svc)
+      await @configureInputSource(svc, 'APPLICATION', configuredName, 1000 + parseInt(id, 10))
 
     tvEvent
     .on('INTO_STANDBY', () ->
@@ -255,63 +240,33 @@ class Vieramatic
 
     newAccessory.reachable = true
 
-    if not found?
-      @accessories.push(newAccessory)
-      @api.registerPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
-    else
-      @api.updatePlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [newAccessory])
+    @api.publishExternalAccessories('homebridge-vieramatic', [newAccessory])
 
   configureAccessory: (accessory) =>
-    @log.debug('loading (from cache)', accessory.displayName)
-    @accessories.push(accessory)
+    @previousAccessories.push(accessory)
 
-  # eslint-disable-next-line coffee/class-methods-use-this
-  configureInputSource: (source, type, configuredName, identifier, firstTime) =>
+  configureInputSource: (source, type, configuredName, identifier) =>
+    hiden = false
     # eslint-disable-next-line default-case
     switch type
-      when 'TUNER'
-        if firstTime
-          source.setCharacteristic(
-            Characteristic.InputSourceType,
-            Characteristic.InputSourceType.TUNER
-          )
       when 'HDMI'
-        if firstTime
-          source.setCharacteristic(
-            Characteristic.InputSourceType,
-            Characteristic.InputSourceType.HDMI
-          )
-      when 'APP'
-        source.setCharacteristic(
-          Characteristic.InputSourceType,
-          Characteristic.InputSourceType.APPLICATION
-        )
-
-    switch type
-      when 'TUNER', 'HDMI'
-        if firstTime
-          source
-          .setCharacteristic(
-            Characteristic.CurrentVisibilityState,
-            Characteristic.CurrentVisibilityState.SHOWN
-          )
-          .setCharacteristic(
-            Characteristic.TargetVisibilityState,
-            Characteristic.TargetVisibilityState.SHOWN
-          )
-      else
-        if firstTime
-          source
-          .setCharacteristic(
-            Characteristic.CurrentVisibilityState,
-            Characteristic.CurrentVisibilityState.HIDDEN
-          )
-          .setCharacteristic(
-            Characteristic.TargetVisibilityState,
-            Characteristic.TargetVisibilityState.HIDDEN
-          )
+        idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', identifier.toString()])
+        if @device.storage.data.inputs.hdmi[idx].hiden?
+          { hiden } = @device.storage.data.inputs.hdmi[idx]
+      when 'APPLICATION'
+        real = identifier - 1000
+        if @device.storage.data.inputs.applications[real].hiden?
+          { hiden } = @device.storage.data.inputs.applications[real]
+        else
+          hiden = true
+      when 'TUNER'
+        if @device.storage.data.inputs.TUNER?
+          { hiden } = @device.storage.data.inputs.TUNER
 
     source
+    .setCharacteristic(Characteristic.InputSourceType, Characteristic.InputSourceType[type])
+    .setCharacteristic(Characteristic.CurrentVisibilityState, hiden)
+    .setCharacteristic(Characteristic.TargetVisibilityState, hiden)
     .setCharacteristic(Characteristic.Identifier, identifier)
     .setCharacteristic(Characteristic.ConfiguredName, configuredName)
     .setCharacteristic(Characteristic.IsConfigured, Characteristic.IsConfigured.CONFIGURED)
@@ -319,6 +274,22 @@ class Vieramatic
     source
     .getCharacteristic(Characteristic.TargetVisibilityState)
     .on('set', (state, callback) =>
+      id = source.getCharacteristic(Characteristic.Identifier).value
+      # eslint-disable-next-line default-case
+      switch
+        when id < 100
+          # hdmi input
+          idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', id.toString()])
+          @device.storage.data.inputs.hdmi[idx].hiden = state
+          @device.storage.data = _.cloneDeep(@device.storage.data)
+        when id > 999
+          real = id - 1000
+          @device.storage.data.inputs.applications[real].hiden = state
+          @device.storage.data = _.cloneDeep(@device.storage.data)
+        when id is 500
+          @device.storage.data.inputs.TUNER = { hiden: state }
+          @device.storage.data = _.cloneDeep(@device.storage.data)
+
       source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
       callback())
 
