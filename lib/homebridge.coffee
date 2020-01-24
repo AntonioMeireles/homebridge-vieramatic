@@ -53,35 +53,48 @@ class Vieramatic
       @log.debug(viera.ipAddress)
       viera.hdmiInputs = [] unless viera.hdmiInputs?
       tv = new Viera(viera.ipAddress, viera.appId, viera.encKey)
-      reachable = true
 
-      try
-        await tv.getSpecs()
-      catch
-        reachable = false
-        @log.error(
-          "unable to connect to TV (at #{
-            viera.ipAddress
-          }). Either it is powered off or the supplied IP is wrong "
-        )
-      # eslint-disable-next-line no-continue
-      continue unless reachable
-      @log.debug(tv)
-
-      if tv.encrypted and not (tv._appId? and tv._encKey?)
-        @log.error("TV at #{viera.ipAddress} requires encryption but no credentials were supplied.")
-        # eslint-disable-next-line no-continue
-        continue
-
-      await @addAccessory(tv, viera.hdmiInputs)
-
-    @log.debug('config.json: %s Viera TV defined', @config.tvs.length)
+      if tv.isReachable()
+        brk = false
+        until tv.specs?.serialNumber? or brk
+          await tv
+          .getSpecs()
+          # eslint-disable-next-line coffee/no-loop-func
+          .then(() =>
+            @log.debug(tv)
+            if tv.encrypted and not (tv._appId? and tv._encKey?)
+              @log.error(
+                "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
+                supplied."
+              )
+              brk = true
+            else
+              @addAccessory(tv, viera.hdmiInputs)
+              .then(() ->)
+              .catch((err) =>
+                @log.error(
+                  "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
+                  as an homebridge Accessory.\n\n\n#{err}"
+                )
+                brk = true
+              )
+          )
+          .catch(() =>
+            @log.error(
+              'An unexpected error happened while fetching TV metadata. Please do make sure that the
+              TV is powered on and NOT in stand-by. Trying again in 10s.'
+            )
+            sleep(10000)
+          )
+      # eslint-disable-next-line coffee/no-loop-func
+      else
+        @log.error("Viera TV (at '#{tv.ipAddress}') was unreachable. Likely to be powered off.")
 
     @log('DidFinishLaunching')
 
-  addAccessory: (accessory, hdmiInputs) =>
-    [@device, @applications] = [accessory, []]
-    { friendlyName, serialNumber, modelName, modelNumber, manufacturer } = accessory.specs
+  addAccessory: (tv, hdmiInputs) =>
+    [@device, @applications] = [_.cloneDeep(tv), []]
+    { friendlyName, serialNumber, modelName, modelNumber, manufacturer } = @device.specs
 
     @device.storage = new Proxy(@storage.get(serialNumber), {
       set: (obj, prop, value) =>
@@ -92,16 +105,20 @@ class Vieramatic
     })
 
     unless @device.storage.data?
-      @log.debug("Initializing '#{accessory}' for the first time.")
+      @log.debug("Initializing '#{@device.specs.friendlyName}' for the first time.")
       while @applications.length is 0
-        try
-          @applications = await @device.getApps()
-        catch err
+        await @device
+        .getApps()
+        .then((apps) =>
+          @applications = _.cloneDeep(apps) unless apps.length is 0
+        )
+        .catch(() =>
           @log.warn(
-            'Unable to fetch Application list from TV (as it seems to be in standby). Trying again in 5s.'
+            'Unable to fetch Application list from TV (as it seems to be in standby).
+             Trying again in 5s.'
           )
-          @applications = []
           sleep(5000)
+        )
 
       @device.storage.data = {
         inputs: {
@@ -111,14 +128,19 @@ class Vieramatic
         specs: { ...@device.specs }
       }
     else
-      @log.debug("Restoring '#{accessory}'.")
-      try
-        @applications = await @device.getApps()
-      unless @applications.length isnt 0
-        @log.debug('TV is in standby - getting (cached) TV apps')
-        @applications = @device.storage.data.inputs.applications
-
-        # FIXME: smoothly handle modifications from both the hdmi inputs and apps lists
+      @log.debug("Restoring '#{@device.specs.friendlyName}'.")
+      @device
+      .getApps()
+      .then((apps) =>
+        @applications = _.cloneDeep(apps) unless apps.length is 0
+      )
+      .catch(() ->)
+      .finally(() =>
+        unless @applications.length isnt 0
+          @log.debug('TV is in standby - getting (cached) TV apps')
+          @applications = _.cloneDeep(@device.storage.data.inputs.applications)
+      )
+      # FIXME: smoothly handle modifications from both the hdmi inputs and apps lists
 
     newAccessory = new Accessory(friendlyName, serialNumber)
     newAccessory.on('identify', (paired, callback) =>
@@ -243,8 +265,8 @@ class Vieramatic
 
     @api.publishExternalAccessories('homebridge-vieramatic', [newAccessory])
 
-  configureAccessory: (accessory) =>
-    @previousAccessories.push(accessory)
+  configureAccessory: (tv) =>
+    @previousAccessories.push(tv)
 
   configureInputSource: (source, type, configuredName, identifier) =>
     hiden = false

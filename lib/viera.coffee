@@ -3,6 +3,7 @@ require('string-methods-extension')
 _ = require('lodash')
 net = require('net')
 axios = require('axios')
+{ probe } = require('tcp-ping-sync')
 printf = require('util').format
 crypto = require('crypto')
 readline = require('readline')
@@ -25,6 +26,8 @@ class Viera
     if appId and encKey
       [@_appId, @_encKey, @encrypted] = [appId, encKey, true]
 
+  isReachable: () => probe(@ipAddress, @port)
+
   setup: () ->
     renderSampleCfg = () =>
       cfg = {
@@ -45,57 +48,53 @@ class Viera
       )
       console.log(JSON.stringify(cfg, null, 4), '\n')
 
-    @getSpecs()
-    .then(() =>
-      if @encrypted
-        @requestPinCode()
-        .then(() =>
-          rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          })
+    if @isReachable()
+      @getSpecs()
+      .then(() =>
+        if @encrypted
+          @requestPinCode()
+          .then(() =>
+            rl = readline.createInterface({
+              input: process.stdin,
+              output: process.stdout
+            })
 
-          rl.question('Enter the displayed pin code: ', (answer) =>
-            @authorizePinCode(answer)
-            .then(() ->
-              renderSampleCfg()
-            )
-            .finally(() -> rl.close()))
-        )
-        .catch(() ->
-          console.error(
-            '\nAn unexpected error ocurred while attempting to request  a pin code from the TV.',
-            'Please make sure that the TV is powered ON (and NOT in standby).'
+            rl.question('Enter the displayed pin code: ', (answer) =>
+              @authorizePinCode(answer)
+              .then(() ->
+                renderSampleCfg()
+              )
+              .finally(() -> rl.close()))
           )
-          process.exitCode = 1
-        )
-      else
-        renderSampleCfg()
-    )
-    .catch((error) =>
-      switch
-        when error.message?.match(/timeout of/gu)
-          err = new Error(
-            printf('unable to reach (timeout) Viera TV at supplied IP (%s)', @ipAddress)
-          )
-        when error.response?.status is 500 and error.response.data.match(/Precondition failed/gu)
-          err = new Error(
-            printf(
-              'Viera TV at supplied IP (%s) is not powered ON. Please power it ON and try again',
-              @ipAddress
+          .catch(() ->
+            console.error(
+              '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
+              'Please make sure that the TV is powered ON (and NOT in standby).'
             )
+            process.exitCode = 1
           )
         else
-          err = new Error(
-            printf(
-              "supplied IP (%s) doesn't seem to be from a Panasonic Viera TV (%s)",
-              @ipAddress,
-              error
-            )
-          )
+          renderSampleCfg()
+      )
+      .catch((err) =>
+        @log.error(
+          "An unexpected error happened while fetching TV metadata. Please do make sure that the
+          TV is powered on and NOT in stand-by.
+          \n\n\n'#{err}'"
+        )
+        process.exitCode = 1
+      )
+    else
+      console.error(
+        printf(
+          "\nUnable to reach (timeout) Viera TV at supplied IP ('%s').\n
+          \n- Either the supplied IP is wrong, the TV is not connected to the network,
+              or hasn't power.
+          \n- It is a Panasonic TV, right ?...\n",
+          @ipAddress
+        )
+      )
       process.exitCode = 1
-      console.error(err.message)
-    )
 
   requestPinCode: () ->
     if @encrypted

@@ -60,7 +60,8 @@
     "lodash": "^4.17.15",
     "make-promises-safe": "^5.1.0",
     "node-upnp-subscription": "^1.0.6",
-    "string-methods-extension": "^0.1.5"
+    "string-methods-extension": "^0.1.5",
+    "tcp-ping-sync": "^2.0.0"
   },
   "directories": {
     "lib": "lib"
