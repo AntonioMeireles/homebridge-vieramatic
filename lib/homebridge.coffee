@@ -1,3 +1,5 @@
+### global Service Characteristic Accessory ###
+
 # homebridge vieramatic plugin
 
 # > required **external dependencies**
@@ -5,7 +7,8 @@ UpnpSub = require('node-upnp-subscription')
 events = require('events')
 _ = require('lodash')
 
-{ Viera } = require('./viera')
+# > required **internal dependencies**
+Viera = require('./viera')
 Storage = require('./storage')
 
 # helpers
@@ -25,8 +28,6 @@ findVal = (object, key) ->
       return value != undefined
   )
   value
-
-### global Service Characteristic Accessory ###
 
 class Vieramatic
   tvEvent = new events.EventEmitter()
@@ -421,4 +422,7 @@ class Vieramatic
 
     callback(null, value)
 
+#
+# ## Public API
+# --------
 module.exports = Vieramatic

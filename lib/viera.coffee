@@ -1,3 +1,4 @@
+# > required **external dependencies**
 require('string-methods-extension')
 _ = require('lodash')
 net = require('net')
@@ -418,8 +419,7 @@ class Viera
           )
       )
     )
-
 #
 # ## Public API
 # --------
-module.exports = { Viera }
+module.exports = Viera

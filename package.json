@@ -4,6 +4,7 @@
   "description": "Homebridge plugin for Panasonic Viera TV's (with support for 2018 and 2019 models)",
   "main": "index.js",
   "scripts": {
+    "lint": "eslint 'src/**/*'",
     "test": "echo 'Error: no test specified' && exit 1",
     "docs": "docco lib/*.coffee -l parallel"
   },
@@ -36,7 +37,10 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "docco": "^0.8.0",
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "babel-eslint": "^10.0.3",
     "eslint": "^6.8.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-prettier": "^6.9.0",

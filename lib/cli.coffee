@@ -1,4 +1,4 @@
-{ Viera } = require('./viera')
+Viera = require('./viera')
 
 run = () ->
   ip = process.argv.slice(2)

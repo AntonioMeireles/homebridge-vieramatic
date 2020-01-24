@@ -1,3 +1,6 @@
+/* eslint-disable func-names */
+/* eslint-disable no-console */
+/* eslint-disable no-undef */
 require('coffeescript/register')
 // Node.js would crashes if there is an uncaught exception, while it does not crash
 // if there is an 'unhandledRejection', i.e. a Promise without a .catch() handler.
@@ -7,14 +10,13 @@ require('coffeescript/register')
 // vd https://github.com/mcollina/make-promises-safe
 require('make-promises-safe')
 // does what it says ...
-
 packageJson = require('./package.json')
 Vieramatic = require('./lib/homebridge')
 
-module.exports = function (homebridge) {
-  console.log('homebridge API version: ' + homebridge.version);
-  Service = homebridge.hap.Service;
-  Characteristic = homebridge.hap.Characteristic;
-  Accessory = homebridge.platformAccessory;
-  homebridge.registerPlatform(packageJson.name, 'PanasonicVieraTV', Vieramatic, true);
+module.exports = function(homebridge) {
+  console.log(`homebridge API version: ${homebridge.version}`)
+  Service = homebridge.hap.Service
+  Characteristic = homebridge.hap.Characteristic
+  Accessory = homebridge.platformAccessory
+  homebridge.registerPlatform(packageJson.name, 'PanasonicVieraTV', Vieramatic, true)
 }

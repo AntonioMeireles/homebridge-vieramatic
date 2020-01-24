@@ -1,7 +1,8 @@
+# > required **external dependencies**
 path = require('path')
 fs = require('fs-extra')
 
-module.exports = class Storage
+class Storage
   constructor: (api) ->
     @accessories = {}
     @filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
@@ -19,3 +20,8 @@ module.exports = class Storage
     return @accessories[id]
 
   save: () => fs.writeJson(@filePath, @accessories)
+
+#
+# ## Public API
+# --------
+module.exports = Storage
