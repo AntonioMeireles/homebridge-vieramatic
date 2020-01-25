@@ -77,7 +77,7 @@ class Viera
           renderSampleCfg()
       )
       .catch((err) =>
-        @log.error(
+        console.error(
           "An unexpected error happened while fetching TV metadata. Please do make sure that the
           TV is powered on and NOT in stand-by.
           \n\n\n'#{err}'"

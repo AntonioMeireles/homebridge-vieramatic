@@ -79,10 +79,10 @@ class Vieramatic
                 brk = true
               )
           )
-          .catch(() =>
+          .catch((err) =>
             @log.error(
-              'An unexpected error happened while fetching TV metadata. Please do make sure that the
-              TV is powered on and NOT in stand-by. Trying again in 10s.'
+              "An unexpected error happened while fetching TV metadata. Please do make sure that the
+              TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
             )
             sleep(10000)
           )
