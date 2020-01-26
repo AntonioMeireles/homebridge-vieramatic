@@ -11,7 +11,7 @@ readline = require('readline')
 axios.default.timeout = 1000
 
 findValue = (xml, tag) ->
-  new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml)?.groups.found
+  new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml)?.groups?.found
 
 class Viera
   # Constructor
@@ -396,7 +396,7 @@ class Viera
 
   getSpecs: () ->
     axios
-    .get("#{@baseURL}/dmr/ddd.xml")
+    .get("#{@baseURL}/nrc/ddd.xml")
     .then((r) =>
       @specs = {
         friendlyName: findValue(r.data, 'friendlyName'),
@@ -405,7 +405,16 @@ class Viera
         manufacturer: findValue(r.data, 'manufacturer'),
         serialNumber: findValue(r.data, 'UDN').slice(5)
       }
-      console.log('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
+      if (
+        @specs.friendlyName? and
+        @specs.modelNumber? and
+        @specs.modelName? and
+        @specs.manufacturer? and
+        @specs.serialNumber?
+      )
+        console.log('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
+      else
+        console.error('Unable to fetch all required values to populate specs...', r, @specs)
     )
     .then(() =>
       axios
