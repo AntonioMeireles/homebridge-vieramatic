@@ -57,11 +57,11 @@
     "axios": "^0.19.2",
     "coffeescript": "^2.5.0",
     "fs-extra": "^8.1.0",
+    "is-port-reachable": "^3.0.0",
     "lodash": "^4.17.15",
     "make-promises-safe": "^5.1.0",
     "node-upnp-subscription": "^1.0.6",
-    "string-methods-extension": "^0.1.5",
-    "tcp-ping-sync": "^2.0.0"
+    "string-methods-extension": "^0.1.5"
   },
   "directories": {
     "lib": "lib"

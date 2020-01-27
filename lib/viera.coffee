@@ -3,10 +3,10 @@ require('string-methods-extension')
 _ = require('lodash')
 net = require('net')
 axios = require('axios')
-{ probe } = require('tcp-ping-sync')
 printf = require('util').format
 crypto = require('crypto')
 readline = require('readline')
+isPortReachable = require('is-port-reachable')
 
 axios.default.timeout = 1000
 
@@ -26,7 +26,7 @@ class Viera
     if appId and encKey
       [@_appId, @_encKey, @encrypted] = [appId, encKey, true]
 
-  isReachable: () => probe(@ipAddress, @port)
+  isReachable: () => isPortReachable(@port, { host: @ipAddress })
 
   setup: () ->
     renderSampleCfg = () =>
@@ -48,7 +48,7 @@ class Viera
       )
       console.log(JSON.stringify(cfg, null, 4), '\n')
 
-    if @isReachable()
+    if await @isReachable()
       @getSpecs()
       .then(() =>
         if @encrypted

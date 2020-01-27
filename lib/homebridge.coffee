@@ -54,7 +54,7 @@ class Vieramatic
       viera.hdmiInputs = [] unless viera.hdmiInputs?
       tv = new Viera(viera.ipAddress, viera.appId, viera.encKey)
 
-      if tv.isReachable()
+      if await tv.isReachable()
         brk = false
         until tv.specs?.serialNumber? or brk
           await tv
