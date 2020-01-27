@@ -6,6 +6,7 @@
 UpnpSub = require('node-upnp-subscription')
 events = require('events')
 _ = require('lodash')
+{ Mutex } = require('async-mutex')
 
 # > required **internal dependencies**
 Viera = require('./viera')
@@ -31,6 +32,8 @@ findVal = (object, key) ->
 
 class Vieramatic
   tvEvent = new events.EventEmitter()
+
+  mutex = new Mutex()
 
   constructor: (log, config, api) ->
     log.info('Vieramatic Init')
@@ -357,47 +360,50 @@ class Vieramatic
       callback(oops, volume)
 
   getPowerStatus: (callback) =>
-    # @log.debug('(getPowerStatus)')
-    # eslint-disable-next-line coffee/no-inner-declarations
-    if callback?
+    # eslint-disable-next-line coffee/no-return-await
+    await mutex.runExclusive(() =>
+      # @log.debug('(getPowerStatus)')
       # eslint-disable-next-line coffee/no-inner-declarations
-      fn = (bool) -> callback(null, bool)
-    else
-      fn = (bool) -> bool
+      if callback?
+        # eslint-disable-next-line coffee/no-inner-declarations
+        fn = (bool) -> callback(null, bool)
+      else
+        fn = (bool) -> bool
 
-    powerStateSub = await new UpnpSub(@device.ipAddress, 55000, '/nrc/event_0')
+      powerStateSub = await new UpnpSub(@device.ipAddress, 55000, '/nrc/event_0')
 
-    powerStateSub.on('message', (message) =>
-      screenState = await findVal(message.body['e:propertyset']['e:property'], 'X_ScreenState')
+      powerStateSub.on('message', (message) =>
+        screenState = await findVal(message.body['e:propertyset']['e:property'], 'X_ScreenState')
 
-      up = () =>
-        tvEvent.emit('POWERING_ON')
-        @poweredOn = true
-        fn(true)
-      down = () =>
-        tvEvent.emit('INTO_STANDBY')
-        @poweredOn = false
-        fn(false)
+        up = () =>
+          tvEvent.emit('POWERING_ON')
+          @poweredOn = true
+          fn(true)
+        down = () =>
+          tvEvent.emit('INTO_STANDBY')
+          @poweredOn = false
+          fn(false)
 
-      if screenState is 'none' or screenState is null or screenState is undefined
-        @log.warn(
-          "Couldn't check power state. Your TV may not be correctly set up or it
-          may be incapable of performing power on from standby."
+        if screenState is 'none' or screenState is null or screenState is undefined
+          @log.warn(
+            "Couldn't check power state. Your TV may not be correctly set up or it
+            may be incapable of performing power on from standby."
+          )
+          if screenState is 'none' then up() else down()
+        # eslint-disable-next-line prettier/prettier
+        else if screenState is 'on' then up() else down())
+
+      powerStateSub.on('error', (err) =>
+        @log.error(
+          "Couldn't check power state. Please check your TV's network connection.
+          Alternatively, your TV may not be correctly set up or it may not be able
+          to perform power on from standby.",
+          err
         )
-        if screenState is 'none' then up() else down()
-      # eslint-disable-next-line prettier/prettier
-      else if screenState is 'on' then up() else down())
+        false)
 
-    powerStateSub.on('error', (err) =>
-      @log.error(
-        "Couldn't check power state. Please check your TV's network connection.
-        Alternatively, your TV may not be correctly set up or it may not be able
-        to perform power on from standby.",
-        err
-      )
-      false)
-
-    setTimeout(powerStateSub.unsubscribe, 900)
+      setTimeout(powerStateSub.unsubscribe, 900)
+    )
 
   setPowerStatus: (turnOn, callback) =>
     @log.debug('(setPowerStatus)', turnOn, @poweredOn)
