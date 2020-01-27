@@ -317,24 +317,44 @@ class Vieramatic
       callback())
 
   getMute: (callback) =>
-    mute = await @device.getMute()
-    @log.debug('(getMute)', mute)
-    callback(null, mute)
+    try
+      oops = null
+      mute = await @device.getMute()
+      @log.debug('(getMute)', mute)
+    catch err
+      oops = err
+    finally
+      callback(oops, mute)
 
   setMute: (mute, callback) =>
-    await @device.setMute()
-    @log.debug('(setMute)', mute)
-    callback(null, not mute)
+    try
+      oops = null
+      await @device.setMute()
+      @log.debug('(setMute)', mute)
+    catch err
+      oops = err
+    finally
+      callback(oops, not mute)
 
   setVolume: (value, callback) =>
     @log.debug('(setVolume)', value)
-    await @device.setVolume(value)
-    callback(null, value)
+    try
+      oops = null
+      await @device.setVolume(value)
+    catch err
+      oops = err
+    finally
+      callback(oops, value)
 
   getVolume: (callback) =>
-    volume = await @device.getVolume()
-    @log.debug('(getVolume)', volume)
-    callback(null, volume)
+    try
+      oops = null
+      volume = await @device.getVolume()
+      @log.debug('(getVolume)', volume)
+    catch err
+      oops = err
+    finally
+      callback(oops, volume)
 
   getPowerStatus: (callback) =>
     # @log.debug('(getPowerStatus)')
@@ -424,25 +444,34 @@ class Vieramatic
         cmd = 'HOME'
 
     @log.debug(cmd)
-    await @device.sendCommand(cmd)
-    callback(null, keyId)
+    try
+      oops = null
+      await @device.sendCommand(cmd)
+    catch err
+      oops = err
+    finally
+      callback(oops, keyId)
 
   setInput: (value, callback) =>
-    # eslint-disable-next-line default-case
-    switch
-      when value < 100
-        @log.debug('(setInput) switching to HDMI INPUT ', value)
-        await @device.sendHDMICommand(value)
-      when value > 999
-        real = value - 1000
-        app = @applications[real]
-        @log.debug('(setInput) switching to App', app.name)
-        await @device.sendAppCommand(app.id)
-      when value is 500
-        @log.debug('(setInput) switching to internal TV tunner')
-        await @device.sendCommand('AD_CHANGE')
-
-    callback(null, value)
+    try
+      oops = null
+      # eslint-disable-next-line default-case
+      switch
+        when value < 100
+          @log.debug('(setInput) switching to HDMI INPUT ', value)
+          await @device.sendHDMICommand(value)
+        when value > 999
+          real = value - 1000
+          app = @applications[real]
+          @log.debug('(setInput) switching to App', app.name)
+          await @device.sendAppCommand(app.id)
+        when value is 500
+          @log.debug('(setInput) switching to internal TV tunner')
+          await @device.sendCommand('AD_CHANGE')
+    catch err
+      oops = err
+    finally
+      callback(oops, value)
 
 #
 # ## Public API
