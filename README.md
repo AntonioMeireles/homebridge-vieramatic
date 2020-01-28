@@ -1,5 +1,9 @@
 # homebridge-vieramatic
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE.md)
+[![npm version](https://img.shields.io/npm/v/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
+[![downloads](https://img.shields.io/npm/dw/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
+
 ## [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
 
 - **support for 2018 and 2019 models**
