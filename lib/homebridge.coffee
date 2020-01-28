@@ -171,8 +171,7 @@ class Vieramatic
     .setCharacteristic(Characteristic.Manufacturer, manufacturer)
     .setCharacteristic(Characteristic.Model, "#{modelName} #{modelNumber}")
     .setCharacteristic(Characteristic.SerialNumber, serialNumber)
-    accessoryInformation.displayName = friendlyName
-    accessoryInformation.subtype = 'specs'
+    .setCharacteristic(Characteristic.Name, friendlyName)
 
     newAccessory.addService(tvService)
     newAccessory.addService(speakerService)
