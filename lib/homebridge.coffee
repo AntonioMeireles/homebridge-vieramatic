@@ -185,6 +185,9 @@ class Vieramatic
 
     tvService.getCharacteristic(Characteristic.RemoteKey).on('set', @remoteControl)
     tvService.getCharacteristic(Characteristic.ActiveIdentifier).on('set', @setInput)
+    tvService
+    .getCharacteristic(Characteristic.PowerModeSelection)
+    .on('set', (value, callback) => callback(await @device.sendCommand('MENU'), value))
 
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
