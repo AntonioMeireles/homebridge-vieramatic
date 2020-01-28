@@ -2,3 +2,4 @@
 .eslintrc.yml
 .prettierignore
 .prettierrc
+.vscode
