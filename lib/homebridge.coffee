@@ -132,18 +132,31 @@ class Vieramatic
       }
     else
       @log.debug("Restoring '#{@device.specs.friendlyName}'.")
-      @device
+      await @device
       .getApps()
       .then((apps) =>
         @applications = _.cloneDeep(apps) unless apps.length is 0
       )
       .catch(() ->)
-      .finally(() =>
+      .then(() =>
         unless @applications.length isnt 0
           @log.debug('TV is in standby - getting (cached) TV apps')
           @applications = _.cloneDeep(@device.storage.data.inputs.applications)
       )
-      # FIXME: smoothly handle modifications from both the hdmi inputs and apps lists
+      .then(() =>
+        for i, input of hdmiInputs
+          idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', input.id.toString()])
+          unless idx < 0
+            if @device.storage.data.inputs.hdmi[idx].hiden?
+              # eslint-disable-next-line no-param-reassign
+              hdmiInputs[i].hiden = @device.storage.data.inputs.hdmi[idx].hiden
+      )
+      .then(() =>
+        # force flush
+        @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
+        @device.storage.data.inputs.applications = { ...@applications }
+        @device.storage.data = _.cloneDeep(@device.storage.data)
+      )
 
     newAccessory = new Accessory(friendlyName, serialNumber)
     newAccessory.on('identify', (paired, callback) =>
