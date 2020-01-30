@@ -173,11 +173,10 @@ class Vieramatic
     speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
     speakerService.addCharacteristic(Characteristic.Volume)
 
-    volumeService = new Service.Lightbulb("#{friendlyName} Volume", 'volumeService')
-    volumeService.addCharacteristic(Characteristic.Brightness)
+    customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
 
     tvService.addLinkedService(speakerService)
-    tvService.addLinkedService(volumeService)
+    tvService.addLinkedService(customSpeakerService)
 
     accessoryInformation = newAccessory.getService(Service.AccessoryInformation)
     accessoryInformation
@@ -188,7 +187,7 @@ class Vieramatic
 
     newAccessory.addService(tvService)
     newAccessory.addService(speakerService)
-    newAccessory.addService(volumeService)
+    newAccessory.addService(customSpeakerService)
 
     tvService
     .getCharacteristic(Characteristic.Active)
@@ -215,24 +214,24 @@ class Vieramatic
     .on('get', @getVolume)
     .on('set', @setVolume)
 
-    volumeService
+    customSpeakerService
     .getCharacteristic(Characteristic.On)
     # .on('get', @getMute)
     # .on('set', @setMute)
     .on('get', (callback) =>
       { value } = tvService.getCharacteristic(Characteristic.Active)
-      @log.debug('(volumeService/On.get)', value)
+      @log.debug('(customSpeakerService/On.get)', value)
       if value is 0 then callback(null, false) else callback(null, true))
     .on('set', (value, callback) =>
-      @log.debug('(volumeService/On.set)', value)
+      @log.debug('(customSpeakerService/On.set)', value)
       if tvService.getCharacteristic(Characteristic.Active).value is 0
-        volumeService.getCharacteristic(Characteristic.On).updateValue(false)
+        customSpeakerService.getCharacteristic(Characteristic.On).updateValue(false)
         callback(null, value)
       else
         callback(null, not value))
 
-    volumeService
-    .getCharacteristic(Characteristic.Brightness)
+    customSpeakerService
+    .getCharacteristic(Characteristic.RotationSpeed)
     .on('get', @getVolume)
     .on('set', @setVolume)
 
@@ -269,12 +268,12 @@ class Vieramatic
 
     tvEvent
     .on('INTO_STANDBY', () ->
-      volumeService.getCharacteristic(Characteristic.On).updateValue(false)
+      customSpeakerService.getCharacteristic(Characteristic.On).updateValue(false)
       tvService
       .getCharacteristic(Characteristic.Active)
       .updateValue(Characteristic.Active.INACTIVE))
     .on('POWERING_ON', () ->
-      volumeService.getCharacteristic(Characteristic.On).updateValue(true)
+      customSpeakerService.getCharacteristic(Characteristic.On).updateValue(true)
       tvService.getCharacteristic(Characteristic.Active).updateValue(Characteristic.Active.ACTIVE))
 
     setInterval(@getPowerStatus, 5000)
