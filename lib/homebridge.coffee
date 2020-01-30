@@ -3,7 +3,6 @@
 # homebridge vieramatic plugin
 
 # > required **external dependencies**
-UpnpSub = require('node-upnp-subscription')
 events = require('events')
 _ = require('lodash')
 { Mutex } = require('async-mutex')
@@ -17,18 +16,6 @@ sleep = (ms) ->
   now = new Date().getTime()
   # eslint-disable-next-line no-continue
   continue while new Date().getTime() - now < ms
-
-findVal = (object, key) ->
-  value = undefined
-  Object.keys(object).some((k) ->
-    if k == key
-      value = object[k]
-      return true
-    if object[k] and typeof object[k] == 'object'
-      value = findVal(object[k], key)
-      return value != undefined
-  )
-  value
 
 class Vieramatic
   tvEvent = new events.EventEmitter()
@@ -384,44 +371,18 @@ class Vieramatic
       else
         fn = (bool) -> bool
 
-      powerStateSub = await new UpnpSub(@device.ipAddress, 55000, '/nrc/event_0')
-
-      powerStateSub.on('message', (message) =>
-        screenState = await findVal(message.body['e:propertyset']['e:property'], 'X_ScreenState')
-
-        up = () =>
-          tvEvent.emit('POWERING_ON')
-          @poweredOn = true
-          fn(true)
-        down = () =>
-          tvEvent.emit('INTO_STANDBY')
-          @poweredOn = false
-          fn(false)
-
-        if screenState is 'none' or screenState is null or screenState is undefined
-          @log.warn(
-            "Couldn't check power state. Your TV may not be correctly set up or it
-            may be incapable of performing power on from standby."
-          )
-          if screenState is 'none' then up() else down()
-        # eslint-disable-next-line prettier/prettier
-        else if screenState is 'on' then up() else down())
-
-      powerStateSub.on('error', (err) =>
-        @log.error(
-          "Couldn't check power state. Please check your TV's network connection.
-          Alternatively, your TV may not be correctly set up or it may not be able
-          to perform power on from standby.",
-          err
-        )
-        false)
-
-      setTimeout(powerStateSub.unsubscribe, 900)
+      if await @device.isTurnedOn()
+        tvEvent.emit('POWERING_ON')
+        fn(true)
+      else
+        tvEvent.emit('INTO_STANDBY')
+        fn(false)
     )
 
   setPowerStatus: (turnOn, callback) =>
-    @log.debug('(setPowerStatus)', turnOn, @poweredOn)
-    if (turnOn is 1 and @poweredOn is true) or (turnOn is 0 and @poweredOn is false)
+    poweredOn = await @device.isTurnedOn()
+    @log.debug('(setPowerStatus)', turnOn, poweredOn)
+    if (turnOn is 1 and poweredOn) or (turnOn is 0 and not poweredOn)
       if turnOn then str = 'ON' else str = 'on STANDBY'
       @log.debug('TV is already %s: Ignoring!', str)
     else
@@ -429,7 +390,7 @@ class Vieramatic
       @log.debug('Powering TV %s...', str)
       if _.isError(await @device.sendCommand('POWER'))
         return callback(new Error('unable to power cycle TV - probably without power'))
-      @poweredOn = not @poweredOn
+
     callback()
 
   remoteControl: (keyId, callback) =>
