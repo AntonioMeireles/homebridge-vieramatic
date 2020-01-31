@@ -185,7 +185,12 @@ class Vieramatic
     tvService.getCharacteristic(Characteristic.ActiveIdentifier).on('set', @setInput)
     tvService
     .getCharacteristic(Characteristic.PowerModeSelection)
-    .on('set', (value, callback) => callback(await @device.sendCommand('MENU'), value))
+    .on('set', (value, callback) =>
+      try
+        await @device.sendCommand('MENU')
+      catch err
+        return callback(err, value)
+      callback(null, value))
 
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
@@ -316,40 +321,36 @@ class Vieramatic
 
   getMute: (callback) =>
     try
-      oops = null
       mute = await @device.getMute()
       @log.debug('(getMute)', mute)
     catch err
-      oops = err
-    finally
-      callback(oops, mute)
+      return callback(err, mute)
+    callback(null, mute)
 
   setMute: (mute, callback) =>
     try
-      oops = null
       await @device.setMute()
       @log.debug('(setMute)', mute)
     catch err
-      oops = err
-    finally
-      callback(oops, not mute)
+      return callback(err, not mute)
+    callback(null, not mute)
 
   setVolume: (value, callback) =>
     @log.debug('(setVolume)', value)
     try
-      oops = null
       await @device.setVolume(value)
     catch err
-      oops = err
-    finally
-      callback(oops, value)
+      return callback(err, value)
+    callback(null, value)
 
   getVolume: (callback) =>
     try
-      oops = null
       volume = await @device.getVolume()
       @log.debug('(getVolume)', volume)
     catch err
+      return callback(err, volume)
+    callback(null, volume)
+
   #eslint-disable-next-line coffee/class-methods-use-this
   updateTVstatus: (powered, tvService, customSpeakerService) ->
     if powered
@@ -425,16 +426,13 @@ class Vieramatic
 
     @log.debug(cmd)
     try
-      oops = null
       await @device.sendCommand(cmd)
     catch err
-      oops = err
-    finally
-      callback(oops, keyId)
+      return callback(err, keyId)
+    callback(null, keyId)
 
   setInput: (value, callback) =>
     try
-      oops = null
       # eslint-disable-next-line default-case
       switch
         when value < 100
@@ -449,9 +447,8 @@ class Vieramatic
           @log.debug('(setInput) switching to internal TV tunner')
           await @device.sendCommand('AD_CHANGE')
     catch err
-      oops = err
-    finally
-      callback(oops, value)
+      return callback(err, value)
+    callback(null, value)
 
 #
 # ## Public API
