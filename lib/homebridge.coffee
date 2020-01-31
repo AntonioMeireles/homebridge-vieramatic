@@ -254,14 +254,8 @@ class Vieramatic
       await @configureInputSource(svc, 'APPLICATION', configuredName, 1000 + parseInt(id, 10))
 
     tvEvent
-    .on('INTO_STANDBY', () ->
-      customSpeakerService.getCharacteristic(Characteristic.On).updateValue(false)
-      tvService
-      .getCharacteristic(Characteristic.Active)
-      .updateValue(Characteristic.Active.INACTIVE))
-    .on('POWERING_ON', () ->
-      customSpeakerService.getCharacteristic(Characteristic.On).updateValue(true)
-      tvService.getCharacteristic(Characteristic.Active).updateValue(Characteristic.Active.ACTIVE))
+    .on('INTO_STANDBY', () => @updateTVstatus(false, tvService, customSpeakerService))
+    .on('POWERING_ON', () => @updateTVstatus(true, tvService, customSpeakerService))
 
     setInterval(@getPowerStatus, 5000)
 
@@ -356,14 +350,19 @@ class Vieramatic
       volume = await @device.getVolume()
       @log.debug('(getVolume)', volume)
     catch err
-      oops = err
-    finally
-      callback(oops, volume)
+  #eslint-disable-next-line coffee/class-methods-use-this
+  updateTVstatus: (powered, tvService, customSpeakerService) ->
+    if powered
+      [speakerStatus, tvStatus] = [true, Characteristic.Active.ACTIVE]
+    else
+      [speakerStatus, tvStatus] = [false, Characteristic.Active.INACTIVE]
+
+    customSpeakerService.getCharacteristic(Characteristic.On).updateValue(speakerStatus)
+    tvService.getCharacteristic(Characteristic.Active).updateValue(tvStatus)
 
   getPowerStatus: (callback) =>
     # eslint-disable-next-line coffee/no-return-await
     await mutex.runExclusive(() =>
-      # @log.debug('(getPowerStatus)')
       # eslint-disable-next-line coffee/no-inner-declarations
       if callback?
         # eslint-disable-next-line coffee/no-inner-declarations
@@ -382,14 +381,14 @@ class Vieramatic
   setPowerStatus: (turnOn, callback) =>
     poweredOn = await @device.isTurnedOn()
     @log.debug('(setPowerStatus)', turnOn, poweredOn)
+    if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
     if (turnOn is 1 and poweredOn) or (turnOn is 0 and not poweredOn)
-      if turnOn then str = 'ON' else str = 'on STANDBY'
       @log.debug('TV is already %s: Ignoring!', str)
     else
-      if turnOn then str = 'ON' else str = 'OFF'
-      @log.debug('Powering TV %s...', str)
       if _.isError(await @device.sendCommand('POWER'))
         return callback(new Error('unable to power cycle TV - probably without power'))
+      if turnOn is 1 then tvEvent.emit('POWERING_ON') else tvEvent.emit('INTO_STANDBY')
+      @log.debug('Turned TV %s', str)
 
     callback()
 
