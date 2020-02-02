@@ -15,6 +15,9 @@ Vieramatic = require('./lib/homebridge')
 
 module.exports = function(homebridge) {
   console.log(`homebridge API version: ${homebridge.version}`)
+  console.log(`${packageJson.name} version: ${packageJson.version}`)
+  console.log(`- Documentation: ${packageJson.homepage}`)
+  console.log(`- Bugs and feedback: ${packageJson.bugs.url}\n`)
   Service = homebridge.hap.Service
   Characteristic = homebridge.hap.Characteristic
   Accessory = homebridge.platformAccessory
