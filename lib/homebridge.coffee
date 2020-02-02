@@ -42,7 +42,7 @@ class Vieramatic
     for __, viera of @config.tvs
       @log.debug(viera.ipAddress)
       viera.hdmiInputs = [] unless viera.hdmiInputs?
-      tv = new Viera(viera.ipAddress, viera.appId, viera.encKey)
+      tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
 
       if await tv.isReachable()
         brk = false
@@ -80,7 +80,7 @@ class Vieramatic
       else
         @log.error("Viera TV (at '#{tv.ipAddress}') was unreachable. Likely to be powered off.")
 
-    @log('DidFinishLaunching')
+    @log.info('DidFinishLaunching')
 
   addAccessory: (tv, hdmiInputs) =>
     [@device, @applications] = [_.cloneDeep(tv), []]

@@ -15,16 +15,15 @@ findValue = (xml, tag) ->
 
 class Viera
   # Constructor
-  constructor: (ipAddress, appId, encKey) ->
+  constructor: (ipAddress, log = console, appId = null, encKey = null) ->
     unless net.isIPv4(ipAddress)
       throw new TypeError('You entered an invalid IP address!')
 
-    [@ipAddress, @port] = [ipAddress, 55000]
+    [@ipAddress, @port, @log] = [ipAddress, 55000, log]
 
     @baseURL = "http://#{@ipAddress}:#{@port}"
 
-    if appId and encKey
-      [@_appId, @_encKey, @encrypted] = [appId, encKey, true]
+    [@_appId, @_encKey, @encrypted] = [appId, encKey, true]
 
   isReachable: () => isPortReachable(@port, { host: @ipAddress })
 
@@ -49,11 +48,11 @@ class Viera
         ]
       }
 
-      console.log(
+      @log.info(
         "\nPlease add the snippet bellow inside the 'platforms' array of your
         homebridge's 'config.json'\n"
       )
-      console.log(JSON.stringify(cfg, null, 4), '\n')
+      @log.info(JSON.stringify(cfg, null, 4), '\n')
 
     if await @isReachable()
       @getSpecs()
@@ -73,8 +72,8 @@ class Viera
               )
               .finally(() -> rl.close()))
           )
-          .catch(() ->
-            console.error(
+          .catch(() =>
+            @log.error(
               '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
               'Please make sure that the TV is powered ON (and NOT in standby).'
             )
@@ -84,7 +83,7 @@ class Viera
           renderSampleCfg()
       )
       .catch((err) =>
-        console.error(
+        @log.error(
           "An unexpected error happened while fetching TV metadata. Please do make sure that the
           TV is powered on and NOT in stand-by.
           \n\n\n'#{err}'"
@@ -92,7 +91,7 @@ class Viera
         process.exitCode = 1
       )
     else
-      console.error(
+      @log.error(
         printf(
           "\nUnable to reach (timeout) Viera TV at supplied IP ('%s').\n
           \n- Either the supplied IP is wrong, the TV is not connected to the network,
@@ -319,7 +318,7 @@ class Viera
 
   # Send command to open app on the TV
   sendAppCommand: (appId) ->
-    console.debug('appId=', appId, appId.toString().length)
+    @log.debug('appId=', appId, appId.toString().length)
 
     if "#{appId}".length != 16 then cmd = "resource_id=#{appId}" else cmd = "product_id=#{appId}"
 
@@ -419,9 +418,9 @@ class Viera
         @specs.manufacturer? and
         @specs.serialNumber?
       )
-        console.log('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
+        @log.info('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
       else
-        console.error('Unable to fetch all required values to populate specs...', r, @specs)
+        @log.error('Unable to fetch all required values to populate specs...', r, @specs)
     )
     .then(() =>
       axios
@@ -429,7 +428,7 @@ class Viera
       .then((reply) =>
         if reply.data.match(/X_GetEncryptSessionId/u)
           @encrypted = true
-          console.log(
+          @log.info(
             "found #{@specs.modelName} TV (#{@specs.modelNumber}) requires crypto for comunication."
           )
       )
