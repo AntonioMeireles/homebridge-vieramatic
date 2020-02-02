@@ -186,11 +186,10 @@ class Vieramatic
     tvService
     .getCharacteristic(Characteristic.PowerModeSelection)
     .on('set', (value, callback) =>
-      try
-        await @device.sendCommand('MENU')
-      catch err
-        return callback(err, value)
-      callback(null, value))
+      @device
+      .sendCommand('MENU')
+      .then(() -> callback(null, value))
+      .catch((err) -> callback(err)))
 
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
@@ -320,36 +319,39 @@ class Vieramatic
       callback())
 
   getMute: (callback) =>
-    try
+    fn = () =>
       mute = await @device.getMute()
       @log.debug('(getMute)', mute)
-    catch err
-      return callback(err, mute)
-    callback(null, mute)
+      mute
+    fn()
+    .then((mute) -> callback(null, mute))
+    .catch((err) -> callback(err))
 
   setMute: (mute, callback) =>
-    try
-      await @device.setMute()
-      @log.debug('(setMute)', mute)
-    catch err
-      return callback(err, not mute)
-    callback(null, not mute)
+    @log.debug('(setMute)', mute)
+    fn = () => @device.setMute()
+
+    fn()
+    .then(() => callback(null, not mute))
+    .catch((err) -> callback(err))
 
   setVolume: (value, callback) =>
     @log.debug('(setVolume)', value)
-    try
-      await @device.setVolume(value)
-    catch err
-      return callback(err, value)
-    callback(null, value)
+    fn = () => @device.setVolume(value)
+
+    fn()
+    .then(() => callback(null, value))
+    .catch((err) => callback(err))
 
   getVolume: (callback) =>
-    try
+    fn = () =>
       volume = await @device.getVolume()
       @log.debug('(getVolume)', volume)
-    catch err
-      return callback(err, volume)
-    callback(null, volume)
+      volume
+
+    fn()
+    .then((volume) => callback(null, volume))
+    .catch((err) -> callback(err))
 
   #eslint-disable-next-line coffee/class-methods-use-this
   updateTVstatus: (powered, tvService, customSpeakerService) ->
@@ -425,30 +427,29 @@ class Vieramatic
         cmd = 'HOME'
 
     @log.debug(cmd)
-    try
-      await @device.sendCommand(cmd)
-    catch err
-      return callback(err, keyId)
-    callback(null, keyId)
+    @device
+    .sendCommand(cmd)
+    .then(() -> callback(null, keyId))
+    .catch((err) -> callback(err))
 
   setInput: (value, callback) =>
-    try
+    fn = () =>
       # eslint-disable-next-line default-case
       switch
         when value < 100
           @log.debug('(setInput) switching to HDMI INPUT ', value)
-          await @device.sendHDMICommand(value)
+          @device.sendHDMICommand(value)
         when value > 999
           real = value - 1000
           app = @applications[real]
           @log.debug('(setInput) switching to App', app.name)
-          await @device.sendAppCommand(app.id)
+          @device.sendAppCommand(app.id)
         when value is 500
           @log.debug('(setInput) switching to internal TV tunner')
-          await @device.sendCommand('AD_CHANGE')
-    catch err
-      return callback(err, value)
-    callback(null, value)
+          @device.sendCommand('AD_CHANGE')
+    fn()
+    .then(() -> callback(null, value))
+    .catch((err) -> callback(err))
 
 #
 # ## Public API
