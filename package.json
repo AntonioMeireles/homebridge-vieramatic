@@ -45,10 +45,10 @@
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-coffee": "^0.1.12",
-    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-import": "^2.20.1",
     "eslint-plugin-jest": "^23.6.0",
     "eslint-plugin-prettier": "^3.1.2",
-    "eslint-plugin-react": "^7.18.0",
+    "eslint-plugin-react": "^7.18.3",
     "patch-package": "^6.2.0",
     "prettier": "github:helixbass/prettier#b8818ebd",
     "prettier-plugin-coffeescript": "^0.1.4"
