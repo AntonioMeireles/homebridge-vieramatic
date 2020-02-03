@@ -29,7 +29,7 @@ class Viera
   isReachable: () => isPortReachable(@port, { host: @ipAddress })
 
   isTurnedOn: () =>
-    # this endpoint is only available if TV is turned ON, otherwise we gert a 400...
+    # this endpoint is only available if TV is turned ON, otherwise we get a 400...
     axios
     .get("#{@baseURL}/pac/ddd.xml")
     .then(() => true)
