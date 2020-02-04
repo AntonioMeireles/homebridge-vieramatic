@@ -262,16 +262,16 @@ class Viera
 
     body = printf(
       '
-      <?xml version="1.0" encoding="utf-8"?>
-      <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
-          s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-        <s:Body>
-          <u:%s xmlns:u="urn:%s">
-            %s
-          </u:%s>
-        </s:Body>
-      </s:Envelope>
-    ',
+        <?xml version="1.0" encoding="utf-8"?>
+        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+            s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+          <s:Body>
+            <u:%s xmlns:u="urn:%s">
+              %s
+            </u:%s>
+          </s:Body>
+        </s:Envelope>
+      ',
       action,
       urn,
       params,
@@ -307,12 +307,10 @@ class Viera
     )
 
   # Send a command to the TV
-
   sendCommand: (cmd) ->
     @sendRequest('command', 'X_SendKey', "<X_KeyEvent>NRC_#{cmd.toUpperCase()}-ONOFF</X_KeyEvent>")
 
   # Send a change HDMI input to the TV
-
   sendHDMICommand: (hdmiInput) ->
     @sendRequest('command', 'X_SendKey', "<X_KeyEvent>NRC_HDMI#{hdmiInput}-ONOFF</X_KeyEvent>")
 
@@ -329,7 +327,6 @@ class Viera
     )
 
   # Get volume from TV
-
   getVolume: () ->
     fn = (data) ->
       match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data)
@@ -343,7 +340,6 @@ class Viera
     ).catch((err) -> return err)
 
   # Set volume
-
   setVolume: (volume) ->
     if volume < 0 or volume > 100
       throw new Error('Volume must be in range from 0 to 100')
@@ -354,7 +350,6 @@ class Viera
     )
 
   # Get the current mute setting
-
   getMute: () ->
     fn = (data) =>
       regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu
@@ -366,7 +361,6 @@ class Viera
     })
 
   # Set mute to on/off
-
   setMute: (enable) ->
     mute = if enable then '1' else '0'
     @sendRequest(
@@ -376,7 +370,6 @@ class Viera
     )
 
   # Returns the list of apps on the TV
-
   getApps: () ->
     apps = []
     @sendRequest(
@@ -399,7 +392,6 @@ class Viera
     )
 
   # Returns the TV specs
-
   getSpecs: () ->
     axios
     .get("#{@baseURL}/nrc/ddd.xml")
