@@ -50,38 +50,16 @@ class Viera
 
       @log.info(
         "\nPlease add the snippet bellow inside the 'platforms' array of your
-        homebridge's 'config.json'\n"
-      )
+      homebridge's 'config.json'\n%s\n",
+      JSON.stringify(sample, null, 4)
+    )
       @log.info(JSON.stringify(cfg, null, 4), '\n')
 
-    if await @isReachable()
-      @getSpecs()
-      .then(() =>
-        if @encrypted
-          @requestPinCode()
-          .then(() =>
-            rl = readline.createInterface({
-              input: process.stdin,
-              output: process.stdout
-            })
+  setup: () ->
+    alive = await @isReachable()
 
-            rl.question('Enter the displayed pin code: ', (answer) =>
-              @authorizePinCode(answer)
-              .then(() ->
-                renderSampleCfg()
-              )
-              .finally(() -> rl.close()))
-          )
-          .catch(() =>
-            @log.error(
-              '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
-              'Please make sure that the TV is powered ON (and NOT in standby).'
-            )
-            process.exitCode = 1
-          )
-        else
-          renderSampleCfg()
-      )
+    if alive
+      @getSpecs()
       .catch((err) =>
         @log.error(
           "An unexpected error happened while fetching TV metadata. Please do make sure that the
@@ -89,6 +67,32 @@ class Viera
           \n\n\n'#{err}'"
         )
         process.exitCode = 1
+      )
+      .then(() =>
+        if @encrypted
+          @requestPinCode()
+          .catch(() =>
+            @log.error(
+              '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
+              'Please make sure that the TV is powered ON (and NOT in standby).'
+            )
+            process.exitCode = 1
+          )
+          .then(() =>
+            prompt = readline.createInterface({ input: process.stdin, output: process.stdout })
+            callback = (answer) =>
+              @authorizePinCode(answer)
+              .catch(() =>
+                @log.error('Wrong pin code...')
+                process.exitCode = 1
+              )
+              .finally(() -> prompt.close())
+
+            prompt.question('Enter the displayed pin code: ', callback)
+          )
+      )
+      .finally(() =>
+        @renderSampleConfig() if process.exitCode is 0
       )
     else
       @log.error(
