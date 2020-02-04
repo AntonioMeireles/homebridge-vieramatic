@@ -27,6 +27,14 @@ class Viera
 
   isReachable: () => isPortReachable(@port, { host: @ipAddress })
 
+  needsCrypto: () =>
+    axios
+    .get("#{@baseURL}/nrc/sdd_0.xml")
+    .then((reply) =>
+      if reply.data.match(/X_GetEncryptSessionId/u) then true else false
+    )
+    .catch(() -> false)
+
   isTurnedOn: () =>
     # this endpoint is only available if TV is turned ON, otherwise we get a 400...
     axios
@@ -414,21 +422,19 @@ class Viera
         @specs.manufacturer? and
         @specs.serialNumber?
       )
-        @log.info('found a %s TV (%s) at %s.\n', @specs.modelName, @specs.modelNumber, @ipAddress)
+        @encrypted = await @needsCrypto()
+        if @encrypted then extra = '(requires crypto for comunication)' else extra = ''
+        @log.info(
+          'found a %s TV (%s) at %s %s.\n',
+          @specs.modelName,
+          @specs.modelNumber,
+          @ipAddress,
+          extra
+        )
       else
         @log.error('Unable to fetch all required values to populate specs...', r, @specs)
     )
-    .then(() =>
-      axios
-      .get("#{@baseURL}/nrc/sdd_0.xml")
-      .then((reply) =>
-        if reply.data.match(/X_GetEncryptSessionId/u)
-          @encrypted = true
-          @log.info(
-            "found #{@specs.modelName} TV (#{@specs.modelNumber}) requires crypto for comunication."
-          )
-      )
-    )
+
 #
 # ## Public API
 # --------
