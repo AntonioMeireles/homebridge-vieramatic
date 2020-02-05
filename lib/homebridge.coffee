@@ -329,7 +329,7 @@ class Vieramatic
 
   setMute: (mute, callback) =>
     @log.debug('(setMute)', mute)
-    fn = () => @device.setMute()
+    fn = () => @device.setMute(mute)
 
     fn()
     .then(() => callback(null, not mute))
