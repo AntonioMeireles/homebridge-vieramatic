@@ -60,6 +60,7 @@
     "fs-extra": "^8.1.0",
     "is-port-reachable": "^3.0.0",
     "lodash": "^4.17.15",
+    "readline-sync": "^1.4.10",
     "string-methods-extension": "^0.1.5"
   },
   "directories": {

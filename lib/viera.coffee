@@ -1,14 +1,15 @@
 # > required **external dependencies**
 require('string-methods-extension')
 _ = require('lodash')
-net = require('net')
 axios = require('axios')
 printf = require('util').format
 crypto = require('crypto')
-readline = require('readline')
+readlineSync = require('readline-sync')
 isPortReachable = require('is-port-reachable')
 
+# helpers and default settings
 axios.default.timeout = 1000
+defaultAudioChannel = '<InstanceID>0</InstanceID><Channel>Master</Channel>'
 
 findValue = (xml, tag) ->
   new RegExp("<#{tag}>(?<found>.*)</#{tag}>", 'gmu').exec(xml)?.groups?.found
@@ -16,93 +17,48 @@ findValue = (xml, tag) ->
 class Viera
   # Constructor
   constructor: (ipAddress, log = console, appId = null, encKey = null) ->
-    unless net.isIPv4(ipAddress)
-      throw new TypeError('You entered an invalid IP address!')
-
-    [@ipAddress, @port, @log] = [ipAddress, 55000, log]
+    # it's up to the consumer check that the supplied IP address is a valid one
+    [@ipAddress, @port, @log, @_appId, @_encKey] = [ipAddress, 55000, log, appId, encKey]
 
     @baseURL = "http://#{@ipAddress}:#{@port}"
 
-    [@_appId, @_encKey, @encrypted] = [appId, encKey, true]
-
-  isReachable: () => isPortReachable(@port, { host: @ipAddress })
+  isReachable: () =>
+    isPortReachable(@port, { host: @ipAddress })
 
   needsCrypto: () =>
     axios
     .get("#{@baseURL}/nrc/sdd_0.xml")
-    .then((reply) =>
-      if reply.data.match(/X_GetEncryptSessionId/u) then true else false
-    )
+    .then((reply) -> if reply.data.match(/X_GetEncryptSessionId/u) then true else false)
     .catch(() -> false)
 
   isTurnedOn: () =>
     # this endpoint is only available if TV is turned ON, otherwise we get a 400...
     axios
     .get("#{@baseURL}/pac/ddd.xml")
-    .then(() => true)
-    .catch(() => false)
+    .then(() -> true)
+    .catch(() -> false)
 
-  setup: () ->
-    renderSampleCfg = () =>
-      cfg = {
-        platform: 'PanasonicVieraTV',
-        tvs: [
-          {
-            ipAddress: @ipAddress,
-            appId: @_appId if @_appId?,
-            encKey: @_encKey if @_encKey?,
-            hdmiInputs: []
-          }
-        ]
-      }
+  renderSampleConfig: () ->
+    sample = {
+      platform: 'PanasonicVieraTV',
+      tvs: [
+        {
+          ipAddress: @ipAddress,
+          appId: @_appId if @_appId?,
+          encKey: @_encKey if @_encKey?,
+          hdmiInputs: []
+        }
+      ]
+    }
 
-      @log.info(
-        "\nPlease add the snippet bellow inside the 'platforms' array of your
+    @log.info(
+      "\nPlease add the snippet bellow inside the 'platforms' array of your
       homebridge's 'config.json'\n%s\n",
       JSON.stringify(sample, null, 4)
     )
-      @log.info(JSON.stringify(cfg, null, 4), '\n')
 
   setup: () ->
-    alive = await @isReachable()
-
-    if alive
-      @getSpecs()
-      .catch((err) =>
-        @log.error(
-          "An unexpected error happened while fetching TV metadata. Please do make sure that the
-          TV is powered on and NOT in stand-by.
-          \n\n\n'#{err}'"
-        )
-        process.exitCode = 1
-      )
-      .then(() =>
-        if @encrypted
-          @requestPinCode()
-          .catch(() =>
-            @log.error(
-              '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
-              'Please make sure that the TV is powered ON (and NOT in standby).'
-            )
-            process.exitCode = 1
-          )
-          .then(() =>
-            prompt = readline.createInterface({ input: process.stdin, output: process.stdout })
-            callback = (answer) =>
-              @authorizePinCode(answer)
-              .catch(() =>
-                @log.error('Wrong pin code...')
-                process.exitCode = 1
-              )
-              .finally(() -> prompt.close())
-
-            prompt.question('Enter the displayed pin code: ', callback)
-          )
-      )
-      .finally(() =>
-        @renderSampleConfig() if process.exitCode is 0
-      )
-    else
+    unless await @isReachable()
       @log.error(
         printf(
           "\nUnable to reach (timeout) Viera TV at supplied IP ('%s').\n
@@ -113,17 +69,50 @@ class Viera
         )
       )
       process.exitCode = 1
+      return
+
+    [err, specs] = await @getSpecs()
+    if err
+      @log.error(
+        "An unexpected error happened while fetching TV metadata. Please do make sure that the
+        TV is powered on and NOT in stand-by.
+        \n\n\n'#{err}'"
+      )
+      process.exitCode = 1
+      return
+
+    @specs = specs
+    return @renderSampleConfig() unless @specs.requiresEncryption
+
+    [err, __] = await @requestPinCode()
+    if err
+      @log.error(
+        '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
+        '\nPlease make sure that the TV is powered ON (and NOT in standby).'
+      )
+      process.exitCode = 1
+      return
+
+    pin = readlineSync.question('Enter the displayed pin code: ')
+    [err, __] = await @authorizePinCode(pin)
+
+    return @renderSampleConfig() unless err
+
+    @log.error('Wrong pin code...')
+    process.exitCode = 1
 
   requestPinCode: () ->
-    if @encrypted
-      @sendRequest('command', 'X_DisplayPinCode', '<X_DeviceName>My Remote</X_DeviceName>', {
-        callback: (data) =>
-          match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
-          unless match is null
-            @_challenge = Buffer.from(match[1], 'base64')
-          else
-            throw new Error('unexpected reply from TV when requesting challenge key')
-      })
+    params = '<X_DeviceName>MyRemote</X_DeviceName>'
+    callback = (__, data) =>
+      match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
+
+      unless match
+        return [new Error('unexpected reply from TV when requesting challenge key'), null]
+
+      @_challenge = Buffer.from(match[1], 'base64')
+      return [null, null]
+
+    @sendRequest('command', 'X_DisplayPinCode', params, callback)
 
   deriveSessionKeys: () ->
     iv = Buffer.from(@_encKey, 'base64')
@@ -139,43 +128,32 @@ class Viera
     [@_sessionKey, @_sessionHmacKey] = [Buffer.from(keyVals), Buffer.concat([iv, iv])]
 
   requestSessionId: () ->
-    encinfo = @encryptPayload(
-      "<X_ApplicationId>#{@_appId}</X_ApplicationId>",
-      @_sessionKey,
-      @_sessionIV,
-      @_sessionHmacKey
-    )
+    appId = "<X_ApplicationId>#{@_appId}</X_ApplicationId>"
+    encinfo = @encryptPayload(appId)
     params = "<X_ApplicationId>#{@_appId}</X_ApplicationId> <X_EncInfo>#{encinfo}</X_EncInfo>"
+    callback = (__, data) =>
+      [@_sessionId, @_sessionSeqNum] = [findValue(data, 'X_SessionId'), 1]
+      [null, null]
 
-    @sendRequest(
-      'command',
-      'X_GetEncryptSessionId',
-      params,
-      {
-        callback: (data) => [@_sessionId, @_sessionSeqNum] = [findValue(data, 'X_SessionId'), 1]
-      }
-    ).catch((err) -> err)
+    @sendRequest('command', 'X_GetEncryptSessionId', params, callback)
 
-  # eslint-disable-next-line coffee/class-methods-use-this
-  decryptPayload: (string, key, iv) ->
+  decryptPayload: (string, key = @_sessionKey, iv = @_sessionIV) ->
     decipher = crypto.createDecipheriv('aes-128-cbc', key, iv).setAutoPadding(false)
     Buffer.concat([decipher.update(string, 'base64'), decipher.final()])
     .toString('binary')
     .substr(16)
     .split('\0')[0]
 
-  # eslint-disable-next-line coffee/class-methods-use-this
-  encryptPayload: (string, key, iv, hmacKey) ->
+  encryptPayload: (string, key = @_sessionKey, iv = @_sessionIV, hmacKey = @_sessionHmacKey) ->
     pad = (unpadded) ->
       blockSize = 16
-      extra = Buffer.alloc(blockSize - (_.size(unpadded) % blockSize))
+      extra = Buffer.alloc(blockSize - (unpadded.length % blockSize))
       Buffer.concat([unpadded, extra])
 
     data = Buffer.from(string)
-
-    headerPrefix = Buffer.from([...(_.random(0, 255) for __ in _.range(12))])
+    headerPrefix = Buffer.from([...(_.random(0, 255) for __ in [0..11])])
     headerSufix = Buffer.alloc(4)
-    headerSufix.writeIntBE(_.size(data), 0, 4)
+    headerSufix.writeIntBE(data.length, 0, 4)
 
     header = Buffer.concat([headerPrefix, headerSufix])
 
@@ -205,65 +183,55 @@ class Viera
       0xa5, 0x4b, 0xa7, 0xdc, 0xac, 0x98, 0x79, 0xfa, 0x8a, 0xcd, 0xa3, 0xfc, 0x24, 0x4f, 0x38, 0x54
     ]
 
-    for i in [0...32] by 4
-      hmacKey[i] = hmacKeyMaskVals[i] ^ iv[(i + 2) & 0xf]
-      hmacKey[i + 1] = hmacKeyMaskVals[i + 1] ^ iv[(i + 3) & 0xf]
-      hmacKey[i + 2] = hmacKeyMaskVals[i + 2] ^ iv[i & 0xf]
-      hmacKey[i + 3] = hmacKeyMaskVals[i + 3] ^ iv[(i + 1) & 0xf]
+    for j in [0...32] by 4
+      hmacKey[j] = hmacKeyMaskVals[j] ^ iv[(j + 2) & 0xf]
+      hmacKey[j + 1] = hmacKeyMaskVals[j + 1] ^ iv[(j + 3) & 0xf]
+      hmacKey[j + 2] = hmacKeyMaskVals[j + 2] ^ iv[j & 0xf]
+      hmacKey[j + 3] = hmacKeyMaskVals[j + 3] ^ iv[(j + 1) & 0xf]
 
     data = "<X_PinCode>#{pin}</X_PinCode>"
     encryptedPayload = @encryptPayload(data, key, iv, hmacKey)
     params = "<X_AuthInfo>#{encryptedPayload}</X_AuthInfo>"
-    @sendRequest('command', 'X_RequestAuth', params, {
-      callback: (_data) =>
-        match = findValue(_data, 'X_AuthResult')
-        throw new Error(printf('unexpected reply from TV (%s)', _data)) if match is null
-        authResultDecrypted = @decryptPayload(match, key, iv, hmacKey)
-        if (@_appId = findValue(authResultDecrypted, 'X_ApplicationId')) is null
-          throw new Error(printf('unexpected reply from TV (%s)', authResultDecrypted))
-        if (@_encKey = findValue(authResultDecrypted, 'X_Keyword')) is null
-          throw new Error(printf('unexpected reply from TV (%s)', authResultDecrypted))
-    })
+    callback = (__, reply) =>
+      match = findValue(reply, 'X_AuthResult')
 
-  # Create and send request to the TV
-  sendRequest: (type, action, params = 'None', options = { callback: () -> }) ->
-    neverEncrypted = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
-    [url, urn, { callback }] = [undefined, undefined, options]
+      return [new Error(printf('unexpected reply from TV (%s)', reply)), null] if match is null
 
-    # eslint-disable-next-line default-case
-    switch type
-      when 'command'
-        [url, urn] = ['/nrc/control_0', 'panasonic-com:service:p00NetworkControl:1']
-      when 'render'
-        [url, urn] = ['/dmr/control_0', 'schemas-upnp-org:service:RenderingControl:1']
+      authResultDecrypted = @decryptPayload(match, key, iv, hmacKey)
+      @_appId = findValue(authResultDecrypted, 'X_ApplicationId')
+      @_encKey = findValue(authResultDecrypted, 'X_Keyword')
 
-    if @encrypted and type is 'command' and not _.includes(neverEncrypted, action)
-      unless @_sessionId?
-        await @deriveSessionKeys()
-        return err if _.isError((err = await @requestSessionId()))
-      @_sessionSeqNum += 1
-      encCommand = printf(
-        '
-          <X_SessionId>%s</X_SessionId>
-          <X_SequenceNumber>%s</X_SequenceNumber>
-          <X_OriginalCommand>
-            <u:%s xmlns:u="urn:%s">
-              %s
-            </u:%s>
-          </X_OriginalCommand>
-        ',
-        @_sessionId,
-        "00000000#{@_sessionSeqNum}".slice(-8),
-        action,
-        urn,
-        params,
-        action
-      )
-      encryptedPayload = @encryptPayload(encCommand, @_sessionKey, @_sessionIV, @_sessionHmacKey)
-      # eslint-disable-next-line no-param-reassign
-      action = 'X_EncryptedCommand'
-      # eslint-disable-next-line no-param-reassign
-      params = printf(
+      if @_appId is null or @_encKey is null
+        return [new Error(printf('unexpected reply from TV (%s)', authResultDecrypted)), null]
+      return [null, null]
+
+    @sendRequest('command', 'X_RequestAuth', params, callback)
+
+  #
+  renderEncryptedRequest: (action, urn, params) ->
+    @_sessionSeqNum += 1
+    encCommand = printf(
+      '
+        <X_SessionId>%s</X_SessionId>
+        <X_SequenceNumber>%s</X_SequenceNumber>
+        <X_OriginalCommand>
+          <u:%s xmlns:u="urn:%s">
+            %s
+          </u:%s>
+        </X_OriginalCommand>
+      ',
+      @_sessionId,
+      "00000000#{@_sessionSeqNum}".slice(-8),
+      action,
+      urn,
+      params,
+      action
+    )
+    encryptedPayload = @encryptPayload(encCommand)
+
+    return [
+      'X_EncryptedCommand',
+      printf(
         '
           <X_ApplicationId>%s</X_ApplicationId>
           <X_EncInfo>%s</X_EncInfo>
@@ -271,8 +239,23 @@ class Viera
         @_appId,
         encryptedPayload
       )
+    ]
 
-    body = printf(
+  #
+  renderRequest: (action, urn, params) ->
+    method = 'post'
+    responseType = 'text'
+
+    headers = {
+      Host: "#{@ipAddress}:#{@port}",
+      'Content-Type': 'text/xml; charset="utf-8"',
+      SOAPACTION: "\"urn:#{urn}##{action}\"",
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+      Accept: 'text/xml'
+    }
+
+    data = printf(
       '
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -290,150 +273,138 @@ class Viera
       action
     )
 
-    config = {
-      method: 'post',
-      headers: {
-        Host: "#{@ipAddress}:#{@port}",
-        'Content-Type': 'text/xml; charset="utf-8"',
-        SOAPACTION: "\"urn:#{urn}##{action}\"",
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
-        Accept: 'text/xml'
-      }
-      data: body,
-      responseType: 'text'
-    }
+    return { method, headers, data, responseType }
 
-    axios("#{@baseURL}#{url}", config).then((r) =>
-      if encCommand? or action is 'X_GetEncryptSessionId'
-        payload = @decryptPayload(
-          findValue(r.data, 'X_EncResult'),
-          @_sessionKey,
-          @_sessionIV,
-          @_sessionHmacKey
-        )
-      else
-        payload = r.data
+  # Create and send request to the TV
+  sendRequest: (type, realAction, realParams = 'None', callback) ->
+    neverEncrypted = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
+    [url, urn] = [undefined, undefined]
 
-      callback(payload)
-    )
+    # eslint-disable-next-line default-case
+    switch type
+      when 'command'
+        [url, urn] = ['/nrc/control_0', 'panasonic-com:service:p00NetworkControl:1']
+      when 'render'
+        [url, urn] = ['/dmr/control_0', 'schemas-upnp-org:service:RenderingControl:1']
+
+    if @specs.requiresEncryption and type is 'command' and not (realAction in neverEncrypted)
+      [action, params] = await @renderEncryptedRequest(realAction, urn, realParams)
+    else
+      [action, params] = [realAction, realParams]
+
+    payload =
+      await axios("#{@baseURL}#{url}", @renderRequest(action, urn, params))
+      .then((r) =>
+        if action in ['X_GetEncryptSessionId', 'X_EncryptedCommand']
+          output = @decryptPayload(findValue(r.data, 'X_EncResult'))
+        else
+          output = r.data
+        return output
+      )
+      .catch((err) -> err)
+
+    return [payload, null] if _.isError(payload)
+
+    unless callback? then [null, payload] else callback(null, payload)
 
   # Send a command to the TV
   sendCommand: (cmd) ->
-    @sendRequest('command', 'X_SendKey', "<X_KeyEvent>NRC_#{cmd.toUpperCase()}-ONOFF</X_KeyEvent>")
+    params = "<X_KeyEvent>NRC_#{cmd.toUpperCase()}-ONOFF</X_KeyEvent>"
+
+    @sendRequest('command', 'X_SendKey', params)
 
   # Send a change HDMI input to the TV
   sendHDMICommand: (hdmiInput) ->
-    @sendRequest('command', 'X_SendKey', "<X_KeyEvent>NRC_HDMI#{hdmiInput}-ONOFF</X_KeyEvent>")
+    params = "<X_KeyEvent>NRC_HDMI#{hdmiInput}-ONOFF</X_KeyEvent>"
+
+    @sendRequest('command', 'X_SendKey', params)
 
   # Send command to open app on the TV
   sendAppCommand: (appId) ->
-    @log.debug('appId=', appId, appId.toString().length)
+    @log.debug('appId=', appId)
 
-    if "#{appId}".length != 16 then cmd = "resource_id=#{appId}" else cmd = "product_id=#{appId}"
+    cmd = if "#{appId}".length is 16 then "product_id=#{appId}" else "resource_id=#{appId}"
+    params = "<X_AppType>vc_app</X_AppType><X_LaunchKeyword>#{cmd}</X_LaunchKeyword>"
 
-    @sendRequest(
-      'command',
-      'X_LaunchApp',
-      "<X_AppType>vc_app</X_AppType><X_LaunchKeyword>#{cmd}</X_LaunchKeyword>"
-    )
+    @sendRequest('command', 'X_LaunchApp', params)
 
   # Get volume from TV
   getVolume: () ->
-    fn = (data) ->
+    params = defaultAudioChannel
+    callback = (__, data) ->
       match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data)
-      return match[1] unless _.isNull(match)
+      return [null, match[1]] if match
 
-    @sendRequest(
-      'render',
-      'GetVolume',
-      '<InstanceID>0</InstanceID><Channel>Master</Channel>',
-      { callback: fn }
-    ).catch((err) -> return err)
+    @sendRequest('render', 'GetVolume', params, callback)
 
   # Set volume
   setVolume: (volume) ->
-    if volume < 0 or volume > 100
-      throw new Error('Volume must be in range from 0 to 100')
-    @sendRequest(
-      'render',
-      'SetVolume',
-      "<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>#{volume}</DesiredVolume>"
-    )
+    return [new Error('Volume must be in range from 0 to 100'), null] if volume < 0 or volume > 100
+
+    params = "#{defaultAudioChannel}<DesiredVolume>#{volume}</DesiredVolume>"
+
+    @sendRequest('render', 'SetVolume', params)
 
   # Get the current mute setting
   getMute: () ->
-    fn = (data) =>
+    params = defaultAudioChannel
+    callback = (__, data) ->
       regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu
       match = regex.exec(data)
-      return match[1] is '1' unless _.isNull(match)
+      return [null, match[1]] is '1' if match
 
-    @sendRequest('render', 'GetMute', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
-      callback: fn
-    })
+    @sendRequest('render', 'GetMute', params, callback)
 
   # Set mute to on/off
   setMute: (enable) ->
     mute = if enable then '1' else '0'
-    @sendRequest(
-      'render',
-      'SetMute',
-      "<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredMute>#{mute}</DesiredMute>"
-    )
+    params = "#{defaultAudioChannel}<DesiredMute>#{mute}</DesiredMute>"
+
+    @sendRequest('render', 'SetMute', params)
 
   # Returns the list of apps on the TV
   getApps: () ->
-    apps = []
-    @sendRequest(
-      'command',
-      'X_GetAppList',
-      null,
-      {
-        callback: (data) ->
-          raw = await findValue(data, 'X_AppList')
-          if raw?
-            raw = raw.decodeXML()
-            re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
-            while match = re.exec(raw)
-              apps.push({ name: match.groups.appName, id: match.groups.id })
-      }
-    ).then(() ->
-      if apps.length is 0
-        throw new Error('Unable to fetch apps - TV is not ON')
-      apps
-    )
+    callback = (__, data) ->
+      [apps, raw] = [[], await findValue(data, 'X_AppList')]
+      if raw?
+        xml = raw.decodeXML()
+        re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
+        # eslint-disable-next-line coffee/no-cond-assign
+        apps.push({ name: match.groups.appName, id: match.groups.id }) while match = re.exec(xml)
+
+      return [null, apps] unless apps.length is 0
+      [new Error('Unable to fetch apps from TV as it is in standby'), null]
+
+    @sendRequest('command', 'X_GetAppList', null, callback)
 
   # Returns the TV specs
   getSpecs: () ->
-    axios
-    .get("#{@baseURL}/nrc/ddd.xml")
-    .then((r) =>
-      @specs = {
-        friendlyName: findValue(r.data, 'friendlyName'),
-        modelName: findValue(r.data, 'modelName'),
-        modelNumber: findValue(r.data, 'modelNumber'),
-        manufacturer: findValue(r.data, 'manufacturer'),
-        serialNumber: findValue(r.data, 'UDN').slice(5)
-      }
-      if (
-        @specs.friendlyName? and
-        @specs.modelNumber? and
-        @specs.modelName? and
-        @specs.manufacturer? and
-        @specs.serialNumber?
+    specs =
+      await axios
+      .get("#{@baseURL}/nrc/ddd.xml")
+      .then((r) ->
+        {
+          friendlyName: findValue(r.data, 'friendlyName'),
+          modelName: findValue(r.data, 'modelName'),
+          modelNumber: findValue(r.data, 'modelNumber'),
+          manufacturer: findValue(r.data, 'manufacturer'),
+          serialNumber: findValue(r.data, 'UDN').slice(5)
+        }
       )
-        @encrypted = await @needsCrypto()
-        if @encrypted then extra = '(requires crypto for comunication)' else extra = ''
-        @log.info(
-          'found a %s TV (%s) at %s %s.\n',
-          @specs.modelName,
-          @specs.modelNumber,
-          @ipAddress,
-          extra
-        )
-      else
-        @log.error('Unable to fetch all required values to populate specs...', r, @specs)
+      .catch((err) -> err)
+
+    return [specs, null] if _.isError(specs)
+
+    specs.requiresEncryption = await @needsCrypto()
+    extra = if specs.requiresEncryption then '(requires crypto for comunication)' else ''
+    @log.info(
+      'found a %s TV (%s) at %s %s.\n',
+      specs.modelName,
+      specs.modelNumber,
+      @ipAddress,
+      extra
     )
+    return [null, specs]
 
 #
 # ## Public API
