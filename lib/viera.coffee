@@ -11,7 +11,7 @@ isPortReachable = require('is-port-reachable')
 axios.default.timeout = 1000
 
 findValue = (xml, tag) ->
-  new RegExp("<#{tag}>(?<found>...*)</#{tag}>", 'gmu').exec(xml)?.groups?.found
+  new RegExp("<#{tag}>(?<found>.*)</#{tag}>", 'gmu').exec(xml)?.groups?.found
 
 class Viera
   # Constructor
