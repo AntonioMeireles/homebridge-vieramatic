@@ -52,8 +52,7 @@ class Vieramatic
         @log.error("Viera TV (at '#{tv.ipAddress}') was unreachable. Likely to be powered off.")
         continue
 
-      brk = false
-      until tv.specs?.serialNumber? or brk
+      until tv.specs?.serialNumber?
         [err, specs] = await tv.getSpecs()
         if err
           @log.warn(
@@ -61,38 +60,35 @@ class Vieramatic
             TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
           )
           sleep(10000)
+        else
+          tv.specs = specs
+
+      @log.debug(tv)
+
+      if tv.specs.requiresEncryption
+        unless tv._appId? and tv._encKey?
+          @log.error(
+            "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
+            supplied."
+          )
           continue
 
-        tv.specs = specs
-        @log.debug(tv)
-
-        if tv.specs.requiresEncryption
-          unless tv._appId? and tv._encKey?
-            @log.error(
-              "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
-              supplied."
-            )
-            brk = true
-            continue
-
-          await tv.deriveSessionKeys()
-          [err, __] = await tv.requestSessionId()
-          if err
-            @log.error(
-              "An unexpected error happened while requesting a sessionID for '#{tv.ipAddress}'
-              \n\n#{err}"
-            )
-            brk = true
-            continue
-
-        try
-          await @addAccessory(tv, viera.hdmiInputs)
-        catch Err
+        await tv.deriveSessionKeys()
+        [err, __] = await tv.requestSessionId()
+        if err
           @log.error(
-            "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
-            as an homebridge Accessory.\n\n\n#{Err}"
+            "An unexpected error happened while requesting a sessionID for '#{tv.ipAddress}'
+            \n\n#{err}"
           )
-          brk = true
+          continue
+
+      try
+        await @addAccessory(tv, viera.hdmiInputs)
+      catch Err
+        @log.error(
+          "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
+          as an homebridge Accessory.\n\n\n#{Err}"
+        )
 
     @log.info('DidFinishLaunching')
 
