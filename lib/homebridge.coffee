@@ -177,16 +177,16 @@ class Vieramatic
           if @device.storage.data.inputs.hdmi[idx].hiden?
             # eslint-disable-next-line no-param-reassign
             hdmiInputs[i].hiden = @device.storage.data.inputs.hdmi[idx].hiden
-        # force flush
-        @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
-        @device.storage.data.inputs.applications = { ...@applications }
-        @device.storage.data = _.cloneDeep(@device.storage.data)
+      # force flush
+      @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
+      @device.storage.data.inputs.applications = { ...@applications }
+      @device.storage.data = _.cloneDeep(@device.storage.data)
 
   addAccessory: (tv, hdmiInputs) =>
     [@device, @applications] = [_.cloneDeep(tv), []]
     { friendlyName } = @device.specs
 
-    await @newAccessoryPreflight()
+    await @newAccessoryPreflight(hdmiInputs)
 
     newAccessory = await @setupNewAccessory()
 
@@ -302,6 +302,7 @@ class Vieramatic
         if @device.storage.data.inputs.TUNER?
           { hiden } = @device.storage.data.inputs.TUNER
 
+    @device.storage.data = _.cloneDeep(@device.storage.data)
     source
     .setCharacteristic(Characteristic.InputSourceType, Characteristic.InputSourceType[type])
     .setCharacteristic(Characteristic.CurrentVisibilityState, hiden)
