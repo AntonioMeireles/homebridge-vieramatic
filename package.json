@@ -33,7 +33,8 @@
     "viera-pair": "bin/pair.js"
   },
   "engines": {
-    "homebridge": "^0.4.46"
+    "homebridge": "^0.4.46",
+    "node": ">=10.17.0"
   },
   "license": "MIT",
   "devDependencies": {
