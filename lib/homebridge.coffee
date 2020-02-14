@@ -66,23 +66,24 @@ class Vieramatic
         tv.specs = specs
         @log.debug(tv)
 
-        if tv.specs.requiresEncryption and not (tv._appId? and tv._encKey?)
-          @log.error(
-            "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
-            supplied."
-          )
-          brk = true
-          continue
+        if tv.specs.requiresEncryption
+          unless tv._appId? and tv._encKey?
+            @log.error(
+              "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
+              supplied."
+            )
+            brk = true
+            continue
 
-        await tv.deriveSessionKeys()
-        [err, __] = await tv.requestSessionId()
-        if err
-          @log.error(
-            "An unexpected error happened while requesting a sessionID for '#{tv.ipAddress}'
-            \n\n#{err}"
-          )
-          brk = true
-          continue
+          await tv.deriveSessionKeys()
+          [err, __] = await tv.requestSessionId()
+          if err
+            @log.error(
+              "An unexpected error happened while requesting a sessionID for '#{tv.ipAddress}'
+              \n\n#{err}"
+            )
+            brk = true
+            continue
 
         try
           await @addAccessory(tv, viera.hdmiInputs)
