@@ -321,15 +321,13 @@ class Vieramatic
           # hdmi input
           _idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', id.toString()])
           @device.storage.data.inputs.hdmi[_idx].hiden = state
-          @device.storage.data = _.cloneDeep(@device.storage.data)
         when id > 999
           _real = id - 1000
           @device.storage.data.inputs.applications[_real].hiden = state
-          @device.storage.data = _.cloneDeep(@device.storage.data)
         when id is 500
           @device.storage.data.inputs.TUNER = { hiden: state }
-          @device.storage.data = _.cloneDeep(@device.storage.data)
 
+      @device.storage.data = _.cloneDeep(@device.storage.data)
       source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
       callback())
 
