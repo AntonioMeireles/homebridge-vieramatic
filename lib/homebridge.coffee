@@ -34,7 +34,6 @@ class Vieramatic
     @api.on('didFinishLaunching', @init) if @api
 
   init: () =>
-    await @storage.init()
     iterator = (tvs) ->
       for own __, viera of tvs
         if net.isIPv4(viera.ipAddress)
@@ -44,51 +43,51 @@ class Vieramatic
           # eslint-disable-next-line no-console
           console.error('Ignoring %s as this is NOT a valid IP address!')
 
+    validateCryptoNeeds = (tv) ->
+      return null unless tv.specs.requiresEncryption
+      return new Error(
+        "Ignoring TV at #{tv.ipAddress} as it requires encryption but no credentials were
+        supplied."
+      ) unless tv._appId? and tv._encKey?
+      await tv.deriveSessionKeys()
+      [err, __] = await tv.requestSessionId()
+      return err
+
+    await @storage.init()
+
     for viera from iterator(@config.tvs)
-      viera.hdmiInputs = [] unless viera.hdmiInputs?
       tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
 
       unless await tv.isReachable()
-        @log.error("Viera TV (at '#{tv.ipAddress}') was unreachable. Likely to be powered off.")
+        @log.error(
+          "Ignoring TV (at '#{tv.ipAddress}') as it is unreachable. Likely to be powered off."
+        )
         continue
 
-      until tv.specs?.serialNumber?
+      # eslint-disable-next-line coffee/no-constant-condition
+      loop
         [err, specs] = await tv.getSpecs()
-        if err
-          @log.warn(
-            "An unexpected error happened while fetching TV metadata. Please do make sure that the
-            TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
-          )
-          sleep(10000)
-        else
-          tv.specs = specs
+        break unless err
+        @log.warn(
+          "An unexpected error happened while fetching TV metadata. Please do make sure that the
+          TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
+        )
+        sleep(10000)
+
+      tv.specs = specs
 
       @log.debug(tv)
 
-      if tv.specs.requiresEncryption
-        unless tv._appId? and tv._encKey?
-          @log.error(
-            "Ignoring TV at #{viera.ipAddress} as it requires encryption but no credentials were
-            supplied."
+      err = await validateCryptoNeeds(tv)
+      unless err
+        try
+          await @addAccessory(tv, viera.hdmiInputs)
+        catch Err
+          err = new Error(
+            "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
+            as an homebridge Accessory.\n\n\n#{Err}"
           )
-          continue
-
-        await tv.deriveSessionKeys()
-        [err, __] = await tv.requestSessionId()
-        if err
-          @log.error(
-            "An unexpected error happened while requesting a sessionID for '#{tv.ipAddress}'
-            \n\n#{err}"
-          )
-          continue
-
-      try
-        await @addAccessory(tv, viera.hdmiInputs)
-      catch Err
-        @log.error(
-          "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
-          as an homebridge Accessory.\n\n\n#{Err}"
-        )
+      @log.error(err) if err
 
     @log.info('DidFinishLaunching')
 
