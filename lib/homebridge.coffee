@@ -164,8 +164,10 @@ class Vieramatic
       if err
         @log.debug("#{err.message}, getting previously cached ones instead")
         @applications = _.cloneDeep(@device.storage.data.inputs.applications)
+        @device.storage.data = _.cloneDeep(@device.storage.data)
       else
         @applications = _.cloneDeep(apps)
+        @device.storage.data = _.cloneDeep(@device.storage.data)
 
       for own i, input of hdmiInputs
         idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', input.id.toString()])
@@ -173,10 +175,8 @@ class Vieramatic
           if @device.storage.data.inputs.hdmi[idx].hiden?
             # eslint-disable-next-line no-param-reassign
             hdmiInputs[i].hiden = @device.storage.data.inputs.hdmi[idx].hiden
-      # force flush
-      @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
-      @device.storage.data.inputs.applications = { ...@applications }
-      @device.storage.data = _.cloneDeep(@device.storage.data)
+            @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
+            @device.storage.data = _.cloneDeep(@device.storage.data)
 
   addAccessory: (tv, hdmiInputs) =>
     [@device, @applications] = [_.cloneDeep(tv), []]
@@ -281,24 +281,34 @@ class Vieramatic
     @previousAccessories.push(tv)
 
   configureInputSource: (source, type, configuredName, identifier) =>
-    hiden = false
-    # eslint-disable-next-line default-case
-    switch type
-      when 'HDMI'
-        idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', identifier.toString()])
-        if @device.storage.data.inputs.hdmi[idx].hiden?
-          { hiden } = @device.storage.data.inputs.hdmi[idx]
-      when 'APPLICATION'
-        real = identifier - 1000
-        if @device.storage.data.inputs.applications[real].hiden?
-          { hiden } = @device.storage.data.inputs.applications[real]
-        else
-          hiden = true
-      when 'TUNER'
-        if @device.storage.data.inputs.TUNER?
-          { hiden } = @device.storage.data.inputs.TUNER
+    visibilityStatus = (_callback) =>
+      hiden = false
+      # eslint-disable-next-line default-case
+      switch type
+        when 'HDMI'
+          idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', identifier.toString()])
+          if @device.storage.data.inputs.hdmi[idx].hiden?
+            { hiden } = @device.storage.data.inputs.hdmi[idx]
+          else
+            @device.storage.data.inputs.hdmi[idx].hiden = hiden
+        when 'APPLICATION'
+          real = identifier - 1000
+          if @device.storage.data.inputs.applications[real].hiden?
+            { hiden } = @device.storage.data.inputs.applications[real]
+          else
+            @device.storage.data.inputs.applications[real].hiden = true
+            hiden = true
+        when 'TUNER'
+          if @device.storage.data.inputs.TUNER?
+            { hiden } = @device.storage.data.inputs.TUNER
+          else
+            @device.storage.data.inputs.TUNER = { hiden }
 
-    @device.storage.data = _.cloneDeep(@device.storage.data)
+      _callback()
+
+      return hiden
+
+    hiden = await visibilityStatus(() => @device.storage.data = _.cloneDeep(@device.storage.data))
     source
     .setCharacteristic(Characteristic.InputSourceType, Characteristic.InputSourceType[type])
     .setCharacteristic(Characteristic.CurrentVisibilityState, hiden)
@@ -310,21 +320,22 @@ class Vieramatic
     source
     .getCharacteristic(Characteristic.TargetVisibilityState)
     .on('set', (state, callback) =>
-      id = source.getCharacteristic(Characteristic.Identifier).value
+      preserveState = (_callback) =>
+        id = source.getCharacteristic(Characteristic.Identifier).value
+        # eslint-disable-next-line default-case
+        switch
+          when id < 100
+            # hdmi input
+            _idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', id.toString()])
+            @device.storage.data.inputs.hdmi[_idx].hiden = state
+          when id > 999
+            _real = id - 1000
+            @device.storage.data.inputs.applications[_real].hiden = state
+          when id is 500
+            @device.storage.data.inputs.TUNER = { hiden: state }
+        _callback()
 
-      # eslint-disable-next-line default-case
-      switch
-        when id < 100
-          # hdmi input
-          _idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', id.toString()])
-          @device.storage.data.inputs.hdmi[_idx].hiden = state
-        when id > 999
-          _real = id - 1000
-          @device.storage.data.inputs.applications[_real].hiden = state
-        when id is 500
-          @device.storage.data.inputs.TUNER = { hiden: state }
-
-      @device.storage.data = _.cloneDeep(@device.storage.data)
+      await preserveState(() => @device.storage.data = _.cloneDeep(@device.storage.data))
       source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
       callback())
 
