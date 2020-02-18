@@ -271,6 +271,9 @@ class Vieramatic
     .on('INTO_STANDBY', () => @updateTVstatus(false, tvService, customSpeakerService))
     .on('POWERED_ON', () => @updateTVstatus(true, tvService, customSpeakerService))
 
+    initialStatus = await @device.isTurnedOn()
+    if initialStatus then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
+
     setInterval(@getPowerStatus, 5000)
 
     newAccessory.reachable = true
