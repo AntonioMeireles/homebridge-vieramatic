@@ -15,6 +15,25 @@ Storage = require('./storage')
 # helpers
 sleep = (ms) -> new Promise((resolve) -> setTimeout(resolve, ms))
 
+iterator = (tvs) ->
+  for own __, viera of tvs
+    if net.isIPv4(viera.ipAddress)
+      viera.hdmiInputs = [] unless viera.hdmiInputs?
+      yield viera
+    else
+      # eslint-disable-next-line no-console
+      console.error('Ignoring %s as this is NOT a valid IP address!')
+
+validateCryptoNeeds = (tv) ->
+  return null unless tv.specs.requiresEncryption
+  return new Error(
+    "Ignoring TV at #{tv.ipAddress} as it requires encryption but no credentials were
+    supplied."
+  ) unless tv._appId? and tv._encKey?
+  await tv.deriveSessionKeys()
+  [err, __] = await tv.requestSessionId()
+  return err
+
 class Vieramatic
   [tvEvent, mutex] = [new events.EventEmitter(), new Mutex()]
 
@@ -27,6 +46,7 @@ class Vieramatic
       tvs: config?.tvs or []
     }
     @storage = new Storage(api)
+    @storage.init()
 
     for own cached of @previousAccessories
       @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
@@ -34,27 +54,6 @@ class Vieramatic
     @api.on('didFinishLaunching', @init) if @api
 
   init: () =>
-    iterator = (tvs) ->
-      for own __, viera of tvs
-        if net.isIPv4(viera.ipAddress)
-          viera.hdmiInputs = [] unless viera.hdmiInputs?
-          yield viera
-        else
-          # eslint-disable-next-line no-console
-          console.error('Ignoring %s as this is NOT a valid IP address!')
-
-    validateCryptoNeeds = (tv) ->
-      return null unless tv.specs.requiresEncryption
-      return new Error(
-        "Ignoring TV at #{tv.ipAddress} as it requires encryption but no credentials were
-        supplied."
-      ) unless tv._appId? and tv._encKey?
-      await tv.deriveSessionKeys()
-      [err, __] = await tv.requestSessionId()
-      return err
-
-    await @storage.init()
-
     for viera from iterator(@config.tvs)
       tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
 
@@ -140,16 +139,18 @@ class Vieramatic
 
     unless @device.storage.data?
       @log.debug("Initializing '#{@device.specs.friendlyName}' for the first time.")
-      while @applications.length is 0
+      # eslint-disable-next-line coffee/no-constant-condition
+      loop
         [err, apps] = await @device.getApps()
-        if err
-          @log.warn(
-            'Unable to fetch Application list from TV (as it seems to be in standby).
-             Trying again in 5s.'
-          )
-          sleep(5000)
-        else
-          @applications = _.cloneDeep(apps)
+        break unless err
+
+        @log.warn(
+          'Unable to fetch Application list from TV (as it seems to be in standby).
+          Trying again in 5s.'
+        )
+        sleep(5000)
+
+      @applications = apps
 
       @device.storage.data = {
         inputs: {
@@ -283,34 +284,33 @@ class Vieramatic
     @previousAccessories.push(tv)
 
   configureInputSource: (source, type, configuredName, identifier) =>
-    visibilityStatus = (_callback) =>
-      hiden = false
+    visibility = () =>
+      hiden = 0
+      { inputs } = @device.storage.data
       # eslint-disable-next-line default-case
       switch type
         when 'HDMI'
-          idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', identifier.toString()])
-          if @device.storage.data.inputs.hdmi[idx].hiden?
-            { hiden } = @device.storage.data.inputs.hdmi[idx]
+          idx = _.findIndex(inputs.hdmi, ['id', identifier.toString()])
+          if inputs.hdmi[idx].hiden?
+            { hiden } = inputs.hdmi[idx]
           else
-            @device.storage.data.inputs.hdmi[idx].hiden = hiden
+            inputs.hdmi[idx].hiden = hiden
         when 'APPLICATION'
           real = identifier - 1000
-          if @device.storage.data.inputs.applications[real].hiden?
-            { hiden } = @device.storage.data.inputs.applications[real]
+          if inputs.applications[real].hiden?
+            { hiden } = inputs.applications[real]
           else
-            @device.storage.data.inputs.applications[real].hiden = true
-            hiden = true
+            inputs.applications[real].hiden = 1
+            hiden = 1
         when 'TUNER'
-          if @device.storage.data.inputs.TUNER?
-            { hiden } = @device.storage.data.inputs.TUNER
+          if inputs.TUNER?
+            { hiden } = inputs.TUNER
           else
-            @device.storage.data.inputs.TUNER = { hiden }
-
-      _callback()
+            inputs.TUNER = { hiden }
 
       return hiden
 
-    hiden = await visibilityStatus(() => @device.storage.data = _.cloneDeep(@device.storage.data))
+    hiden = await visibility()
     source
     .setCharacteristic(Characteristic.InputSourceType, Characteristic.InputSourceType[type])
     .setCharacteristic(Characteristic.CurrentVisibilityState, hiden)
@@ -322,22 +322,20 @@ class Vieramatic
     source
     .getCharacteristic(Characteristic.TargetVisibilityState)
     .on('set', (state, callback) =>
-      preserveState = (_callback) =>
-        id = source.getCharacteristic(Characteristic.Identifier).value
-        # eslint-disable-next-line default-case
-        switch
-          when id < 100
-            # hdmi input
-            _idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', id.toString()])
-            @device.storage.data.inputs.hdmi[_idx].hiden = state
-          when id > 999
-            _real = id - 1000
-            @device.storage.data.inputs.applications[_real].hiden = state
-          when id is 500
-            @device.storage.data.inputs.TUNER = { hiden: state }
-        _callback()
+      id = source.getCharacteristic(Characteristic.Identifier).value
+      { inputs } = @device.storage.data
+      # eslint-disable-next-line default-case
+      switch
+        when id < 100
+          # hdmi input
+          idx = _.findIndex(inputs.hdmi, ['id', id.toString()])
+          inputs.hdmi[idx].hiden = state
+        when id > 999
+          real = id - 1000
+          inputs.applications[real].hiden = state
+        when id is 500
+          inputs.TUNER = { hiden: state }
 
-      await preserveState(() => @device.storage.data = _.cloneDeep(@device.storage.data))
       source.getCharacteristic(Characteristic.CurrentVisibilityState).updateValue(state)
       callback())
 

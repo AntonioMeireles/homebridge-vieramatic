@@ -7,19 +7,18 @@ class Storage
     @accessories = {}
     @filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
 
-  init: () =>
-    fs
-    .readJson(@filePath)
-    .then((acc) => @accessories = acc)
-    .catch(() => @accessories = {})
+  init: () ->
+    acc = fs.readJsonSync(@filePath, { throws: false })
+    if acc is null then @accessories = {} else @accessories = acc
 
-  get: (id) =>
+  get: (id) ->
     @accessories = {} unless @accessories?
     @accessories[id] = {} unless @accessories[id]?
 
     return @accessories[id]
 
-  save: () => fs.writeJson(@filePath, @accessories)
+  save: () ->
+    fs.writeJsonSync(@filePath, @accessories)
 
 #
 # ## Public API
