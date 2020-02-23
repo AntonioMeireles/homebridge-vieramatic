@@ -175,7 +175,6 @@ class Vieramatic
         @applications = @device.storage.data.inputs.applications
       else
         @applications = apps
-        @device.storage.data.inputs.applications = apps
 
       for own i, input of hdmiInputs
         idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', input.id.toString()])
