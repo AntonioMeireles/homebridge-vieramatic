@@ -217,12 +217,10 @@ class Vieramatic
 
     customSpeakerService
     .getCharacteristic(Characteristic.On)
-    # .on('get', @getMute)
-    # .on('set', @setMute)
     .on('get', (callback) =>
       { value } = tvService.getCharacteristic(Characteristic.Active)
       @log.debug('(customSpeakerService/On.get)', value)
-      if value is 0 then callback(null, false) else callback(null, true))
+      callback(null, value))
     .on('set', (value, callback) =>
       @log.debug('(customSpeakerService/On.set)', value)
       if tvService.getCharacteristic(Characteristic.Active).value is 0
@@ -268,8 +266,9 @@ class Vieramatic
       await @configureInputSource(svc, 'APPLICATION', configuredName, 1000 + parseInt(id, 10))
 
     tvEvent
-    .on('INTO_STANDBY', () => @updateTVstatus(false, tvService, customSpeakerService))
-    .on('POWERED_ON', () => @updateTVstatus(true, tvService, customSpeakerService))
+    .on('INTO_STANDBY', () =>
+      @updateTVstatus(false, tvService, speakerService, customSpeakerService))
+    .on('POWERED_ON', () => @updateTVstatus(true, tvService, speakerService, customSpeakerService))
 
     initialStatus = await @device.isTurnedOn()
     if initialStatus then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
@@ -343,9 +342,12 @@ class Vieramatic
       callback())
 
   getMute: (callback) =>
+    status = await @device.isTurnedOn()
+    return [null, true] unless status
+
     [err, mute] = await @device.getMute()
     if err
-      callback(err, null)
+      callback(null, true)
     else
       @log.debug('(getMute)', mute)
       callback(null, mute)
@@ -369,12 +371,17 @@ class Vieramatic
       callback(null, volume)
 
   # eslint-disable-next-line coffee/class-methods-use-this
-  updateTVstatus: (powered, tvService, customSpeakerService) ->
+  updateTVstatus: (powered, tvService, speakerService, customSpeakerService) ->
     active = Characteristic.Active
     [speakerStatus, tvStatus] = if powered then [true, active.ACTIVE] else [false, active.INACTIVE]
 
     customSpeakerService.getCharacteristic(Characteristic.On).updateValue(speakerStatus)
     tvService.getCharacteristic(active).updateValue(tvStatus)
+    unless powered
+      speakerService.getCharacteristic(Characteristic.Mute).updateValue(true)
+    else
+      [__, mute] = await @device.getMute()
+      speakerService.getCharacteristic(Characteristic.Mute).updateValue(mute)
 
   getPowerStatus: (callback) =>
     mutex.runExclusive(() =>

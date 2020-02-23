@@ -351,7 +351,7 @@ class Viera
     callback = (__, data) ->
       regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu
       match = regex.exec(data)
-      return [null, match[1]] is '1' if match
+      [null, match[1] is '1'] if match
 
     @sendRequest('render', 'GetMute', params, callback)
 
