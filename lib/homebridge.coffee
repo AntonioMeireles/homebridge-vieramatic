@@ -111,6 +111,7 @@ class Vieramatic
     speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
 
     speakerService.addCharacteristic(Characteristic.Volume)
+    speakerService.addCharacteristic(Characteristic.Active)
     speakerService.setCharacteristic(
       Characteristic.VolumeControlType,
       Characteristic.VolumeControlType.ABSOLUTE
@@ -377,6 +378,7 @@ class Vieramatic
     active = Characteristic.Active
     [speakerStatus, tvStatus] = if powered then [true, active.ACTIVE] else [false, active.INACTIVE]
 
+    speakerService.getCharacteristic(active).updateValue(tvStatus)
     customSpeakerService.getCharacteristic(Characteristic.On).updateValue(speakerStatus)
     tvService.getCharacteristic(active).updateValue(tvStatus)
     unless powered
