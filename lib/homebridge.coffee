@@ -129,13 +129,21 @@ class Vieramatic
 
   newAccessoryPreflight: (hdmiInputs) ->
     { serialNumber } = @device.specs
-    @device.storage = new Proxy(@storage.get(serialNumber), {
-      set: (obj, prop, value) =>
+    handler = {
+      get: (target, key) ->
+        if key is 'isProxy' then return true
+        prop = target[key]
+        if typeof prop is 'undefined' then return
         # eslint-disable-next-line no-param-reassign
-        obj[prop] = value
+        if not prop.isProxy and typeof prop is 'object' then target[key] = new Proxy(prop, handler)
+        target[key]
+      set: (target, key, value) =>
+        # eslint-disable-next-line no-param-reassign
+        target[key] = value
         @storage.save()
         return true
-    })
+    }
+    @device.storage = new Proxy(@storage.get(serialNumber), handler)
 
     unless @device.storage.data?
       @log.debug("Initializing '#{@device.specs.friendlyName}' for the first time.")
@@ -164,11 +172,10 @@ class Vieramatic
       [err, apps] = await @device.getApps()
       if err
         @log.debug("#{err.message}, getting previously cached ones instead")
-        @applications = _.cloneDeep(@device.storage.data.inputs.applications)
-        @device.storage.data = _.cloneDeep(@device.storage.data)
+        @applications = @device.storage.data.inputs.applications
       else
-        @applications = _.cloneDeep(apps)
-        @device.storage.data = _.cloneDeep(@device.storage.data)
+        @applications = apps
+        @device.storage.data.inputs.applications = apps
 
       for own i, input of hdmiInputs
         idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', input.id.toString()])
@@ -176,8 +183,6 @@ class Vieramatic
           if @device.storage.data.inputs.hdmi[idx].hiden?
             # eslint-disable-next-line no-param-reassign
             hdmiInputs[i].hiden = @device.storage.data.inputs.hdmi[idx].hiden
-            @device.storage.data.inputs.hdmi = _.cloneDeep(hdmiInputs)
-            @device.storage.data = _.cloneDeep(@device.storage.data)
 
   addAccessory: (tv, hdmiInputs) =>
     [@device, @applications] = [_.cloneDeep(tv), []]
