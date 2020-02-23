@@ -212,9 +212,9 @@ class Vieramatic
     tvService.addLinkedService(speakerService)
     newAccessory.addService(speakerService)
 
-    muteSwitch = @setupMuteSwitch(friendlyName)
-    tvService.addLinkedService(muteSwitch)
-    newAccessory.addService(muteSwitch)
+    # muteSwitch = @setupMuteSwitch(friendlyName)
+    # tvService.addLinkedService(muteSwitch)
+    # newAccessory.addService(muteSwitch)
 
     customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
     tvService.addLinkedService(customSpeakerService)
