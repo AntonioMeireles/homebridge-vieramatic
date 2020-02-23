@@ -107,6 +107,14 @@ class Vieramatic
 
     return accessory
 
+  setupMuteSwitch: (friendlyName) ->
+    muteSwitch = new Service.Switch("#{friendlyName} mute status", 'muteSwitch')
+    muteSwitch
+    .getCharacteristic(Characteristic.On)
+    .on('get', @getMute)
+    .on('set', @setMute)
+    return muteSwitch
+
   setupSpeakerService: (friendlyName) ->
     speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
 
@@ -203,6 +211,10 @@ class Vieramatic
     speakerService = @setupSpeakerService(friendlyName)
     tvService.addLinkedService(speakerService)
     newAccessory.addService(speakerService)
+
+    muteSwitch = @setupMuteSwitch(friendlyName)
+    tvService.addLinkedService(muteSwitch)
+    newAccessory.addService(muteSwitch)
 
     customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
     tvService.addLinkedService(customSpeakerService)
