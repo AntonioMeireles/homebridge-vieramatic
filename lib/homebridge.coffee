@@ -13,6 +13,8 @@ Viera = require('./viera')
 Storage = require('./storage')
 
 # helpers
+displayName = (str) -> str.toLowerCase().replace(/\s+/gu, '')
+
 sleep = (ms) -> new Promise((resolve) -> setTimeout(resolve, ms))
 
 iterator = (tvs) ->
@@ -107,14 +109,6 @@ class Vieramatic
 
     return accessory
 
-  setupMuteSwitch: (friendlyName) ->
-    muteSwitch = new Service.Switch("#{friendlyName} mute status", 'muteSwitch')
-    muteSwitch
-    .getCharacteristic(Characteristic.On)
-    .on('get', @getMute)
-    .on('set', @setMute)
-    return muteSwitch
-
   setupSpeakerService: (friendlyName) ->
     speakerService = new Service.TelevisionSpeaker("#{friendlyName} Volume", 'volumeService')
 
@@ -137,7 +131,7 @@ class Vieramatic
     return speakerService
 
   newAccessoryPreflight: (hdmiInputs) ->
-    { serialNumber } = @device.specs
+    { serialNumber, friendlyName } = @device.specs
     handler = {
       get: (target, key) ->
         if key is 'isProxy' then return true
@@ -155,7 +149,7 @@ class Vieramatic
     @device.storage = new Proxy(@storage.get(serialNumber), handler)
 
     unless @device.storage.data?
-      @log.debug("Initializing '#{@device.specs.friendlyName}' for the first time.")
+      @log.debug("Initializing '#{friendlyName}' for the first time.")
       # eslint-disable-next-line coffee/no-constant-condition
       loop
         [err, apps] = await @device.getApps()
@@ -177,20 +171,20 @@ class Vieramatic
         specs: { ...@device.specs }
       }
     else
-      @log.debug("Restoring '#{@device.specs.friendlyName}'.")
+      @log.debug("Restoring '#{friendlyName}'.")
+      { inputs } = @device.storage.data
       [err, apps] = await @device.getApps()
       if err
         @log.debug("#{err.message}, getting previously cached ones instead")
-        @applications = @device.storage.data.inputs.applications
+        @applications = inputs.applications
       else
         @applications = apps
 
       for own i, input of hdmiInputs
-        idx = _.findIndex(@device.storage.data.inputs.hdmi, ['id', input.id.toString()])
+        idx = _.findIndex(inputs.hdmi, ['id', input.id.toString()])
         unless idx < 0
-          if @device.storage.data.inputs.hdmi[idx].hiden?
-            # eslint-disable-next-line no-param-reassign
-            hdmiInputs[i].hiden = @device.storage.data.inputs.hdmi[idx].hiden
+          # eslint-disable-next-line no-param-reassign
+          hdmiInputs[i].hiden = inputs.hdmi[idx].hiden if inputs.hdmi[idx].hiden?
 
   addAccessory: (tv, hdmiInputs) =>
     [@device, @applications] = [_.cloneDeep(tv), []]
@@ -198,7 +192,7 @@ class Vieramatic
 
     await @newAccessoryPreflight(hdmiInputs)
 
-    newAccessory = await @setupNewAccessory()
+    @hbAccessory = await @setupNewAccessory()
 
     tvService = new Service.Television(friendlyName, 'Television')
     tvService
@@ -206,19 +200,15 @@ class Vieramatic
     .setCharacteristic(Characteristic.SleepDiscoveryMode, 1)
     tvService.addCharacteristic(Characteristic.RemoteKey)
     tvService.addCharacteristic(Characteristic.PowerModeSelection)
-    newAccessory.addService(tvService)
+    @hbAccessory.addService(tvService)
 
     speakerService = @setupSpeakerService(friendlyName)
     tvService.addLinkedService(speakerService)
-    newAccessory.addService(speakerService)
-
-    # muteSwitch = @setupMuteSwitch(friendlyName)
-    # tvService.addLinkedService(muteSwitch)
-    # newAccessory.addService(muteSwitch)
+    @hbAccessory.addService(speakerService)
 
     customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
     tvService.addLinkedService(customSpeakerService)
-    newAccessory.addService(customSpeakerService)
+    @hbAccessory.addService(customSpeakerService)
 
     tvService
     .getCharacteristic(Characteristic.Active)
@@ -253,54 +243,39 @@ class Vieramatic
     .on('set', @setVolume)
 
     # TV Tuner
-    configuredName = 'TV Tuner'
-    displayName = configuredName.toLowerCase().replace(' ', '')
-
-    svc = new Service.InputSource(displayName, 500)
-    tvService.addLinkedService(svc)
-    newAccessory.addService(svc)
-    await @configureInputSource(svc, 'TUNER', configuredName, parseInt(500, 10))
+    await @configureInputSource('TUNER', 'TV Tuner', 500)
 
     # HDMI inputs
     for own __, input of hdmiInputs
       configuredName = input.name
-      displayName = configuredName.toLowerCase().replace(' ', '')
 
-      if _.find(newAccessory.services, { displayName })
+      if _.find(@hbAccessory.services, { displayName: displayName(configuredName) })
         @log.error('ignored duplicated entry in HDMI inputs list...')
       else
-        svc = new Service.InputSource(displayName, input.id)
-        tvService.addLinkedService(svc)
-        newAccessory.addService(svc)
-        await @configureInputSource(svc, 'HDMI', configuredName, parseInt(input.id, 10))
+        await @configureInputSource('HDMI', configuredName, parseInt(input.id, 10))
 
     # Apps
     for own id, app of @applications
-      configuredName = app.name
-      displayName = configuredName.toLowerCase().replace(' ', '')
-      svc = new Service.InputSource(displayName, app.id)
-      tvService.addLinkedService(svc)
-      newAccessory.addService(svc)
-      await @configureInputSource(svc, 'APPLICATION', configuredName, 1000 + parseInt(id, 10))
+      await @configureInputSource('APPLICATION', app.name, 1000 + parseInt(id, 10))
 
     tvEvent
-    .on('INTO_STANDBY', () =>
-      @updateTVstatus(false, tvService, speakerService, customSpeakerService))
-    .on('POWERED_ON', () => @updateTVstatus(true, tvService, speakerService, customSpeakerService))
+    .on('INTO_STANDBY', () => @updateTVstatus(false))
+    .on('POWERED_ON', () => @updateTVstatus(true))
 
     initialStatus = await @device.isTurnedOn()
     if initialStatus then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
 
     setInterval(@getPowerStatus, 5000)
 
-    newAccessory.reachable = true
+    # eslint-disable-next-line require-atomic-updates
+    @hbAccessory.reachable = true
 
-    @api.publishExternalAccessories('homebridge-vieramatic', [newAccessory])
+    @api.publishExternalAccessories('homebridge-vieramatic', [@hbAccessory])
 
   configureAccessory: (tv) =>
     @previousAccessories.push(tv)
 
-  configureInputSource: (source, type, configuredName, identifier) =>
+  configureInputSource: (type, configuredName, identifier) =>
     visibility = () =>
       hiden = 0
       { inputs } = @device.storage.data
@@ -320,12 +295,13 @@ class Vieramatic
             inputs.applications[real].hiden = 1
             hiden = 1
         when 'TUNER'
-          if inputs.TUNER?
-            { hiden } = inputs.TUNER
-          else
-            inputs.TUNER = { hiden }
+          if inputs.TUNER? then { hiden } = inputs.TUNER else inputs.TUNER = { hiden }
 
       return hiden
+
+    source = new Service.InputSource(displayName(configuredName), identifier)
+    @hbAccessory.getService(Service.Television).addLinkedService(source)
+    @hbAccessory.addService(source)
 
     hiden = await visibility()
     source
@@ -385,19 +361,22 @@ class Vieramatic
       @log.debug('(getVolume)', volume)
       callback(null, volume)
 
-  # eslint-disable-next-line coffee/class-methods-use-this
-  updateTVstatus: (powered, tvService, speakerService, customSpeakerService) ->
-    active = Characteristic.Active
-    [speakerStatus, tvStatus] = if powered then [true, active.ACTIVE] else [false, active.INACTIVE]
+  updateTVstatus: (powered) =>
+    [active, mute, On] = [Characteristic.Active, Characteristic.Mute, Characteristic.On]
 
-    speakerService.getCharacteristic(active).updateValue(tvStatus)
-    customSpeakerService.getCharacteristic(Characteristic.On).updateValue(speakerStatus)
-    tvService.getCharacteristic(active).updateValue(tvStatus)
+    tvService = @hbAccessory.getService(Service.Television)
+    speakerService = @hbAccessory.getService(Service.TelevisionSpeaker)
+    customSpeakerService = @hbAccessory.getService(Service.Fan)
+
+    speakerService.getCharacteristic(active).updateValue(powered)
+    tvService.getCharacteristic(active).updateValue(powered)
     unless powered
-      speakerService.getCharacteristic(Characteristic.Mute).updateValue(true)
+      speakerService.getCharacteristic(mute).updateValue(true)
+      customSpeakerService.getCharacteristic(On).updateValue(false)
     else
-      [__, mute] = await @device.getMute()
-      speakerService.getCharacteristic(Characteristic.Mute).updateValue(mute)
+      [__, muteStatus] = await @device.getMute()
+      speakerService.getCharacteristic(mute).updateValue(muteStatus)
+      customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
 
   getPowerStatus: (callback) =>
     mutex.runExclusive(() =>
