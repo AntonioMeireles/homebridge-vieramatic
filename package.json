@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint 'src/**/*'",
     "test": "echo 'Error: no test specified' && exit 1",
-    "docs": "docco lib/*.coffee -l parallel"
+    "docs": "docco lib/*.coffee -l parallel",
+    "postinstall": "patch-package"
   },
   "keywords": [
     "homekit",
@@ -42,6 +43,7 @@
     "@babel/core": "^7.8.6",
     "@babel/preset-env": "^7.8.6",
     "babel-eslint": "^10.1.0",
+    "docco": "^0.8.0",
     "eslint": "^6.8.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-prettier": "^6.10.0",
@@ -50,7 +52,6 @@
     "eslint-plugin-jest": "^23.6.0",
     "eslint-plugin-prettier": "^3.1.2",
     "eslint-plugin-react": "^7.18.3",
-    "patch-package": "^6.2.0",
     "prettier": "github:helixbass/prettier#b8818ebd",
     "prettier-plugin-coffeescript": "^0.1.4"
   },
@@ -61,6 +62,7 @@
     "fs-extra": "^8.1.0",
     "is-port-reachable": "^3.0.0",
     "lodash": "^4.17.15",
+    "patch-package": "^6.2.1",
     "readline-sync": "^1.4.10",
     "string-methods-extension": "^0.1.5"
   },
