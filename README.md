@@ -48,53 +48,67 @@
    >  $ sudo npm install -g homebridge-vieramatic
    > ```
 
-3. run the _pre-flight_ setup script
+3. run the _pre-flight_ setup script, and take note of its output
 
    > ```shell
    >  $ viera-pair YOUR_TV_IP_ADDRESS_HERE
    > ```
 
-4. Update your `config.json` file per the output of `viera-pair` above
+4. Update your _homebridge_'s `config.json` file per the output of `viera-pair` in the step above
+
+   > if you are using one of the multiple homebridge graphical web front-ends, like
+   > [HOOBS](https://hoobs.org) or
+   > [homebridge-config-ui-x](https://github.com/oznu/homebridge-config-ui-x), you may
+   > need to _paste_, the config snippet referenced above manually to it.
+   >
+   > - When using [homebridge-config-ui-x](https://github.com/oznu/homebridge-config-ui-x)
+   >   you can go to the `config` tab and edit the settings there.
+   > - Over [HOOBS](https://hoobs.org) please do follow the steps referenced
+   >   [here](https://hoobs.org/knowledge-base/how-plugins-work-with-hoobs-advanced/) replacing all
+   >   mentions of `homebridge-plugin` with `homebridge-vieramatic`.
+   >
+   >   Please do note that in HOOBS `viera-pair` will end located at
+   >   `/home/hoobs/.hoobs/node_modules/.bin/viera-pair`
 
 5. Populate the `hdmiInputs` section according to your input switching list.
 
    > ```JSON
    > "platforms": [
-   >  {
-   >     "platform": "PanasonicVieraTV",
-   >     "tvs": [
-   >        {
-   >          "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
-   >          "hdmiInputs": [
-   >            {
-   >              "id" : "1",
-   >              "name": "Apple TV"
-   >            }, {
-   >              "id" : "2",
-   >              "name": "VodafoneTV box"
-   >            },
-   >          ]
-   >        }
-   >     ]
-   >   }
+   >    {
+   >       "platform": "PanasonicVieraTV",
+   >       "tvs": [
+   >          {
+   >            "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+   >            "hdmiInputs": [
+   >              {
+   >                "id" : "1",
+   >                "name": "Apple TV"
+   >              }, {
+   >                "id" : "2",
+   >                "name": "VodafoneTV box"
+   >              },
+   >            ]
+   >          }
+   >       ]
+   >    }
    > ]
    > ```
-   >
-   > please do note that if have more than one TV you add its config to the `tvs` array and not as
-   > a whole platform duplicate, along the example bellow...
-   >
-   > ```JSON
-   >
-   >     "tvs": [
-   >        {
-   >          "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
-   >          "hdmiInputs": []
-   >        }, {
-   >          "ipAddress": "YOUR_SECOND_TV_IP_ADDRESS_HERE",
-   >          "hdmiInputs": []
-   >        }
-   >     ]
-   > ```
+
+   - please do note that if have more than one TV you add its config to the `tvs` array and not as
+     a whole platform duplicate, along the example bellow...
+
+     > ```JSON
+     >
+     > "tvs": [
+     >   {
+     >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+     >     "hdmiInputs": []
+     >   }, {
+     >     "ipAddress": "YOUR_SECOND_TV_IP_ADDRESS_HERE",
+     >     "hdmiInputs": []
+     >   }
+     > ]
+     > ```
 
 6. [re]start homebridge
 
