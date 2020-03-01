@@ -1,3 +1,4 @@
+### eslint-disable max-classes-per-file ###
 ### global Service Characteristic Accessory ###
 
 # homebridge vieramatic plugin
@@ -36,63 +37,29 @@ validateCryptoNeeds = (tv) ->
   [err, __] = await tv.requestSessionId()
   return err
 
-class Vieramatic
-  [tvEvent, mutex] = [new events.EventEmitter(), new Mutex()]
+class VieramaticAccessory
+  constructor: (tv, userConfig, platform) ->
+    [@log, @api, @storage] = [platform.log, platform.api, platform.storage]
+    [@device, @hdmiInputs] = [tv, userConfig.hdmiInputs]
+    [@tvEvent, @mutex] = [new events.EventEmitter(), new Mutex()]
 
-  constructor: (log, config, api) ->
-    log.info('Vieramatic Init')
-
-    [@log, @api, @previousAccessories] = [log, api, []]
-
-    @config = {
-      tvs: config?.tvs or []
+    handler = {
+      get: (target, key) ->
+        if key is 'isProxy' then return true
+        prop = target[key]
+        if typeof prop is 'undefined' then return
+        # eslint-disable-next-line no-param-reassign
+        if not prop.isProxy and typeof prop is 'object' then target[key] = new Proxy(prop, handler)
+        target[key]
+      set: (target, key, value) =>
+        # eslint-disable-next-line no-param-reassign
+        target[key] = value
+        @storage.save()
+        return true
     }
-    @storage = new Storage(api)
-    @storage.init()
+    @device.storage = new Proxy(@storage.get(@device.specs.serialNumber), handler)
 
-    for own cached of @previousAccessories
-      @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
-
-    @api.on('didFinishLaunching', @init) if @api
-
-  init: () =>
-    for viera from iterator(@config.tvs)
-      tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
-
-      unless await tv.isReachable()
-        @log.error(
-          "Ignoring TV (at '#{tv.ipAddress}') as it is unreachable. Likely to be powered off."
-        )
-        continue
-
-      # eslint-disable-next-line coffee/no-constant-condition
-      loop
-        [err, specs] = await tv.getSpecs()
-        break unless err
-        @log.warn(
-          "An unexpected error happened while fetching TV metadata. Please do make sure that the
-          TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
-        )
-        sleep(10000)
-
-      tv.specs = specs
-
-      @log.debug(tv)
-
-      err = await validateCryptoNeeds(tv)
-      unless err
-        try
-          await @addAccessory(tv, viera.hdmiInputs)
-        catch Err
-          err = new Error(
-            "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
-            as an homebridge Accessory.\n\n\n#{Err}"
-          )
-      @log.error(err) if err
-
-    @log.info('DidFinishLaunching')
-
-  setupNewAccessory: () ->
+  setup: () ->
     { friendlyName, serialNumber, modelName, modelNumber, manufacturer } = @device.specs
 
     accessory = new Accessory(friendlyName, serialNumber)
@@ -130,29 +97,14 @@ class Vieramatic
 
     return speakerService
 
-  newAccessoryPreflight: (hdmiInputs) ->
-    { serialNumber, friendlyName } = @device.specs
-    handler = {
-      get: (target, key) ->
-        if key is 'isProxy' then return true
-        prop = target[key]
-        if typeof prop is 'undefined' then return
-        # eslint-disable-next-line no-param-reassign
-        if not prop.isProxy and typeof prop is 'object' then target[key] = new Proxy(prop, handler)
-        target[key]
-      set: (target, key, value) =>
-        # eslint-disable-next-line no-param-reassign
-        target[key] = value
-        @storage.save()
-        return true
-    }
-    @device.storage = new Proxy(@storage.get(serialNumber), handler)
+  add: () ->
+    { friendlyName } = @device.specs
 
     unless @device.storage.data?
       @log.debug("Initializing '#{friendlyName}' for the first time.")
       # eslint-disable-next-line coffee/no-constant-condition
       loop
-        [err, apps] = await @device.getApps()
+        [err, @applications] = await @device.getApps()
         break unless err
 
         @log.warn(
@@ -161,11 +113,9 @@ class Vieramatic
         )
         sleep(5000)
 
-      @applications = apps
-
       @device.storage.data = {
         inputs: {
-          hdmi: hdmiInputs,
+          hdmi: @hdmiInputs,
           applications: { ...@applications }
         }
         specs: { ...@device.specs }
@@ -173,26 +123,18 @@ class Vieramatic
     else
       @log.debug("Restoring '#{friendlyName}'.")
       { inputs } = @device.storage.data
-      [err, apps] = await @device.getApps()
+      [err, @applications] = await @device.getApps()
       if err
         @log.debug("#{err.message}, getting previously cached ones instead")
         @applications = inputs.applications
-      else
-        @applications = apps
 
-      for own i, input of hdmiInputs
+      for own i, input of @hdmiInputs
         idx = _.findIndex(inputs.hdmi, ['id', input.id.toString()])
         unless idx < 0
           # eslint-disable-next-line no-param-reassign
-          hdmiInputs[i].hiden = inputs.hdmi[idx].hiden if inputs.hdmi[idx].hiden?
+          @hdmiInputs[i].hiden = inputs.hdmi[idx].hiden if inputs.hdmi[idx].hiden?
 
-  addAccessory: (tv, hdmiInputs) =>
-    [@device, @applications] = [_.cloneDeep(tv), []]
-    { friendlyName } = @device.specs
-
-    await @newAccessoryPreflight(hdmiInputs)
-
-    @hbAccessory = await @setupNewAccessory()
+    @accessory = await @setup()
 
     tvService = new Service.Television(friendlyName, 'Television')
     tvService
@@ -200,15 +142,15 @@ class Vieramatic
     .setCharacteristic(Characteristic.SleepDiscoveryMode, 1)
     tvService.addCharacteristic(Characteristic.RemoteKey)
     tvService.addCharacteristic(Characteristic.PowerModeSelection)
-    @hbAccessory.addService(tvService)
+    @accessory.addService(tvService)
 
     speakerService = @setupSpeakerService(friendlyName)
     tvService.addLinkedService(speakerService)
-    @hbAccessory.addService(speakerService)
+    @accessory.addService(speakerService)
 
     customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
     tvService.addLinkedService(customSpeakerService)
-    @hbAccessory.addService(customSpeakerService)
+    @accessory.addService(customSpeakerService)
 
     tvService
     .getCharacteristic(Characteristic.Active)
@@ -220,8 +162,8 @@ class Vieramatic
     tvService
     .getCharacteristic(Characteristic.PowerModeSelection)
     .on('set', (value, callback) =>
-      [err, __] = await @device.sendCommand('MENU')
-      if err then callback(err, null) else callback(null, value))
+      [e, __] = await @device.sendCommand('MENU')
+      if e then callback(e, null) else callback(null, value))
 
     customSpeakerService
     .getCharacteristic(Characteristic.On)
@@ -246,34 +188,28 @@ class Vieramatic
     await @configureInputSource('TUNER', 'TV Tuner', 500)
 
     # HDMI inputs
-    for own __, input of hdmiInputs
-      configuredName = input.name
-
-      if _.find(@hbAccessory.services, { displayName: displayName(configuredName) })
+    for own __, input of @hdmiInputs
+      if _.find(@accessory.services, { displayName: displayName(input.name) })
         @log.error('ignored duplicated entry in HDMI inputs list...')
       else
-        await @configureInputSource('HDMI', configuredName, parseInt(input.id, 10))
+        await @configureInputSource('HDMI', input.name, parseInt(input.id, 10))
 
     # Apps
     for own id, app of @applications
       await @configureInputSource('APPLICATION', app.name, 1000 + parseInt(id, 10))
 
-    tvEvent
+    @tvEvent
     .on('INTO_STANDBY', () => @updateTVstatus(false))
     .on('POWERED_ON', () => @updateTVstatus(true))
 
     initialStatus = await @device.isTurnedOn()
-    if initialStatus then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
+    if initialStatus then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
 
     setInterval(@getPowerStatus, 5000)
 
-    # eslint-disable-next-line require-atomic-updates
-    @hbAccessory.reachable = true
+    @accessory.reachable = true
 
-    @api.publishExternalAccessories('homebridge-vieramatic', [@hbAccessory])
-
-  configureAccessory: (tv) =>
-    @previousAccessories.push(tv)
+    @api.publishExternalAccessories('homebridge-vieramatic', [@accessory])
 
   configureInputSource: (type, configuredName, identifier) =>
     visibility = () =>
@@ -300,8 +236,8 @@ class Vieramatic
       return hiden
 
     source = new Service.InputSource(displayName(configuredName), identifier)
-    @hbAccessory.getService(Service.Television).addLinkedService(source)
-    @hbAccessory.addService(source)
+    @accessory.getService(Service.Television).addLinkedService(source)
+    @accessory.addService(source)
 
     hiden = await visibility()
     source
@@ -364,9 +300,9 @@ class Vieramatic
   updateTVstatus: (powered) =>
     [active, mute, On] = [Characteristic.Active, Characteristic.Mute, Characteristic.On]
 
-    tvService = @hbAccessory.getService(Service.Television)
-    speakerService = @hbAccessory.getService(Service.TelevisionSpeaker)
-    customSpeakerService = @hbAccessory.getService(Service.Fan)
+    tvService = @accessory.getService(Service.Television)
+    speakerService = @accessory.getService(Service.TelevisionSpeaker)
+    customSpeakerService = @accessory.getService(Service.Fan)
 
     speakerService.getCharacteristic(active).updateValue(powered)
     tvService.getCharacteristic(active).updateValue(powered)
@@ -379,26 +315,28 @@ class Vieramatic
       customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
 
   getPowerStatus: (callback) =>
-    mutex.runExclusive(() =>
+    @mutex.runExclusive(() =>
       status = await @device.isTurnedOn()
-      if status then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
+      if status then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
       if callback? then callback(null, status) else status
     )
 
   setPowerStatus: (turnOn, callback) =>
-    poweredOn = await @device.isTurnedOn()
-    @log.debug('(setPowerStatus)', turnOn, poweredOn)
-    if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
-    if (turnOn is 1 and poweredOn) or (turnOn is 0 and not poweredOn)
-      @log.debug('TV is already %s: Ignoring!', str)
-    else
-      [err, __] = await @device.sendCommand('POWER')
-      if err
-        return callback(new Error('unable to power cycle TV - probably without power'))
-      if turnOn is 1 then tvEvent.emit('POWERED_ON') else tvEvent.emit('INTO_STANDBY')
-      @log.debug('Turned TV %s', str)
-    # FIXME revise callback handling here
-    callback()
+    @mutex.runExclusive(() =>
+      poweredOn = await @device.isTurnedOn()
+      @log.debug('(setPowerStatus)', turnOn, poweredOn)
+      if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
+      if (turnOn is 1 and poweredOn) or (turnOn is 0 and not poweredOn)
+        @log.debug('TV is already %s: Ignoring!', str)
+      else
+        [err, __] = await @device.sendCommand('POWER')
+        if err
+          return callback(new Error('unable to power cycle TV - probably without power'))
+        if turnOn is 1 then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
+        @log.debug('Turned TV %s', str)
+      # FIXME revise callback handling here
+      callback()
+    )
 
   remoteControl: (keyId, callback) =>
     # https://github.com/KhaosT/HAP-NodeJS/blob/master/src/lib/gen/HomeKit-TV.ts#L235
@@ -457,7 +395,62 @@ class Vieramatic
     [err, __] = await fn()
     if err then callback(err, null) else callback(null, value)
 
+class VieramaticPlatform
+  constructor: (log, config, api) ->
+    log.info('Vieramatic Init')
+
+    [@log, @api, @previousAccessories] = [log, api, []]
+
+    @config = {
+      tvs: config?.tvs or []
+    }
+    @storage = new Storage(api)
+    @storage.init()
+
+    for own cached of @previousAccessories
+      @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
+
+    @api.on('didFinishLaunching', @init) if @api
+
+  init: () =>
+    for viera from iterator(@config.tvs)
+      tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
+
+      unless await tv.isReachable()
+        @log.error(
+          "Ignoring TV (at '#{tv.ipAddress}') as it is unreachable. Likely to be powered off."
+        )
+        continue
+
+      # eslint-disable-next-line coffee/no-constant-condition
+      loop
+        [err, tv.specs] = await tv.getSpecs()
+        break unless err
+        @log.warn(
+          "An unexpected error happened while fetching TV metadata. Please do make sure that the
+          TV is powered on and NOT in stand-by.\n\n\n#{err}\n\n\nTrying again in 10s."
+        )
+        sleep(10000)
+
+      @log.debug(tv)
+
+      err = await validateCryptoNeeds(tv)
+      unless err
+        try
+          await new VieramaticAccessory(tv, viera, @).add()
+        catch Err
+          err = new Error(
+            "An unexpected error happened while adding Viera TV (at '#{tv.ipAddress}')
+            as an homebridge Accessory.\n\n\n#{Err}"
+          )
+      @log.error(err) if err
+
+    @log.info('DidFinishLaunching')
+
+  configureAccessory: (tv) =>
+    @previousAccessories.push(tv)
+
 #
 # ## Public API
 # --------
-module.exports = { Vieramatic, Viera }
+module.exports = { VieramaticPlatform, Viera }

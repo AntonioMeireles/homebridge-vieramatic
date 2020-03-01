@@ -4,7 +4,7 @@
 require('coffeescript/register')
 // does what it says ...
 packageJson = require('./package.json')
-Vieramatic = require('./lib/homebridge').Vieramatic
+VieramaticPlatform = require('./lib/homebridge').VieramaticPlatform
 
 module.exports = function(homebridge) {
   console.log(`homebridge API version: ${homebridge.version}`)
@@ -14,5 +14,5 @@ module.exports = function(homebridge) {
   Service = homebridge.hap.Service
   Characteristic = homebridge.hap.Characteristic
   Accessory = homebridge.platformAccessory
-  homebridge.registerPlatform(packageJson.name, 'PanasonicVieraTV', Vieramatic, true)
+  homebridge.registerPlatform(packageJson.name, 'PanasonicVieraTV', VieramaticPlatform, true)
 }
