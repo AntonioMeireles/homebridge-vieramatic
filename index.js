@@ -4,7 +4,7 @@
 require('coffeescript/register')
 // does what it says ...
 packageJson = require('./package.json')
-Vieramatic = require('./lib/homebridge')
+Vieramatic = require('./lib/homebridge').Vieramatic
 
 module.exports = function(homebridge) {
   console.log(`homebridge API version: ${homebridge.version}`)

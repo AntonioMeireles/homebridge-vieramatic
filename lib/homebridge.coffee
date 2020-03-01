@@ -460,4 +460,4 @@ class Vieramatic
 #
 # ## Public API
 # --------
-module.exports = Vieramatic
+module.exports = { Vieramatic, Viera }
