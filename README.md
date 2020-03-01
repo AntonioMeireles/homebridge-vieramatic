@@ -112,6 +112,14 @@
 
 6. [re]start homebridge
 
+### Integration with Siri - quick note about input switching
+
+As far as the author knows, currently, the Homekit TV integration spec from Apple sadly does
+not allow to switch inputs with Siri directly (would love to be proved wrong).
+
+The workaround is either to make shortcuts that do the the input change and invoke those from Siri,
+or to create scenes straight in the home app that achieve the same and then invoke them.
+
 ### Acknowledgments
 
 - **George Nick Gorzynski**'s original [homebridge-panasonic](https://github.com/g30r93g/homebridge-panasonic)
