@@ -94,6 +94,7 @@ class VieramaticAccessory
     .getCharacteristic(Characteristic.Volume)
     .on('get', @getVolume)
     .on('set', @setVolume)
+    speakerService.getCharacteristic(Characteristic.VolumeSelector).on('set', @setVolumeSelector)
 
     return speakerService
 
@@ -296,6 +297,21 @@ class VieramaticAccessory
     else
       @log.debug('(getVolume)', volume)
       callback(null, volume)
+
+  setVolumeSelector: (key, callback) =>
+    @log.debug('setVolumeSelector', key)
+    # eslint-disable-next-line default-case
+    switch key
+      when Characteristic.VolumeSelector.INCREMENT
+        # Volume up
+        cmd = 'VOLUP'
+      when Characteristic.VolumeSelector.DECREMENT
+        # Volume down
+        cmd = 'VOLDOWN'
+
+    [err, __] = await @device.sendCommand(cmd)
+    if err then @log.error('(setVolumeSelector) unable to change volume', err)
+    callback(null)
 
   updateTVstatus: (powered) =>
     [active, mute, On] = [Characteristic.Active, Characteristic.Mute, Characteristic.On]
