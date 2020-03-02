@@ -164,7 +164,11 @@ class VieramaticAccessory
     .getCharacteristic(Characteristic.PowerModeSelection)
     .on('set', (value, callback) =>
       [e, __] = await @device.sendCommand('MENU')
-      if e then callback(e, null) else callback(null, value))
+      if e
+        @log.error('(PowerModeSelection.set)', e)
+        callback(null, null)
+      else
+        callback(null, value))
 
     customSpeakerService
     .getCharacteristic(Characteristic.On)
@@ -275,6 +279,7 @@ class VieramaticAccessory
 
     [err, mute] = await @device.getMute()
     if err
+      @log.error('(getMute) %s', err)
       callback(null, true)
     else
       @log.debug('(getMute)', mute)
@@ -283,17 +288,26 @@ class VieramaticAccessory
   setMute: (mute, callback) =>
     @log.debug('(setMute)', mute)
     [err, __] = await @device.setMute(mute)
-    if err then callback(err, null) else callback(null, not mute)
+    if err
+      @log.error('(setMute)/(%s) %s', mute, err)
+      callback(null, mute)
+    else
+      callback(null, not mute)
 
   setVolume: (value, callback) =>
     @log.debug('(setVolume)', value)
     [err, __] = await @device.setVolume(value)
-    if err then callback(err, null) else callback(null, value)
+    if err
+      @log.error('(setVolume)/(%s) %s', value, err)
+      callback(null, null)
+    else
+      callback(null, value)
 
   getVolume: (callback) =>
     [err, volume] = await @device.getVolume()
     if err
-      callback(err, null)
+      @log.error('(getVolume) %s', err)
+      callback(null, null)
     else
       @log.debug('(getVolume)', volume)
       callback(null, volume)
@@ -347,10 +361,15 @@ class VieramaticAccessory
       else
         [err, __] = await @device.sendCommand('POWER')
         if err
-          return callback(new Error('unable to power cycle TV - probably without power'))
-        if turnOn is 1 then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
+          @log.error(
+            '(setPowerStatus)/%s - unable to power cycle TV - probably without power',
+            turnOn
+          )
+        else if turnOn is 1
+          @tvEvent.emit('POWERED_ON')
+        else
+          @tvEvent.emit('INTO_STANDBY')
         @log.debug('Turned TV %s', str)
-      # FIXME revise callback handling here
       callback()
     )
 
@@ -387,7 +406,11 @@ class VieramaticAccessory
 
     @log.debug(cmd)
     [err, __] = await @device.sendCommand(cmd)
-    if err then callback(err, null) else callback(null, keyId)
+    if err
+      @log.error('(remoteControl)/(%s) %s', cmd, err)
+      callback(null, null)
+    else
+      callback(null, keyId)
 
   setInput: (value, callback) =>
     fn = () =>
@@ -409,7 +432,11 @@ class VieramaticAccessory
           [err, null]
 
     [err, __] = await fn()
-    if err then callback(err, null) else callback(null, value)
+    if err
+      @log.error('(setInput)/(%s) %s', value, err)
+      callback(null, null)
+    else
+      callback(null, value)
 
 class VieramaticPlatform
   constructor: (log, config, api) ->
