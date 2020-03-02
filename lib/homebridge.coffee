@@ -179,8 +179,7 @@ class VieramaticAccessory
     .on('set', (value, callback) =>
       @log.debug('(customSpeakerService/On.set)', value)
       if tvService.getCharacteristic(Characteristic.Active).value is 0
-        customSpeakerService.getCharacteristic(Characteristic.On).updateValue(false)
-        callback(null, value)
+        callback(null, false)
       else
         callback(null, not value))
 
