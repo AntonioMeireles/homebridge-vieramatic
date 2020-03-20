@@ -449,12 +449,12 @@ class VieramaticPlatform
     @storage = new Storage(api)
     @storage.init()
 
-    for own cached of @previousAccessories
-      @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
-
     @api.on('didFinishLaunching', @init) if @api
 
   init: () =>
+    for own cached of @previousAccessories
+      @api.unregisterPlatformAccessories('homebridge-vieramatic', 'PanasonicVieraTV', [cached])
+
     for viera from iterator(@config.tvs)
       tv = new Viera(viera.ipAddress, @log, viera.appId, viera.encKey)
 
