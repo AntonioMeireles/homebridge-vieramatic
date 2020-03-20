@@ -344,31 +344,28 @@ class VieramaticAccessory
       customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
 
   getPowerStatus: (callback) =>
-    @mutex.runExclusive(() =>
+    await return @mutex.runExclusive(() =>
       status = await @device.isTurnedOn()
       if status then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
       if callback? then callback(null, status) else status
     )
 
   setPowerStatus: (turnOn, callback) =>
-    @mutex.runExclusive(() =>
+    await return @mutex.runExclusive(() =>
+      if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
       poweredOn = await @device.isTurnedOn()
       @log.debug('(setPowerStatus)', turnOn, poweredOn)
-      if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
-      if (turnOn is 1 and poweredOn) or (turnOn is 0 and not poweredOn)
-        @log.debug('TV is already %s: Ignoring!', str)
-      else
-        [err, __] = await @device.sendCommand('POWER')
-        if err
-          @log.error(
-            '(setPowerStatus)/%s - unable to power cycle TV - probably without power',
-            turnOn
-          )
-        else if turnOn is 1
-          @tvEvent.emit('POWERED_ON')
+
+      switch
+        when turnOn is 1 and poweredOn is true, turnOn is 0 and poweredOn is false
+          @log.debug('TV is already %s: Ignoring!', str)
         else
-          @tvEvent.emit('INTO_STANDBY')
-        @log.debug('Turned TV %s', str)
+          [err, __] = await @device.sendCommand('POWER')
+          if err
+            @log.error("(setPowerStatus)/#{turnOn} - unable to power cycle TV - probably unpowered")
+          else
+            if turnOn is 1 then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
+            @log.debug('Turned TV %s', str)
       callback()
     )
 
