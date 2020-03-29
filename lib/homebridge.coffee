@@ -4,7 +4,6 @@
 # homebridge vieramatic plugin
 
 # > required **external dependencies**
-events = require('events')
 net = require('net')
 _ = require('lodash')
 { Mutex } = require('async-mutex')
@@ -41,7 +40,7 @@ class VieramaticAccessory
   constructor: (tv, userConfig, platform) ->
     [@log, @api, @storage] = [platform.log, platform.api, platform.storage]
     [@device, @hdmiInputs] = [tv, userConfig.hdmiInputs]
-    [@tvEvent, @mutex] = [new events.EventEmitter(), new Mutex()]
+    @mutex = new Mutex()
 
     handler = {
       get: (target, key) ->
@@ -178,7 +177,7 @@ class VieramaticAccessory
       callback(null, value))
     .on('set', (value, callback) =>
       @log.debug('(customSpeakerService/On.set)', value)
-      if tvService.getCharacteristic(Characteristic.Active).value is 0
+      if tvService.getCharacteristic(Characteristic.Active).value is Characteristic.Active.INACTIVE
         callback(null, false)
       else
         callback(null, not value))
@@ -202,12 +201,7 @@ class VieramaticAccessory
     for own id, app of @applications
       await @configureInputSource('APPLICATION', app.name, 1000 + parseInt(id, 10))
 
-    @tvEvent
-    .on('INTO_STANDBY', () => @updateTVstatus(false))
-    .on('POWERED_ON', () => @updateTVstatus(true))
-
-    initialStatus = await @device.isTurnedOn()
-    if initialStatus then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
+    await @updateTVstatus(await @device.isTurnedOn())
 
     setInterval(@getPowerStatus, 5000)
 
@@ -344,30 +338,34 @@ class VieramaticAccessory
       customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
 
   getPowerStatus: (callback) =>
-    await return @mutex.runExclusive(() =>
+    fn = () =>
       status = await @device.isTurnedOn()
-      if status then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
+      await @updateTVstatus(status)
+      return status
+    @mutex
+    .runExclusive(fn)
+    .then((status) ->
       if callback? then callback(null, status) else status
     )
 
   setPowerStatus: (turnOn, callback) =>
-    await return @mutex.runExclusive(() =>
-      if turnOn is 1 then str = 'ON' else str = 'into STANDBY'
+    fn = () =>
+      if turnOn is Characteristic.Active.ACTIVE then str = 'ON' else str = 'into STANDBY'
       poweredOn = await @device.isTurnedOn()
       @log.debug('(setPowerStatus)', turnOn, poweredOn)
 
-      switch
-        when turnOn is 1 and poweredOn is true, turnOn is 0 and poweredOn is false
-          @log.debug('TV is already %s: Ignoring!', str)
+      # eslint-disable-next-line prettier/prettier
+      if (turnOn is Characteristic.Active.ACTIVE) is poweredOn
+        @log.debug('TV is already %s: Ignoring!', str)
+      else
+        [err, __] = await @device.sendCommand('POWER')
+        if err
+          @log.error("(setPowerStatus)/#{turnOn} - unable to power cycle TV - probably unpowered")
         else
-          [err, __] = await @device.sendCommand('POWER')
-          if err
-            @log.error("(setPowerStatus)/#{turnOn} - unable to power cycle TV - probably unpowered")
-          else
-            if turnOn is 1 then @tvEvent.emit('POWERED_ON') else @tvEvent.emit('INTO_STANDBY')
-            @log.debug('Turned TV %s', str)
-      callback()
-    )
+          await @updateTVstatus(turnOn is Characteristic.Active.ACTIVE)
+          @log.debug('Turned TV %s', str)
+
+    @mutex.runExclusive(fn).then(callback)
 
   remoteControl: (keyId, callback) =>
     # https://github.com/KhaosT/HAP-NodeJS/blob/master/src/lib/gen/HomeKit-TV.ts#L235
