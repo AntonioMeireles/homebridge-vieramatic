@@ -62,7 +62,7 @@
     "fs-extra": "^9.0.0",
     "is-port-reachable": "^3.0.0",
     "lodash": "^4.17.15",
-    "patch-package": "^6.2.1",
+    "patch-package": "^6.2.2",
     "readline-sync": "^1.4.10",
     "string-methods-extension": "^0.1.5"
   },
