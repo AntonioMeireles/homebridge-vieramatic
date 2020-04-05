@@ -23,7 +23,10 @@ class Viera
     @baseURL = "http://#{@ipAddress}:#{@port}"
 
   isReachable: () =>
-    isPortReachable(@port, { host: @ipAddress })
+    for [0..3]
+      status = await isPortReachable(@port, { host: @ipAddress, timeout: 1500 })
+      return status if status
+    return false
 
   needsCrypto: () =>
     axios
