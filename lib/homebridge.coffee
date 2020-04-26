@@ -44,11 +44,11 @@ class VieramaticAccessory
 
     handler = {
       get: (target, key) ->
-        if key is 'isProxy' then return true
+        return true if key is 'isProxy'
         prop = target[key]
-        if typeof prop is 'undefined' then return
+        return if typeof prop is 'undefined'
         # eslint-disable-next-line no-param-reassign
-        if not prop.isProxy and typeof prop is 'object' then target[key] = new Proxy(prop, handler)
+        target[key] = new Proxy(prop, handler) if not prop.isProxy and typeof prop is 'object'
         target[key]
       set: (target, key, value) =>
         # eslint-disable-next-line no-param-reassign
@@ -163,11 +163,9 @@ class VieramaticAccessory
     .getCharacteristic(Characteristic.PowerModeSelection)
     .on('set', (value, callback) =>
       [e, __] = await @device.sendCommand('MENU')
-      if e
-        @log.error('(PowerModeSelection.set)', e)
-        callback(null, null)
-      else
-        callback(null, value))
+      @log.error('(PowerModeSelection.set) error...') if e
+
+      callback(null, value))
 
     customSpeakerService
     .getCharacteristic(Characteristic.On)
@@ -191,7 +189,7 @@ class VieramaticAccessory
     await @configureInputSource('TUNER', 'TV Tuner', 500)
 
     # HDMI inputs
-    for own __, input of @hdmiInputs
+    for input in @hdmiInputs
       if _.find(@accessory.services, { displayName: displayName(input.name) })
         @log.error('ignored duplicated entry in HDMI inputs list...')
       else
@@ -222,12 +220,12 @@ class VieramaticAccessory
           else
             inputs.hdmi[idx].hiden = hiden
         when 'APPLICATION'
-          real = identifier - 1000
-          if inputs.applications[real].hiden?
-            { hiden } = inputs.applications[real]
+          idx = identifier - 1000
+          if inputs.applications[idx].hiden?
+            { hiden } = inputs.applications[idx]
           else
-            inputs.applications[real].hiden = 1
             hiden = 1
+            inputs.applications[idx].hiden = hiden
         when 'TUNER'
           if inputs.TUNER? then { hiden } = inputs.TUNER else inputs.TUNER = { hiden }
 
@@ -258,8 +256,8 @@ class VieramaticAccessory
           idx = _.findIndex(inputs.hdmi, ['id', id.toString()])
           inputs.hdmi[idx].hiden = state
         when id > 999
-          real = id - 1000
-          inputs.applications[real].hiden = state
+          idx = id - 1000
+          inputs.applications[idx].hiden = state
         when id is 500
           inputs.TUNER = { hiden: state }
 
@@ -282,7 +280,7 @@ class VieramaticAccessory
     @log.debug('(setMute)', mute)
     [err, __] = await @device.setMute(mute)
     if err
-      @log.error('(setMute)/(%s) %s', mute, err)
+      @log.error('(setMute)/(%s) unable to change mute state on TV...', mute)
       callback(null, mute)
     else
       callback(null, not mute)
@@ -291,19 +289,19 @@ class VieramaticAccessory
     @log.debug('(setVolume)', value)
     [err, __] = await @device.setVolume(value)
     if err
-      @log.error('(setVolume)/(%s) %s', value, err)
-      callback(null, null)
-    else
-      callback(null, value)
+      @log.error('(setVolume)/(%s) unable to set volume on TV...', value)
+      # eslint-disable-next-line no-param-reassign
+      value = 0
+
+    callback(null, value)
 
   getVolume: (callback) =>
     [err, volume] = await @device.getVolume()
     if err
-      @log.error('(getVolume) %s', err)
-      callback(null, null)
-    else
-      @log.debug('(getVolume)', volume)
-      callback(null, volume)
+      @log.error('(getVolume) unable to get volume from TV...')
+      volume = 0
+
+    callback(null, volume)
 
   setVolumeSelector: (key, callback) =>
     @log.debug('setVolumeSelector', key)
@@ -317,8 +315,9 @@ class VieramaticAccessory
         cmd = 'VOLDOWN'
 
     [err, __] = await @device.sendCommand(cmd)
-    if err then @log.error('(setVolumeSelector) unable to change volume', err)
-    callback(null)
+    @log.error('(setVolumeSelector) unable to change volume', err) if err
+
+    callback()
 
   updateTVstatus: (powered) =>
     [active, mute, On] = [Characteristic.Active, Characteristic.Mute, Characteristic.On]
@@ -400,11 +399,9 @@ class VieramaticAccessory
 
     @log.debug(cmd)
     [err, __] = await @device.sendCommand(cmd)
-    if err
-      @log.error('(remoteControl)/(%s) %s', cmd, err)
-      callback(null, null)
-    else
-      callback(null, keyId)
+    @log.error('(remoteControl)/(%s) %s', cmd, err) if err
+
+    callback(null, keyId)
 
   setInput: (value, callback) =>
     fn = () =>
@@ -426,11 +423,9 @@ class VieramaticAccessory
           [err, null]
 
     [err, __] = await fn()
-    if err
-      @log.error('(setInput)/(%s) %s', value, err)
-      callback(null, null)
-    else
-      callback(null, value)
+    @log.error('(setInput)/(%s) %s', value, err) if err
+
+    callback(null, value)
 
 class VieramaticPlatform
   constructor: (log, config, api) ->
