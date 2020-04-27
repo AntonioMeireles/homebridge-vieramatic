@@ -140,7 +140,7 @@ class VieramaticAccessory
     tvService
     .setCharacteristic(Characteristic.ConfiguredName, friendlyName)
     .setCharacteristic(Characteristic.SleepDiscoveryMode, 1)
-    tvService.addCharacteristic(Characteristic.RemoteKey)
+
     tvService.addCharacteristic(Characteristic.PowerModeSelection)
     @accessory.addService(tvService)
 

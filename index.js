@@ -1,6 +1,7 @@
 /* eslint-disable func-names */
 /* eslint-disable no-console */
 /* eslint-disable no-undef */
+require('module-alias/register')
 require('coffeescript/register')
 // does what it says ...
 packageJson = require('./package.json')

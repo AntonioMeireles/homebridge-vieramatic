@@ -34,7 +34,7 @@
     "viera-pair": "bin/pair.js"
   },
   "engines": {
-    "homebridge": "^0.4.46",
+    "homebridge": ">=0.4.46",
     "node": ">=10.17.0"
   },
   "license": "MIT",
@@ -62,9 +62,13 @@
     "fs-extra": "^9.0.0",
     "is-port-reachable": "^3.0.0",
     "lodash": "^4.17.15",
+    "module-alias": "^2.2.2",
     "patch-package": "^6.2.2",
     "readline-sync": "^1.4.10",
     "string-methods-extension": "^0.1.5"
+  },
+  "_moduleAliases": {
+    "@lib": "lib"
   },
   "directories": {
     "lib": "lib"
