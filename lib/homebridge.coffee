@@ -128,11 +128,22 @@ class VieramaticAccessory
         @log.debug("#{err.message}, getting previously cached ones instead")
         @applications = inputs.applications
 
-      for own i, input of @hdmiInputs
+      for own __, input of @hdmiInputs
         idx = _.findIndex(inputs.hdmi, ['id', input.id.toString()])
-        unless idx < 0
-          # eslint-disable-next-line no-param-reassign
-          @hdmiInputs[i].hiden = inputs.hdmi[idx].hiden if inputs.hdmi[idx].hiden?
+        if idx < 0
+          @log.debug(
+            "adding HDMI input '#{input.id}' - '#{input.name}' as it was appended to config.json"
+          )
+          inputs.hdmi.push(input)
+
+      # get rid of old Inputs (unset by the user)
+      for own __, input of inputs.hdmi
+        idx = _.findIndex(@hdmiInputs, ['id', input.id.toString()])
+        if idx < 0
+          @log.debug(
+            "deleting HDMI input '#{input.id}' - '#{input.name}' as it was removed from config.json"
+          )
+          _.remove(inputs.hdmi, input)
 
     @accessory = await @setup()
 
@@ -162,7 +173,7 @@ class VieramaticAccessory
     tvService
     .getCharacteristic(Characteristic.PowerModeSelection)
     .on('set', (value, callback) =>
-      [e, __] = await @device.sendCommand('MENU')
+      [e, ___] = await @device.sendCommand('MENU')
       @log.error('(PowerModeSelection.set) error...') if e
 
       callback(null, value))
@@ -189,7 +200,7 @@ class VieramaticAccessory
     await @configureInputSource('TUNER', 'TV Tuner', 500)
 
     # HDMI inputs
-    for input in @hdmiInputs
+    for input in inputs.hdmi
       if _.find(@accessory.services, { displayName: displayName(input.name) })
         @log.error('ignored duplicated entry in HDMI inputs list...')
       else
