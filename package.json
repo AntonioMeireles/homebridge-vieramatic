@@ -1,6 +1,6 @@
 {
   "name": "homebridge-vieramatic",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "description": "Homebridge plugin for Panasonic Viera TV's (with support for 2018 and 2019 models)",
   "main": "index.js",
   "scripts": {
