@@ -110,7 +110,17 @@
      > ]
      > ```
 
-6. [re]start homebridge
+6. disable the custom volume slider (**optional**)
+
+   By default each TV will appear on HomeKit with an additional volume slider (of Fan type) in order
+   to provide a visual way to control the volume (in addition to the hardware volume controls)
+   In order to disable this feature, for each defined TV, just add
+
+   ```JSON
+      "customVolumeSlider": false,
+   ```
+
+7. [re]start homebridge
 
 ### Integration with Siri - quick note about input switching
 

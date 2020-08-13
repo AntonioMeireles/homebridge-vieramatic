@@ -40,6 +40,13 @@ class VieramaticAccessory
   constructor: (tv, userConfig, platform) ->
     [@log, @api, @storage] = [platform.log, platform.api, platform.storage]
     [@device, @hdmiInputs] = [tv, userConfig.hdmiInputs]
+    switch userConfig.customVolumeSlider?
+      when true
+        @customVolumeSlider = userConfig.customVolumeSlider
+      else
+        @customVolumeSlider = true
+
+    @log.debug('-->', @customVolumeSlider)
     @mutex = new Mutex()
 
     handler = {
@@ -97,6 +104,7 @@ class VieramaticAccessory
 
     return speakerService
 
+  # eslint-disable-next-line max-statements
   add: () ->
     { friendlyName } = @device.specs
 
@@ -159,9 +167,10 @@ class VieramaticAccessory
     tvService.addLinkedService(speakerService)
     @accessory.addService(speakerService)
 
-    customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
-    tvService.addLinkedService(customSpeakerService)
-    @accessory.addService(customSpeakerService)
+    if @customVolumeSlider
+      customSpeakerService = new Service.Fan("#{friendlyName} Volume", 'VolumeAsFanService')
+      tvService.addLinkedService(customSpeakerService)
+      @accessory.addService(customSpeakerService)
 
     tvService
     .getCharacteristic(Characteristic.Active)
@@ -178,23 +187,25 @@ class VieramaticAccessory
 
       callback(null, value))
 
-    customSpeakerService
-    .getCharacteristic(Characteristic.On)
-    .on('get', (callback) =>
-      { value } = tvService.getCharacteristic(Characteristic.Active)
-      @log.debug('(customSpeakerService/On.get)', value)
-      callback(null, value))
-    .on('set', (value, callback) =>
-      @log.debug('(customSpeakerService/On.set)', value)
-      if tvService.getCharacteristic(Characteristic.Active).value is Characteristic.Active.INACTIVE
-        callback(null, false)
-      else
-        callback(null, not value))
+    if @customVolumeSlider
+      customSpeakerService
+      .getCharacteristic(Characteristic.On)
+      .on('get', (callback) =>
+        { value } = tvService.getCharacteristic(Characteristic.Active)
+        @log.debug('(customSpeakerService/On.get)', value)
+        callback(null, value))
+      .on('set', (value, callback) =>
+        @log.debug('(customSpeakerService/On.set)', value)
+        switch tvService.getCharacteristic(Characteristic.Active).value
+          when Characteristic.Active.INACTIVE
+            callback(null, false)
+          else
+            callback(null, not value))
 
-    customSpeakerService
-    .getCharacteristic(Characteristic.RotationSpeed)
-    .on('get', @getVolume)
-    .on('set', @setVolume)
+      customSpeakerService
+      .getCharacteristic(Characteristic.RotationSpeed)
+      .on('get', @getVolume)
+      .on('set', @setVolume)
 
     # TV Tuner
     await @configureInputSource('TUNER', 'TV Tuner', 500)
@@ -335,17 +346,20 @@ class VieramaticAccessory
 
     tvService = @accessory.getService(Service.Television)
     speakerService = @accessory.getService(Service.TelevisionSpeaker)
-    customSpeakerService = @accessory.getService(Service.Fan)
+    if @customVolumeSlider
+      customSpeakerService = @accessory.getService(Service.Fan)
 
     speakerService.getCharacteristic(active).updateValue(powered)
     tvService.getCharacteristic(active).updateValue(powered)
     unless powered
       speakerService.getCharacteristic(mute).updateValue(true)
-      customSpeakerService.getCharacteristic(On).updateValue(false)
+      if @customVolumeSlider
+        customSpeakerService.getCharacteristic(On).updateValue(false)
     else
       [__, muteStatus] = await @device.getMute()
       speakerService.getCharacteristic(mute).updateValue(muteStatus)
-      customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
+      if @customVolumeSlider
+        customSpeakerService.getCharacteristic(On).updateValue(not muteStatus)
 
   getPowerStatus: (callback) =>
     fn = () =>
