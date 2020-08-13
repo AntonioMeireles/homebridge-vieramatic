@@ -6,7 +6,7 @@
 
 ## [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
 
-- **support for 2018 and 2019 models**
+- **full support for 2018 and later models**
 
   > Pincode and encryption (encapsulated in AES-CBC-128 encryption with
   > HMAC-SHA-256) was added as a requirement for communication with TV models
