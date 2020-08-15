@@ -46,7 +46,6 @@ class VieramaticAccessory
       else
         @customVolumeSlider = true
 
-    @log.debug('-->', @customVolumeSlider)
     @mutex = new Mutex()
 
     handler = {
