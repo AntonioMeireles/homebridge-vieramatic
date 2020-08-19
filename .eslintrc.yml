@@ -56,7 +56,7 @@ overrides:
       coffee/vars-on-top: off
       coffee/no-underscore-dangle: off
       coffee/block-scoped-var: off
-      max-lines: [warn, 500]
+      max-lines: [warn, 600]
       max-params: [warn, 4]
       max-statements: [warn, 55]
       coffee/max-lines-per-function: [warn, 160]
