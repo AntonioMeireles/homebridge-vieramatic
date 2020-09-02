@@ -1,13 +1,8 @@
-
-semi: false
-singleQuote: true
-trailingComma: 'es5'
-tabWidth: 2
-indentChain: false
-bracketSpacing: true
-quoteProps: 'as-needed'
-comma: 'nonTrailing'
-noImplicit: ['objectBraces', 'callParens']
-respectExplicit: ['objectBraces', 'callParens']
-emptyParamListParens: true
-printWidth: 100
+{
+  "semi": true,
+  "trailingComma": "none",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2,
+  "arrowParens": "avoid"
+}

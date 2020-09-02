@@ -1,0 +1,47 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "prettier", "unicorn", "import"],
+  "extends": [
+    "airbnb-typescript/base",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:unicorn/recommended",
+    "plugin:prettier/recommended",
+    "prettier",
+    "prettier/@typescript-eslint",
+    "plugin:json/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "ignorePatterns": ["dist"],
+
+  "rules": {
+    "quotes": ["warn", "single"],
+    "indent": ["warn", 2, { "SwitchCase": 1 }],
+    "linebreak-style": ["warn", "unix"],
+    "semi": ["warn", "always"],
+    "comma-dangle": ["off", "always-multiline"],
+    "dot-notation": "off",
+    "eqeqeq": ["warn", "smart"],
+    "curly": ["warn", "all"],
+    "brace-style": ["warn"],
+    "prefer-arrow-callback": ["warn"],
+    "max-len": ["warn", 140],
+    "no-console": ["warn"], // use the provided Homebridge log method instead
+    "no-non-null-assertion": ["off"],
+    "comma-spacing": ["error"],
+    "no-multi-spaces": ["warn", { "ignoreEOLComments": true }],
+    "lines-between-class-members": [
+      "warn",
+      "always",
+      { "exceptAfterSingleLine": true }
+    ],
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    // prettier ...
+    "prettier/prettier": 2 // Means error
+  }
+}
