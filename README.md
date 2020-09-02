@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE.md)
 [![npm version](https://img.shields.io/npm/v/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![downloads](https://img.shields.io/npm/dt/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
+[![Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/npm/homebridge-vieramatic)](https://snyk.io/vuln/npm:homebridge-vieramatic)
 
 ## [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
 
