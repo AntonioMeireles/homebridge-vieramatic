@@ -14,13 +14,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-
-    "plugins": [
-      {
-        "name": "typescript-lit-html-plugin"
-      }
-    ]
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/"],
   "exclude": ["**/*.spec.ts"]

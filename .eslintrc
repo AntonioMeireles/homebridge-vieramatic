@@ -8,6 +8,7 @@
     "plugin:prettier/recommended",
     "prettier",
     "prettier/@typescript-eslint",
+    "airbnb-typescript-prettier",
     "plugin:json/recommended"
   ],
   "parserOptions": {

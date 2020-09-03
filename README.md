@@ -53,7 +53,7 @@
 
 6. Just follow the instructions and that's it.
 
-7. If for some reason, things do not progress as expected, its probably a bug.
+7. If for some reason, things do not progress as expected, it is probably a bug.
    Please just [report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it.
 
 ### the old fashioned way
@@ -66,7 +66,7 @@
    >  $ sudo npm install -g homebridge-vieramatic
    > ```
 
-3. run the _pre-flight_ setup script, and take note of its output
+3. run the _pre-flight_ setup script, and take note of the output
 
    > ```shell
    >  $ viera-pair YOUR_TV_IP_ADDRESS_HERE
@@ -126,7 +126,9 @@
 
 7. [re]start homebridge
 
-## Integration with Siri - quick note about input switching
+## Tips and tricks
+
+### input switching - how to get Siri to do it
 
 As far as the author knows, currently, the HomeKit TV integration spec from Apple sadly does
 not allow to switch inputs with Siri directly (would love to be proven wrong).
@@ -134,17 +136,26 @@ not allow to switch inputs with Siri directly (would love to be proven wrong).
 The workaround is either to make shortcuts that do the input change and invoke those from Siri,
 or to create scenes straight in the home app that achieve the same and then invoke them.
 
-## Acknowledgments
+### Docker
 
-- **George Nick Gorzynski**'s original [homebridge-panasonic](https://github.com/g30r93g/homebridge-panasonic)
-  plugin which served as the base inspiration for this new one.
-- **Florian Holzapfel**'s [panasonic-viera](https://github.com/florianholzapfel/panasonic-viera)
-  python library which documented the new pin code authentication and communication scheme of 2018 and later models.
+if your **homebridge** setup resolves around containers please do note that in order for this plugin to fully
+work you need to also expose to the outside port `8973`, otherwise you won't be able to access to endpoint that
+generates your encryption credentials.
 
 ## Contributing
-
-This is an [open source](http://opensource.org/osd) project released under the [Apache License 2.0](./LICENSE).
 
 [Contributions](https://github.com/AntonioMeireles/homebridge-vieramatic/pulls)
 and [suggestions or bug reports](https://github.com/AntonioMeireles/homebridge-vieramatic/issues)
 are gladly welcomed!
+
+## License
+
+This is an [open source](http://opensource.org/osd) project released under the [Apache License 2.0](./LICENSE).
+
+## Acknowledgments
+
+- **George Nick Gorzynski**'s [homebridge-panasonic](https://github.com/g30r93g/homebridge-panasonic)
+  plugin which served as the base inspiration for this new one.
+- **Florian Holzapfel**'s [panasonic-viera](https://github.com/florianholzapfel/panasonic-viera)
+  python library which documented the new pin code authentication and communication scheme of 2018 and later models.
+- the [Homebridge](http://homebridge.io) community at large without whom this wouldn't just be possible.

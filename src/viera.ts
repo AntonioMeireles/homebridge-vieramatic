@@ -29,8 +29,11 @@ interface VieraSpecs {
 type RequestType = 'command' | 'render';
 // eslint-disable-next-line no-shadow
 enum AlwaysInPlainText {
+  // eslint-disable-next-line camelcase
   X_GetEncryptSessionId = 'X_GetEncryptSessionId',
+  // eslint-disable-next-line camelcase
   X_DisplayPinCode = 'X_DisplayPinCode',
+  // eslint-disable-next-line camelcase
   X_RequestAuth = 'X_RequestAuth'
 }
 interface VieraAuthSession {
@@ -49,21 +52,21 @@ interface VieraAuth {
 
 interface ApiCallResult {
   error?: Error;
-  value?: string;
+  value?: string | string[];
 }
 
 const getKey = (key: string, xml: string): string => {
-  /* eslint-disable no-restricted-syntax, no-continue, no-prototype-builtins, unicorn/prevent-abbreviations */
-  const fn = (obj, k: string) => {
+  /* eslint-disable no-restricted-syntax, no-continue, no-prototype-builtins */
+  const fn = (object, k: string) => {
     let objects: string[] = [];
-    for (const i in obj) {
-      if (!obj.hasOwnProperty(i)) {
+    for (const i in object) {
+      if (!object.hasOwnProperty(i)) {
         continue;
       }
-      if (typeof obj[i] == 'object') {
-        objects = objects.concat(fn(obj[i], k));
+      if (typeof object[i] == 'object') {
+        objects = objects.concat(fn(object[i], k));
       } else if (i === k) {
-        objects.push(obj[i]);
+        objects.push(object[i]);
       }
     }
     return objects[0];
@@ -162,26 +165,31 @@ class VieraTV implements VieraTV {
 
   async requestSessionId(): Promise<ApiCallResult> {
     const appId = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId>`;
-    const encinfo = this.encryptPayload(appId);
-    const params = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`;
+
+    const outcome = this.encryptPayload(appId);
+    if (outcome.error) {
+      return { error: outcome.error };
+    }
+    const encinfo = outcome.value;
+    const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`;
 
     const callback = (data: string): ApiCallResult => {
       this.session.seqNum = 1;
-      const num = Number(getKey('X_SessionId', data));
-      if (Number.isInteger(num)) {
-        this.session.id = num;
+      const number = Number(getKey('X_SessionId', data));
+      if (Number.isInteger(number)) {
+        this.session.id = number;
         return {};
       }
-      const err = new Error(
+      const error = new Error(
         'abnormal result from TV - session ID is not (!) an integer'
       );
-      return { error: err };
+      return { error };
     };
 
     return this.sendRequest(
       'command',
       'X_GetEncryptSessionId',
-      params,
+      parameters,
       callback
     );
   }
@@ -219,34 +227,39 @@ class VieraTV implements VieraTV {
   }
 
   private encryptPayload(
-    // FIXME: handle errors here (eg bad IV)
     original: string,
     key = this.session.key,
     iv = this.session.iv,
     hmacKey = this.session.hmacKey
-  ) {
+  ): ApiCallResult {
     const pad = (unpadded: Buffer): Buffer => {
       const blockSize = 16;
       const extra = Buffer.alloc(blockSize - (unpadded.length % blockSize));
       return Buffer.concat([unpadded, extra]);
     };
+    let ciphered: Buffer;
+    let sig: Buffer;
 
-    let data = Buffer.from(original);
-    let headerPrefix = Buffer.from(
-      [...new Array(12)].map(() => Math.round(Math.random() * 255))
-    );
+    try {
+      let data = Buffer.from(original);
+      let headerPrefix = Buffer.from(
+        [...new Array(12)].map(() => Math.round(Math.random() * 255))
+      );
 
-    let headerSufix = Buffer.alloc(4);
-    headerSufix.writeIntBE(data.length, 0, 4);
-    let header = Buffer.concat([headerPrefix, headerSufix]);
-    let payload = pad(Buffer.concat([header, data]));
-    let cipher = crypto
-      .createCipheriv('aes-128-cbc', key, iv)
-      .setAutoPadding(false);
-    let ciphered = Buffer.concat([cipher.update(payload), cipher.final()]);
-    let hmac = crypto.createHmac('sha256', hmacKey);
-    let sig = hmac.update(ciphered).digest();
-    return Buffer.concat([ciphered, sig]).toString('base64');
+      let headerSufix = Buffer.alloc(4);
+      headerSufix.writeIntBE(data.length, 0, 4);
+      let header = Buffer.concat([headerPrefix, headerSufix]);
+      let payload = pad(Buffer.concat([header, data]));
+      let cipher = crypto
+        .createCipheriv('aes-128-cbc', key, iv)
+        .setAutoPadding(false);
+      ciphered = Buffer.concat([cipher.update(payload), cipher.final()]);
+      let hmac = crypto.createHmac('sha256', hmacKey);
+      sig = hmac.update(ciphered).digest();
+    } catch (Error) {
+      return { error: Error };
+    }
+    return { value: Buffer.concat([ciphered, sig]).toString('base64') };
   }
 
   // Returns the TV specs
@@ -270,12 +283,7 @@ class VieraTV implements VieraTV {
             : '';
 
           this.log.info(
-            // eslint-disable-next-line quotes
-            "found a '%s' TV (%s) at '%s' %s.\n",
-            specs.modelName,
-            specs.modelNumber,
-            this.address,
-            extra
+            `found a '${specs.modelName}' TV (${specs.modelNumber}) at '${this.address}' ${extra}.\n`
           );
           return specs;
         }
@@ -286,24 +294,28 @@ class VieraTV implements VieraTV {
   private renderEncryptedRequest(
     action: string,
     urn: string,
-    params: string
-  ): string[] {
+    parameters: string
+  ): ApiCallResult {
     this.session.seqNum += 1;
     const encCommand =
       `<X_SessionId>${this.session.id}</X_SessionId>` +
       `<X_SequenceNumber>${`00000000${this.session.seqNum}`.slice(
         -8
       )}</X_SequenceNumber>` +
-      `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${params}</u:${action}> </X_OriginalCommand>`;
-    const encryptedPayload = this.encryptPayload(encCommand);
-
-    return [
-      'X_EncryptedCommand',
-      `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encryptedPayload}</X_EncInfo>`
-    ];
+      `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`;
+    const outcome = this.encryptPayload(encCommand);
+    if (outcome.error) {
+      return { error: outcome.error };
+    }
+    return {
+      value: [
+        'X_EncryptedCommand',
+        `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${outcome.value}</X_EncInfo>`
+      ]
+    };
   }
 
-  private renderRequest(action: string, urn: string, params: string) {
+  private renderRequest(action: string, urn: string, parameters: string) {
     let [data, method, responseType]: string[] = [];
     method = 'post';
     responseType = 'text';
@@ -318,7 +330,7 @@ class VieraTV implements VieraTV {
     data =
       '<?xml version="1.0" encoding="utf-8"?> ' +
       ' <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"> ' +
-      `<s:Body> <u:${action} xmlns:u="urn:${urn}"> ${params} </u:${action}> </s:Body> </s:Envelope>`;
+      `<s:Body> <u:${action} xmlns:u="urn:${urn}"> ${parameters} </u:${action}> </s:Body> </s:Envelope>`;
 
     return { method, headers, data, responseType };
   }
@@ -326,10 +338,10 @@ class VieraTV implements VieraTV {
   public async sendRequest(
     requestType: RequestType,
     realAction: string,
-    realParams = 'None',
+    realParameters = 'None',
     callback?
   ): Promise<ApiCallResult> {
-    let [urL, urn, action, params]: string[] = [];
+    let [urL, urn, action, parameters]: string[] = [];
 
     if (requestType === 'command') {
       urL = '/nrc/control_0';
@@ -344,16 +356,20 @@ class VieraTV implements VieraTV {
       requestType === 'command' &&
       !(realAction in AlwaysInPlainText)
     ) {
-      [action, params] = this.renderEncryptedRequest(
+      const outcome = this.renderEncryptedRequest(
         realAction,
         urn,
-        realParams
+        realParameters
       );
+      if (outcome.error) {
+        return { error: outcome.error };
+      }
+      [action, parameters] = outcome.value as string[];
     } else {
-      [action, params] = [realAction, realParams];
+      [action, parameters] = [realAction, realParameters];
     }
 
-    const postRequest = this.renderRequest(action, urn, params);
+    const postRequest = this.renderRequest(action, urn, parameters);
     // let payload: ApiCallResult;
     const payload = await curl(
       `${this.baseURL}${urL}`,
@@ -377,7 +393,7 @@ class VieraTV implements VieraTV {
       .catch(error => {
         return { error: new Error(error) } as ApiCallResult;
       });
-    // TODO: simplify logic bellow
+
     if (payload.error) {
       return payload;
     }
@@ -388,7 +404,7 @@ class VieraTV implements VieraTV {
   }
 
   private async requestPinCode() {
-    const params = '<X_DeviceName>MyRemote</X_DeviceName>';
+    const parameters = '<X_DeviceName>MyRemote</X_DeviceName>';
     // eslint-disable-next-line unicorn/consistent-function-scoping
     const callback = (data: string): ApiCallResult => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data);
@@ -402,7 +418,12 @@ class VieraTV implements VieraTV {
       this.session.challenge = Buffer.from(match[1], 'base64');
       return {};
     };
-    return this.sendRequest('command', 'X_DisplayPinCode', params, callback);
+    return this.sendRequest(
+      'command',
+      'X_DisplayPinCode',
+      parameters,
+      callback
+    );
   }
 
   private async authorizePinCode(pin: string) {
@@ -460,8 +481,11 @@ class VieraTV implements VieraTV {
       hmacKey[j + 3] = hmacKeyMaskVals[j + 3] ^ iv[(j + 1) & 0xf];
     }
     const data = `<X_PinCode>${pin}</X_PinCode>`;
-    const encryptedPayload = this.encryptPayload(data, key, iv, hmacKey);
-    const params = `<X_AuthInfo>${encryptedPayload}</X_AuthInfo>`;
+    const outcome = this.encryptPayload(data, key, iv, hmacKey);
+    if (outcome.error) {
+      return { error: outcome.error };
+    }
+    const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`;
 
     const callback = (r: string): ApiCallResult => {
       const raw = getKey('X_AuthResult', r);
@@ -469,11 +493,9 @@ class VieraTV implements VieraTV {
       this.auth.appId = getKey('X_ApplicationId', authResultDecrypted);
       this.auth.key = getKey('X_Keyword', authResultDecrypted);
       // TODO: Proper error handling
-      // if @_appId is null or @_encKey is null
-      //   return [new Error(printf('unexpected reply from TV (%s)', authResultDecrypted)), null]
       return {};
     };
-    return this.sendRequest('command', 'X_RequestAuth', params, callback);
+    return this.sendRequest('command', 'X_RequestAuth', parameters, callback);
   }
 
   private renderSampleConfig() {
@@ -530,8 +552,8 @@ class VieraTV implements VieraTV {
                     urlObject.query.challenge as string,
                     'base64'
                   );
-                  const res = await tv.authorizePinCode(pin as string);
-                  if (res.error) {
+                  const result = await tv.authorizePinCode(pin as string);
+                  if (result.error) {
                     returnCode = 500;
                     body = `
                     <html>
@@ -607,8 +629,8 @@ class VieraTV implements VieraTV {
               </html>
             `;
           } else {
-            const req = await tv.requestPinCode();
-            if (req.error) {
+            const newRequest = await tv.requestPinCode();
+            if (newRequest.error) {
               returnCode = 500;
               body = `
                 <html>
@@ -706,8 +728,8 @@ class VieraTV implements VieraTV {
         process.exitCode = 1;
         return;
       }
-      const req = await tv.requestPinCode();
-      if (req.error) {
+      const request = await tv.requestPinCode();
+      if (request.error) {
         console.error(
           '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
           '\nPlease make sure that the TV is powered ON (and NOT in standby).'
@@ -716,8 +738,8 @@ class VieraTV implements VieraTV {
         return;
       }
       const pin = readlineSync.question('Enter the displayed pin code: ');
-      const res = await tv.authorizePinCode(pin);
-      if (res.error) {
+      const outcome = await tv.authorizePinCode(pin);
+      if (outcome.error) {
         console.log('Wrong pin code...');
         process.exitCode = 1;
         return;
@@ -728,25 +750,25 @@ class VieraTV implements VieraTV {
 
   // Sends a command to the TV
   public async sendCommand(cmd: string): Promise<ApiCallResult> {
-    const params = `<X_KeyEvent>NRC_${cmd.toUpperCase()}-ONOFF</X_KeyEvent>`;
+    const parameters = `<X_KeyEvent>NRC_${cmd.toUpperCase()}-ONOFF</X_KeyEvent>`;
 
-    return this.sendRequest('command', 'X_SendKey', params);
+    return this.sendRequest('command', 'X_SendKey', parameters);
   }
 
   // Send a change HDMI input to the TV
   public async sendHDMICommand(hdmiInput: string): Promise<ApiCallResult> {
-    const params = `<X_KeyEvent>NRC_HDMI${hdmiInput}-ONOFF</X_KeyEvent>`;
+    const parameters = `<X_KeyEvent>NRC_HDMI${hdmiInput}-ONOFF</X_KeyEvent>`;
 
-    return this.sendRequest('command', 'X_SendKey', params);
+    return this.sendRequest('command', 'X_SendKey', parameters);
   }
 
   // Send command to open app on the TV
   public async sendAppCommand(appId: string): Promise<ApiCallResult> {
     const cmd =
       `${appId}`.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`;
-    const params = `<X_AppType>vc_app</X_AppType><X_LaunchKeyword>${cmd}</X_LaunchKeyword>`;
+    const parameters = `<X_AppType>vc_app</X_AppType><X_LaunchKeyword>${cmd}</X_LaunchKeyword>`;
 
-    return this.sendRequest('command', 'X_LaunchApp', params);
+    return this.sendRequest('command', 'X_LaunchApp', parameters);
   }
 
   // Get volume from TV
@@ -759,15 +781,15 @@ class VieraTV implements VieraTV {
       }
       return { value: '0' };
     };
-    const params = defaultAudioChannel;
+    const parameters = defaultAudioChannel;
 
-    return this.sendRequest('render', 'GetVolume', params, callback);
+    return this.sendRequest('render', 'GetVolume', parameters, callback);
   }
 
   // Set Volume
   public async setVolume(volume: string): Promise<ApiCallResult> {
-    const params = `${defaultAudioChannel}<DesiredVolume>${volume}</DesiredVolume>`;
-    return this.sendRequest('render', 'SetVolume', params);
+    const parameters = `${defaultAudioChannel}<DesiredVolume>${volume}</DesiredVolume>`;
+    return this.sendRequest('render', 'SetVolume', parameters);
   }
 
   // Get the current mute setting
@@ -789,9 +811,9 @@ class VieraTV implements VieraTV {
   // Set mute to on/off
   public async setMute(enable: boolean): Promise<ApiCallResult> {
     const mute = enable ? '1' : '0';
-    const params = `${defaultAudioChannel}<DesiredMute>${mute}</DesiredMute>`;
+    const parameters = `${defaultAudioChannel}<DesiredMute>${mute}</DesiredMute>`;
 
-    return this.sendRequest('render', 'SetMute', params);
+    return this.sendRequest('render', 'SetMute', parameters);
   }
 
   // Returns the list of apps on the TV

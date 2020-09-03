@@ -58,7 +58,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     this.storage.init();
     VieraTV.webSetup();
-    const devices = this.config?.tvs;
+    const devices = this.config.tvs;
 
     devices.forEach(async device => {
       await this.deviceSetup(device);
@@ -88,7 +88,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (specs === undefined) {
       this.log.error(
-        `IGNORING '${ip}' as an unexpected error occurred - was unable to fetch specs from the TV.`
+        `IGNORING '${ip.address}' as an unexpected error occurred - was unable to fetch specs from the TV.`
       );
       return;
     }
@@ -96,7 +96,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (tv.specs.requiresEncryption === true) {
       if (!(device.appId && device.encKey)) {
         this.log.error(
-          `IGNORING '${ip}' as it is from a Panasonic TV that requires encryption and no valid credentials were supplied.`
+          `IGNORING '${ip.address}' as it is from a Panasonic TV that requires encryption
+           '${tv.specs.modelName}' and no valid credentials were supplied.`
         );
         return;
       }
@@ -105,8 +106,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       const result = await tv.requestSessionId();
       if (result.error) {
         this.log.error(
-          `IGNORING '${ip}' as no working credentials were supplied.`,
-          result
+          `IGNORING '${ip.address}' ('${tv.specs.modelName}') as no working credentials were supplied.`,
+          result.error
         );
         return;
       }
