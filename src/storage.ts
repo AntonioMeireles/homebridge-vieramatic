@@ -17,7 +17,7 @@ class Storage {
     );
   }
 
-  public init() {
+  public init(): void {
     const data = fs.readJsonSync(this.filePath, {
       throws: false
     });
@@ -26,7 +26,7 @@ class Storage {
     }
   }
 
-  public get(id: string) {
+  public get(id: string): unknown {
     if (!this.accessories) {
       this.accessories = {};
     }
@@ -38,7 +38,7 @@ class Storage {
     return this.accessories[id];
   }
 
-  public save() {
+  public save(): void {
     fs.writeJSONSync(this.filePath, this.accessories);
   }
 }

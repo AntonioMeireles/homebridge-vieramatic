@@ -1,7 +1,7 @@
 {
   "name": "homebridge-vieramatic",
   "displayName": "Panasonic™ Viera™ TVs support",
-  "version": "1.9.1-beta.1",
+  "version": "1.9.5-beta.2",
   "description": "Homebridge plugin for Panasonic™ Viera™ TVs (with full support for 2018 and later models)",
   "main": "dist/index.js",
   "scripts": {
@@ -49,7 +49,7 @@
     "@typescript-eslint/parser": "^4.0.1",
     "eslint": "^7.7.0",
     "eslint-config-airbnb-base": "^14.2.0",
-    "eslint-config-airbnb-typescript": "^9.0.0",
+    "eslint-config-airbnb-typescript": "^10.0.0",
     "eslint-config-airbnb-typescript-prettier": "^3.1.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-import": "^2.22.0",

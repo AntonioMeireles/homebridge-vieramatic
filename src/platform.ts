@@ -41,12 +41,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     });
   }
 
-  configureAccessory(accessory: PlatformAccessory) {
+  configureAccessory(accessory: PlatformAccessory): void {
     this.log.info('Loading accessory from cache:', accessory.displayName);
     this.accessories.push(accessory);
   }
 
-  async discoverDevices() {
+  async discoverDevices(): Promise<void> {
     /* eslint-disable no-continue, no-await-in-loop */
     this.accessories.map(cachedAccessory => {
       return this.api.unregisterPlatformAccessories(
@@ -65,7 +65,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     });
   }
 
-  private async deviceSetup(device) {
+  private async deviceSetup(device): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json');
 
     const ip = new Address4(device.ipAddress);
@@ -114,8 +114,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     }
     // eslint-disable-next-line new-cap
     const accessory = new this.api.platformAccessory(
-      tv.specs.friendlyName!,
-      tv.specs.serialNumber!
+      tv.specs.friendlyName,
+      tv.specs.serialNumber
     );
     accessory.category = this.api.hap.Categories.TELEVISION;
     accessory.context.device = tv;
