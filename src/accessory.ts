@@ -187,6 +187,8 @@ export class VieramaticPlatformAccessory {
       this.getPowerStatus();
     }, 5000);
 
+    this.userConfig.hdmiInputs ||= [];
+
     if (!this.storage.data) {
       this.platform.log.info(
         `Initializing ${device.specs.friendlyName} for the first time.`

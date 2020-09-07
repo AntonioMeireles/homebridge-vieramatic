@@ -71,13 +71,15 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const ip = new Address4(device.ipAddress);
 
     if (ip.isValid() !== true) {
-      this.log.error(`IGNORING '${ip}' as it is not a valid ip address.`);
+      this.log.error(
+        `IGNORING '${ip.address}' as it is not a valid ip address.`
+      );
       this.log.error(device);
       return;
     }
 
     if ((await VieraTV.livenessProbe(ip)) === false) {
-      this.log.error(`IGNORING '${ip}' as it is not reachable.`);
+      this.log.error(`IGNORING '${ip.address}' as it is not reachable.`);
       this.log.error(
         'Please make sure that your TV is powered ON and connected to the network.'
       );

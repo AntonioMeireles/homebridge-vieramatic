@@ -1,11 +1,11 @@
-# homebridge-vieramatic
+# homebridge-vieramatic - the [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
 
 [![License: Apache 2](https://img.shields.io/badge/License-Apache_2-blue.svg)](./LICENSE.md)
 [![npm version](https://img.shields.io/npm/v/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![downloads](https://img.shields.io/npm/dt/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/npm/homebridge-vieramatic)](https://snyk.io/vuln/npm:homebridge-vieramatic)
 
-# The [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
+## features
 
 - **full support for 2018 and later models**
   > Pin code and encryption (encapsulated in AES-CBC-128 encryption with
@@ -20,14 +20,14 @@
 - **Fully configurable via the Homebridge UI**. No more need to manually edit homebridge's
   `config.json` nor to run shell commands.
 
-## Requirements
+## requirements
 
 - iOS 12.3 or later
 - Homebridge v0.4.50 or later
 
-## TV Setup
+## TV setup
 
-1. On your TV go to `Menu -> Network -> TV Remote App Settings` and ensure the following settings are **ON**:
+1. On your TV go to `Menu -> Network -> TV Remote App Settings` and make sure that the following settings are **all** turned **ON**:
 
    - **TV Remote**
    - **Powered On by Apps**
@@ -35,13 +35,14 @@
 
 2. Then, go to `Menu -> Network -> Network Status -> Status Details` and take note of your TV ip address.
 
-## Plugin Setup
+## plugin setup
 
-### the simple way - **recommended**
+### the simple way [recommended]
 
 1. Get [**homebridge**](http://homebridge.io).
 
-2. [install the **homebridge UI**](https://github.com/oznu/homebridge-config-ui-x#installation-instructions)
+2. [install the **homebridge UI**](https://github.com/oznu/homebridge-config-ui-x#installation-instructions),
+   if not using it already.
 
 3. From your browser, access the homebridge's ui, and jump to the plugins _tab_.
 
@@ -126,7 +127,15 @@
 
 7. [re]start homebridge
 
-## Tips and tricks
+## upgrading from pre `2.0.0` releases of this plugin
+
+The upgrade should be transparent, and painless.
+
+The only expected side effect is that you'll need to set again the visibility of your inputs and apps as they 'll get back
+to the defaults. If you experience other kinds if issues **then** it is a bug so, please
+[report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it with as much context as possible.
+
+## tips and tricks
 
 ### input switching - how to get Siri to do it
 
@@ -136,23 +145,23 @@ not allow to switch inputs with Siri directly (would love to be proven wrong).
 The workaround is either to make shortcuts that do the input change and invoke those from Siri,
 or to create scenes straight in the home app that achieve the same and then invoke them.
 
-### Docker
+### regarding containerized homebridge setups
 
-if your **homebridge** setup resolves around containers please do note that in order for this plugin to fully
+If your **homebridge** setup is a _containerized_ one please do note that in order for this plugin to fully
 work you need to also expose to the outside port `8973`, otherwise you won't be able to access to endpoint that
 generates your encryption credentials.
 
-## Contributing
+## contributing
 
 [Contributions](https://github.com/AntonioMeireles/homebridge-vieramatic/pulls)
 and [suggestions or bug reports](https://github.com/AntonioMeireles/homebridge-vieramatic/issues)
 are gladly welcomed!
 
-## License
+## licensing
 
 This is an [open source](http://opensource.org/osd) project released under the [Apache License 2.0](./LICENSE).
 
-## Acknowledgments
+## acknowledgments
 
 - **George Nick Gorzynski**'s [homebridge-panasonic](https://github.com/g30r93g/homebridge-panasonic)
   plugin which served as the base inspiration for this new one.

@@ -1,5 +1,5 @@
 {
-  // block blow silents this for real ...
+  // block bellow silents this for real ...
   //    Warning: React version was set to "detect" in eslint-plugin-react settings, but the "react" package is not installed. Assuming latest React version for linting.
   "settings": {
     "react": {
@@ -7,7 +7,7 @@
     }
   },
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "prettier", "unicorn", "import"],
+  "plugins": ["@typescript-eslint", "prettier", "unicorn", "import", "json"],
   "extends": [
     "airbnb-typescript/base",
     "plugin:@typescript-eslint/recommended",
