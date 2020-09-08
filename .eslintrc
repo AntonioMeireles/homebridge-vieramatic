@@ -1,0 +1,58 @@
+{
+  // block bellow silents this for real ...
+  //    Warning: React version was set to "detect" in eslint-plugin-react settings, but the "react" package is not installed. Assuming latest React version for linting.
+  "settings": {
+    "react": {
+      "version": "999.999.999"
+    }
+  },
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "prettier", "unicorn", "import", "json"],
+  "extends": [
+    "airbnb-typescript/base",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:unicorn/recommended",
+    "plugin:prettier/recommended",
+    "prettier",
+    "prettier/@typescript-eslint",
+    "airbnb-typescript-prettier",
+    "plugin:json/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "ignorePatterns": ["dist"],
+
+  "rules": {
+    "quotes": ["warn", "single"],
+    "indent": ["error", 2, { "SwitchCase": 1 }],
+    "linebreak-style": ["error", "unix"],
+    "semi": ["error", "always"],
+    "comma-dangle": ["off", "always-multiline"],
+    "dot-notation": "off",
+    "eqeqeq": ["warn", "smart"],
+    "curly": ["error", "all"],
+    "brace-style": ["error"],
+    "prefer-arrow-callback": ["error"],
+    "max-len": ["warn", 140],
+    "no-console": ["warn"], // use the provided Homebridge log method instead
+    "no-non-null-assertion": ["off"],
+    "comma-spacing": ["error"],
+    "no-multi-spaces": ["warn", { "ignoreEOLComments": true }],
+    "lines-between-class-members": [
+      "warn",
+      "always",
+      { "exceptAfterSingleLine": true }
+    ],
+
+    "@typescript-eslint/explicit-function-return-type": "warn",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-use-before-define": ["error"],
+
+    // prettier ...
+    "prettier/prettier": 2 // Means error
+  }
+}
