@@ -623,8 +623,8 @@ export class VieramaticPlatformAccessory {
         action = 'HOME';
         break;
     }
-    this.platform.log.debug(`remote control:${action!}`);
-    const cmd = await this.accessory.context.device.sendCommand(action!);
+    this.platform.log.debug(`remote control:${action}`);
+    const cmd = await this.accessory.context.device.sendCommand(action);
     if (cmd.error) {
       this.platform.log.error('(remoteControl)/(%s) %s', action!, cmd.error);
     }
