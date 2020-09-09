@@ -162,7 +162,7 @@ class VieraTV implements VieraTV {
 
     const outcome = this.encryptPayload(appId);
     if (outcome.error) {
-      return { error: outcome.error };
+      return outcome;
     }
     const encinfo = outcome.value;
     const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`;
@@ -302,7 +302,7 @@ class VieraTV implements VieraTV {
       `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`;
     const outcome = this.encryptPayload(encCommand);
     if (outcome.error) {
-      return { error: outcome.error };
+      return outcome;
     }
     return {
       value: [
@@ -363,7 +363,7 @@ class VieraTV implements VieraTV {
         realParameters
       );
       if (outcome.error) {
-        return { error: outcome.error };
+        return outcome;
       }
       [action, parameters] = outcome.value as string[];
     } else {
@@ -371,11 +371,7 @@ class VieraTV implements VieraTV {
     }
 
     const postRequest = this.renderRequest(action, urn, parameters);
-    // let payload: Outcome;
-    const payload = await curl(
-      `${this.baseURL}${urL}`,
-      postRequest as AxiosRequestConfig
-    )
+    const payload = await curl(`${this.baseURL}${urL}`, postRequest)
       .then(r => {
         let output: Outcome;
         if (
@@ -387,7 +383,6 @@ class VieraTV implements VieraTV {
             return extracted;
           }
           output = {
-            // TODO: add error handling to getKey
             value: this.decryptPayload(extracted.value as string)
           };
         } else {
@@ -491,7 +486,7 @@ class VieraTV implements VieraTV {
     const data = `<X_PinCode>${pin}</X_PinCode>`;
     const outcome = this.encryptPayload(data, key, iv, hmacKey);
     if (outcome.error) {
-      return { error: outcome.error };
+      return outcome;
     }
     const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`;
 
