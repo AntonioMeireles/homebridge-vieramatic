@@ -69,7 +69,11 @@ const getKey = (key: string, xml: string): Outcome => {
   };
   let result: string;
   try {
-    result = fn(parser.parse(xml, undefined, true), key);
+    // FIXME: we should do some fine grained error handling here.
+    //        sadly the obvious one can't be done as we 'd get ...
+    //          Error: Multiple possible root nodes found.
+    //        which of all things breaks pairing (#34)
+    result = fn(parser.parse(xml), key);
   } catch (error: unknown) {
     return { error };
   }
