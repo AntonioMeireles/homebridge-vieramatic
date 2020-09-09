@@ -13,7 +13,8 @@
     "unicorn",
     "import",
     "json",
-    "promise"
+    "promise",
+    "simple-import-sort"
   ],
   "extends": [
     "airbnb-typescript",
@@ -66,7 +67,7 @@
         "allowImplicit": true
       }
     ],
-
+    "simple-import-sort/sort": "error",
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",

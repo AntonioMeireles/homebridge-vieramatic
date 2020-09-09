@@ -1,20 +1,20 @@
 import {
   API,
+  Characteristic,
   DynamicPlatformPlugin,
   Logger,
   PlatformAccessory,
   PlatformConfig,
-  Service,
-  Characteristic
+  Service
   // eslint-disable-next-line import/no-extraneous-dependencies
 } from 'homebridge';
 import { Address4 } from 'ip-address';
+
+// eslint-disable-next-line import/no-cycle
+import { sleep, VieramaticPlatformAccessory } from './accessory';
+import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import Storage from './storage';
 import VieraTV from './viera';
-
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-// eslint-disable-next-line import/no-cycle
-import { VieramaticPlatformAccessory, sleep } from './accessory';
 
 class VieramaticPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;

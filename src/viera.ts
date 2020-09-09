@@ -1,13 +1,13 @@
 /* eslint-disable no-multi-assign */
 
-import { Address4 } from 'ip-address';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import parser from 'fast-xml-parser';
-import net from 'net';
 import crypto from 'crypto';
-import * as readlineSync from 'readline-sync';
 import { decodeXML } from 'entities';
+import parser from 'fast-xml-parser';
 import http from 'http';
+import { Address4 } from 'ip-address';
+import net from 'net';
+import * as readlineSync from 'readline-sync';
 import url from 'url';
 
 // helpers and default settings

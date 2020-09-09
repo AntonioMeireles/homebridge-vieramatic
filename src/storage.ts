@@ -1,8 +1,7 @@
+import * as fs from 'fs-extra';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { API } from 'homebridge';
-
 import path from 'path';
-import * as fs from 'fs-extra';
 
 class Storage {
   public accessories;

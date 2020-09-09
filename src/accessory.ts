@@ -1,16 +1,15 @@
 import {
-  Service,
-  PlatformAccessory,
-  CharacteristicValue,
+  CharacteristicGetCallback,
   // CharacteristicChange,
   CharacteristicSetCallback,
-  CharacteristicGetCallback
+  CharacteristicValue,
+  PlatformAccessory,
+  Service
   // eslint-disable-next-line import/no-extraneous-dependencies
 } from 'homebridge';
 
 // eslint-disable-next-line import/no-cycle
 import VieramaticPlatform from './platform';
-
 import { Outcome } from './viera';
 
 // helpers ...
