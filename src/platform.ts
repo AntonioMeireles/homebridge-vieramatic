@@ -47,7 +47,6 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   }
 
   async discoverDevices(): Promise<void> {
-    /* eslint-disable no-continue, no-await-in-loop */
     this.accessories.map(cachedAccessory => {
       return this.api.unregisterPlatformAccessories(
         PLUGIN_NAME,

@@ -23,7 +23,6 @@ export function sleep(ms: number): Promise<unknown> {
 }
 type InputType = 'HDMI' | 'APPLICATION' | 'TUNER';
 
-// eslint-disable-next-line import/prefer-default-export
 export class VieramaticPlatformAccessory {
   private service: Service;
 
@@ -321,7 +320,7 @@ export class VieramaticPlatformAccessory {
       let idx: number;
       let hidden: string;
       const { inputs } = this.storage.data;
-      // eslint-disable-next-line default-case
+
       switch (type) {
         case 'HDMI':
           // eslint-disable-next-line unicorn/no-fn-reference-in-iterator
@@ -333,9 +332,10 @@ export class VieramaticPlatformAccessory {
           hidden = inputs.applications[idx].hidden;
           break;
         case 'TUNER':
+        default:
           hidden = inputs.TUNER.hidden;
       }
-      return hidden!;
+      return hidden;
     };
 
     const source = this.accessory.addService(

@@ -7,16 +7,30 @@
     }
   },
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "prettier", "unicorn", "import", "json"],
+  "plugins": [
+    "@typescript-eslint",
+    "prettier",
+    "unicorn",
+    "import",
+    "json",
+    "promise"
+  ],
   "extends": [
-    "airbnb-typescript/base",
+    "airbnb-typescript",
+    "airbnb/hooks",
     "plugin:@typescript-eslint/recommended",
+    // "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:eslint-comments/recommended",
+    "plugin:promise/recommended",
     "plugin:unicorn/recommended",
     "plugin:prettier/recommended",
+    "plugin:json/recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript",
     "prettier",
     "prettier/@typescript-eslint",
-    "airbnb-typescript-prettier",
-    "plugin:json/recommended"
+    "airbnb-typescript-prettier"
   ],
   "parserOptions": {
     "ecmaVersion": 2018,
@@ -46,6 +60,12 @@
       "always",
       { "exceptAfterSingleLine": true }
     ],
+    "array-callback-return": [
+      "error",
+      {
+        "allowImplicit": true
+      }
+    ],
 
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/no-non-null-assertion": "off",
@@ -53,6 +73,9 @@
     "@typescript-eslint/no-use-before-define": ["error"],
 
     // prettier ...
-    "prettier/prettier": 2 // Means error
+    "prettier/prettier": 2, // Means error
+
+    "eslint-comments/no-unused-disable": "error",
+    "eslint-comments/disable-enable-pair": "off"
   }
 }

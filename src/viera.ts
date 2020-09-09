@@ -1,5 +1,3 @@
-/* eslint-disable unicorn/number-literal-case */
-/* eslint-disable no-bitwise */
 /* eslint-disable no-multi-assign */
 
 import { Address4 } from 'ip-address';
@@ -29,11 +27,9 @@ interface VieraSpecs {
 type RequestType = 'command' | 'render';
 // eslint-disable-next-line no-shadow
 enum AlwaysInPlainText {
-  // eslint-disable-next-line camelcase
+  /* eslint-disable camelcase */
   X_GetEncryptSessionId = 'X_GetEncryptSessionId',
-  // eslint-disable-next-line camelcase
   X_DisplayPinCode = 'X_DisplayPinCode',
-  // eslint-disable-next-line camelcase
   X_RequestAuth = 'X_RequestAuth'
 }
 interface VieraAuthSession {
@@ -55,7 +51,7 @@ export interface Outcome {
   value?: unknown;
 }
 
-const getKey = (key: string, xml: string): string => {
+const getKey = (key: string, xml: string): Outcome => {
   /* eslint-disable no-restricted-syntax, no-continue, no-prototype-builtins */
   const fn = (object, k: string): string => {
     let objects: string[] = [];
@@ -71,7 +67,13 @@ const getKey = (key: string, xml: string): string => {
     }
     return objects[0];
   };
-  return fn(parser.parse(xml), key);
+  let result: string;
+  try {
+    result = fn(parser.parse(xml, undefined, true), key);
+  } catch (error: unknown) {
+    return { error };
+  }
+  return { value: result };
 };
 
 class VieraTV implements VieraTV {
@@ -98,7 +100,6 @@ class VieraTV implements VieraTV {
     this.specs = {} as VieraSpecs;
   }
 
-  // eslint-disable-next-line class-methods-use-this
   public static async livenessProbe(
     tv: Address4,
     port = 55000,
@@ -168,9 +169,12 @@ class VieraTV implements VieraTV {
 
     const callback = (data: string): Outcome => {
       this.session.seqNum = 1;
-      const number = Number(getKey('X_SessionId', data));
-      if (Number.isInteger(number)) {
-        this.session.id = number;
+      const number = getKey('X_SessionId', data);
+      if (number.error) {
+        return number;
+      }
+      if (Number.isInteger(number.value)) {
+        this.session.id = number.value as number;
         return {};
       }
       const error = new Error(
@@ -378,9 +382,13 @@ class VieraTV implements VieraTV {
           action === 'X_GetEncryptSessionId' ||
           action === 'X_EncryptedCommand'
         ) {
+          const extracted = getKey('X_EncResult', r.data);
+          if (extracted.error) {
+            return extracted;
+          }
           output = {
             // TODO: add error handling to getKey
-            value: this.decryptPayload(getKey('X_EncResult', r.data))
+            value: this.decryptPayload(extracted.value as string)
           };
         } else {
           output = { value: r.data };
@@ -405,7 +413,6 @@ class VieraTV implements VieraTV {
 
   private async requestPinCode(): Promise<Outcome> {
     const parameters = '<X_DeviceName>MyRemote</X_DeviceName>';
-    // eslint-disable-next-line unicorn/consistent-function-scoping
     const callback = (data: string): Outcome => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data);
       if (match === null) {
@@ -427,6 +434,7 @@ class VieraTV implements VieraTV {
   }
 
   private async authorizePinCode(pin: string): Promise<Outcome> {
+    /* eslint-disable no-bitwise, unicorn/number-literal-case */
     const [iv, key, hmacKey] = [
       this.session.challenge,
       Buffer.alloc(16),
@@ -489,9 +497,28 @@ class VieraTV implements VieraTV {
 
     const callback = (r: string): Outcome => {
       const raw = getKey('X_AuthResult', r);
-      const authResultDecrypted = this.decryptPayload(raw, key, iv);
-      this.auth.appId = getKey('X_ApplicationId', authResultDecrypted);
-      this.auth.key = getKey('X_Keyword', authResultDecrypted);
+      if (raw.error) {
+        return raw;
+      }
+
+      const authResultDecrypted = this.decryptPayload(
+        raw.value as string,
+        key,
+        iv
+      );
+
+      const appId = getKey('X_ApplicationId', authResultDecrypted);
+      if (appId.error) {
+        return appId;
+      }
+      const keyy = getKey('X_Keyword', authResultDecrypted);
+      if (keyy.error) {
+        return keyy;
+      }
+
+      this.auth.key = keyy.value as string;
+      this.auth.appId = appId.value as string;
+
       // TODO: Proper error handling
       return {};
     };
@@ -773,7 +800,6 @@ class VieraTV implements VieraTV {
 
   // Get volume from TV
   public async getVolume(): Promise<Outcome> {
-    // eslint-disable-next-line unicorn/consistent-function-scoping
     const callback = (data: string): Outcome => {
       const match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data);
       if (match) {
@@ -794,7 +820,6 @@ class VieraTV implements VieraTV {
 
   // Get the current mute setting
   public async getMute(): Promise<Outcome> {
-    // eslint-disable-next-line unicorn/consistent-function-scoping
     const callback = (data: string): Outcome => {
       const regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu;
       const match = regex.exec(data);
@@ -818,15 +843,20 @@ class VieraTV implements VieraTV {
 
   // Returns the list of apps on the TV
   public async getApps(): Promise<Outcome> {
-    // eslint-disable-next-line unicorn/consistent-function-scoping
     const callback = (data: string): Outcome => {
       // FIXME: getting junk at the end of the actual payload that sometimes breaks the XML parsing in getKey and crashes things
       // trick bellow - wipes it. dunno yet if this only happens on this api call or if this is a more general issue
-      const eol = '</X_OriginalResult>';
-      const clean = data.slice(0, Math.max(0, data.indexOf(eol) + eol.length));
+      const clean = data.replace(
+        /<\/X_OriginalResult>.*$/gu,
+        '</X_OriginalResult>'
+      );
 
       const raw = getKey('X_AppList', clean);
-      const decoded = decodeXML(raw);
+      if (raw.error) {
+        this.log.error('X_AppList returned originally', data);
+        return raw;
+      }
+      const decoded = decodeXML(raw.value as string);
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu;
       let i;
       let apps: { name: string; id: string }[] = [];
