@@ -753,7 +753,7 @@ class VieraTV implements VieraTV {
       const request = await tv.requestPinCode();
       if (request.error) {
         console.error(
-          '\nAn unexpected error ocurred while attempting to request a pin code from the TV.',
+          '\nAn unexpected error occurred while attempting to request a pin code from the TV.',
           '\nPlease make sure that the TV is powered ON (and NOT in standby).'
         );
         process.exitCode = 1;
