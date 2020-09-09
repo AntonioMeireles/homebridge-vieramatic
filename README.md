@@ -127,15 +127,17 @@
 
 7. [re]start homebridge
 
-## upgrading from pre `2.0.0` releases of this plugin
-
-The upgrade should be transparent, and painless.
-
-The only expected side effect is that you'll need to set again the visibility of your inputs and apps as they 'll get back
-to the defaults. If you experience other kinds if issues **then** it is a bug so, please
-[report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it with as much context as possible.
-
 ## tips and tricks
+
+### supported TV sets
+
+This plugin should support **ALL** the TV models supported by Panasonic's own "**Panasonic TV Remote TV 3**"
+mobile app ([**IOS** install link](https://apps.apple.com/us/app/panasonic-tv-remote-3/id1435893441) and
+[**Android** install link](https://play.google.com/store/apps/details?id=com.panasonic.ais_pfdc_tvremote3_gbl&hl=en)).
+
+So, if experiencing setup problems, do make sure, in advance, that the TV is discoverable/manageable by the mobile
+app while connected to the exact same network as your homebridge setup, because if it isn't there's not much that the
+plugin could do.
 
 ### input switching - how to get Siri to do it
 
@@ -150,6 +152,14 @@ or to create scenes straight in the home app that achieve the same and then invo
 If your **homebridge** setup is a _containerized_ one please do note that in order for this plugin to fully
 work you need to also expose to the outside port `8973`, otherwise you won't be able to access to endpoint that
 generates your encryption credentials.
+
+### upgrading from pre `2.0.0` releases of this plugin
+
+The upgrade should be transparent, and painless.
+
+The only expected side effect is that you'll need to set again the visibility of your inputs and apps as they 'll get back
+to the defaults. If you experience other kinds if issues **then** it is a bug so, please
+[report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it with as much context as possible.
 
 ## contributing
 
