@@ -58,6 +58,7 @@
     "eslint-plugin-prettier": "^3.1.4",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-unicorn": "^21.0.0",
+    "eslint-plugin-simple-import-sort": "^5.0.3",
     "homebridge": "^1.1.6",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.1",
@@ -68,7 +69,6 @@
   "dependencies": {
     "axios": "^0.20.0",
     "entities": "^2.0.3",
-    "eslint-plugin-simple-import-sort": "^5.0.3",
     "fast-xml-parser": "^3.17.4",
     "fs-extra": "^9.0.1",
     "ip-address": "^6.3.0",
