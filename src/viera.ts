@@ -150,7 +150,7 @@ class VieraTV implements VieraTV {
   async needsCrypto(): Promise<boolean> {
     return curl
       .get(`${this.baseURL}/nrc/sdd_0.xml`)
-      .then(reply => {
+      .then((reply) => {
         if (reply.data.match(/X_GetEncryptSessionId/u)) {
           return true;
         }
@@ -376,7 +376,7 @@ class VieraTV implements VieraTV {
 
     const postRequest = this.renderRequest(action, urn, parameters);
     const payload = await curl(`${this.baseURL}${urL}`, postRequest)
-      .then(r => {
+      .then((r) => {
         let output: Outcome;
         if (
           action === 'X_GetEncryptSessionId' ||

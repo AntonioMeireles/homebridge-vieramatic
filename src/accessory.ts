@@ -18,7 +18,7 @@ const displayName = (string: string): string => {
 };
 
 export function sleep(ms: number): Promise<unknown> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 type InputType = 'HDMI' | 'APPLICATION' | 'TUNER';
 
@@ -201,7 +201,7 @@ export class VieramaticPlatformAccessory {
       // add default TUNER (live TV)... visible by default
       this.storage.data.inputs.TUNER = { hidden: 0 };
       // by default all hdmiInputs will be visible
-      this.storage.data.inputs.hdmi.forEach(element => {
+      this.storage.data.inputs.hdmi.forEach((element) => {
         // eslint-disable-next-line no-param-reassign
         element.hidden = 0;
       });
@@ -214,7 +214,7 @@ export class VieramaticPlatformAccessory {
     } else {
       this.platform.log.debug(`Restoring ${device.specs.friendlyName}.`);
       // check for new user added inputs
-      userConfig.hdmiInputs.forEach(input => {
+      userConfig.hdmiInputs.forEach((input) => {
         const fn = function isThere(element): boolean {
           return element.id === input.id && element.name === input.name;
         };
@@ -232,7 +232,7 @@ export class VieramaticPlatformAccessory {
       // check for user removed inputs
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const shallow: any[] = [];
-      this.storage.data.inputs.hdmi.forEach(input => {
+      this.storage.data.inputs.hdmi.forEach((input) => {
         const fn = function isThere(element): boolean {
           return element.id === input.id;
         };
@@ -254,7 +254,7 @@ export class VieramaticPlatformAccessory {
     // TV Tuner
     this.configureInputSource('TUNER', 'TV Tuner', 500);
     // HDMI inputs ...
-    this.storage.data.inputs.hdmi.forEach(input => {
+    this.storage.data.inputs.hdmi.forEach((input) => {
       this.configureInputSource(
         'HDMI',
         input.name,

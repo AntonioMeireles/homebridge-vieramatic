@@ -47,7 +47,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   }
 
   async discoverDevices(): Promise<void> {
-    this.accessories.map(cachedAccessory => {
+    this.accessories.map((cachedAccessory) => {
       return this.api.unregisterPlatformAccessories(
         PLUGIN_NAME,
         PLATFORM_NAME,
@@ -59,7 +59,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     VieraTV.webSetup();
     const devices = this.config.tvs;
 
-    devices.forEach(async device => {
+    devices.forEach(async (device) => {
       await this.deviceSetup(device);
     });
   }
