@@ -139,7 +139,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       this.log.error('unable to fetch Apps list from the TV', cmd);
       return;
     }
-    const apps = cmd.value;
+    const apps = cmd.value || [];
 
     // eslint-disable-next-line no-new
     new VieramaticPlatformAccessory(this, accessory, device, apps);

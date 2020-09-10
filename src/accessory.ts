@@ -10,7 +10,7 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import VieramaticPlatform from './platform';
-import { Outcome } from './viera';
+import { Outcome, VieraApp } from './viera';
 
 // helpers ...
 const displayName = (string: string): string => {
@@ -31,7 +31,7 @@ export class VieramaticPlatformAccessory {
     private readonly platform: VieramaticPlatform,
     private readonly accessory: PlatformAccessory,
     private readonly userConfig,
-    private readonly tvApps
+    private readonly tvApps: VieraApp[]
   ) {
     const handler = {
       get(target, key): unknown {
@@ -279,7 +279,7 @@ export class VieramaticPlatformAccessory {
     value: CharacteristicValue,
     callback: CharacteristicSetCallback
   ): Promise<void> {
-    const fn = async (): Promise<Outcome> => {
+    const fn = async (): Promise<Outcome<void>> => {
       let app;
       let real: number;
 

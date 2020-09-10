@@ -24,6 +24,11 @@ interface VieraSpecs {
   requiresEncryption: boolean;
 }
 
+export interface VieraApp {
+  name: string;
+  id: string;
+}
+
 type RequestType = 'command' | 'render';
 // eslint-disable-next-line no-shadow
 enum AlwaysInPlainText {
@@ -46,12 +51,12 @@ interface VieraAuth {
   key: string;
 }
 
-export interface Outcome {
+export interface Outcome<T> {
   error?: unknown;
-  value?: unknown;
+  value?: T;
 }
 
-const getKey = (key: string, xml: string): Outcome => {
+const getKey = (key: string, xml: string): Outcome<string> => {
   /* eslint-disable no-restricted-syntax, no-continue, no-prototype-builtins */
   const fn = (object, k: string): string => {
     let objects: string[] = [];
@@ -161,24 +166,24 @@ class VieraTV implements VieraTV {
       });
   }
 
-  async requestSessionId(): Promise<Outcome> {
+  async requestSessionId<T>(): Promise<Outcome<T>> {
     const appId = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId>`;
 
     const outcome = this.encryptPayload(appId);
     if (outcome.error) {
-      return outcome;
+      return { error: outcome.error };
     }
     const encinfo = outcome.value;
     const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`;
 
-    const callback = (data: string): Outcome => {
+    const callback = (data: string): Outcome<T> => {
       this.session.seqNum = 1;
       const number = getKey('X_SessionId', data);
       if (number.error) {
-        return number;
+        return { error: number.error };
       }
       if (Number.isInteger(number.value)) {
-        this.session.id = number.value as number;
+        this.session.id = Number.parseInt(number.value as string, 10);
         return {};
       }
       const error = new Error(
@@ -187,7 +192,7 @@ class VieraTV implements VieraTV {
       return { error };
     };
 
-    return this.sendRequest(
+    return this.sendRequest<T>(
       'command',
       'X_GetEncryptSessionId',
       parameters,
@@ -232,7 +237,7 @@ class VieraTV implements VieraTV {
     key = this.session.key,
     iv = this.session.iv,
     hmacKey = this.session.hmacKey
-  ): Outcome {
+  ): Outcome<string> {
     const pad = (unpadded: Buffer): Buffer => {
       const blockSize = 16;
       const extra = Buffer.alloc(blockSize - (unpadded.length % blockSize));
@@ -296,7 +301,7 @@ class VieraTV implements VieraTV {
     action: string,
     urn: string,
     parameters: string
-  ): Outcome {
+  ): Outcome<string[]> {
     this.session.seqNum += 1;
     const encCommand =
       `<X_SessionId>${this.session.id}</X_SessionId>` +
@@ -306,7 +311,7 @@ class VieraTV implements VieraTV {
       `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`;
     const outcome = this.encryptPayload(encCommand);
     if (outcome.error) {
-      return outcome;
+      return { error: outcome.error };
     }
     return {
       value: [
@@ -340,12 +345,12 @@ class VieraTV implements VieraTV {
     return { method, headers, data, responseType } as AxiosRequestConfig;
   }
 
-  public async sendRequest(
+  public async sendRequest<T>(
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
     callback?
-  ): Promise<Outcome> {
+  ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = [];
 
     if (requestType === 'command') {
@@ -367,7 +372,7 @@ class VieraTV implements VieraTV {
         realParameters
       );
       if (outcome.error) {
-        return outcome;
+        return { error: outcome.error };
       }
       [action, parameters] = outcome.value as string[];
     } else {
@@ -377,7 +382,7 @@ class VieraTV implements VieraTV {
     const postRequest = this.renderRequest(action, urn, parameters);
     const payload = await curl(`${this.baseURL}${urL}`, postRequest)
       .then((r) => {
-        let output: Outcome;
+        let output: Outcome<T>;
         if (
           action === 'X_GetEncryptSessionId' ||
           action === 'X_EncryptedCommand'
@@ -386,8 +391,9 @@ class VieraTV implements VieraTV {
           if (extracted.error) {
             return extracted;
           }
+          const clean = this.decryptPayload(extracted.value as string);
           output = {
-            value: this.decryptPayload(extracted.value as string)
+            value: <T>(clean as unknown)
           };
         } else {
           output = { value: r.data };
@@ -402,17 +408,17 @@ class VieraTV implements VieraTV {
       });
 
     if (payload.error) {
-      return payload;
+      return { error: payload.error };
     }
     if (callback) {
-      return callback(payload.value) as Outcome;
+      return callback(payload.value) as Outcome<T>;
     }
-    return payload;
+    return <T>payload;
   }
 
-  private async requestPinCode(): Promise<Outcome> {
+  private async requestPinCode<T>(): Promise<Outcome<T>> {
     const parameters = '<X_DeviceName>MyRemote</X_DeviceName>';
-    const callback = (data: string): Outcome => {
+    const callback = (data: string): Outcome<T> => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data);
       if (match === null) {
         return {
@@ -424,7 +430,7 @@ class VieraTV implements VieraTV {
       this.session.challenge = Buffer.from(match[1], 'base64');
       return {};
     };
-    return this.sendRequest(
+    return this.sendRequest<T>(
       'command',
       'X_DisplayPinCode',
       parameters,
@@ -432,7 +438,7 @@ class VieraTV implements VieraTV {
     );
   }
 
-  private async authorizePinCode(pin: string): Promise<Outcome> {
+  private async authorizePinCode<T>(pin: string): Promise<Outcome<T>> {
     /* eslint-disable no-bitwise, unicorn/number-literal-case */
     const [iv, key, hmacKey] = [
       this.session.challenge,
@@ -490,14 +496,14 @@ class VieraTV implements VieraTV {
     const data = `<X_PinCode>${pin}</X_PinCode>`;
     const outcome = this.encryptPayload(data, key, iv, hmacKey);
     if (outcome.error) {
-      return outcome;
+      return { error: outcome.error };
     }
     const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`;
 
-    const callback = (r: string): Outcome => {
+    const callback = (r: string): Outcome<T> => {
       const raw = getKey('X_AuthResult', r);
       if (raw.error) {
-        return raw;
+        return { error: raw.error };
       }
 
       const authResultDecrypted = this.decryptPayload(
@@ -508,20 +514,24 @@ class VieraTV implements VieraTV {
 
       const appId = getKey('X_ApplicationId', authResultDecrypted);
       if (appId.error) {
-        return appId;
+        return { error: appId.error };
       }
       const keyy = getKey('X_Keyword', authResultDecrypted);
       if (keyy.error) {
-        return keyy;
+        return { error: keyy.error };
       }
 
-      this.auth.key = keyy.value as string;
-      this.auth.appId = appId.value as string;
+      [this.auth.key, this.auth.appId] = [keyy.value, appId.value] as string[];
 
       // TODO: Proper error handling
       return {};
     };
-    return this.sendRequest('command', 'X_RequestAuth', parameters, callback);
+    return this.sendRequest<T>(
+      'command',
+      'X_RequestAuth',
+      parameters,
+      callback
+    );
   }
 
   private renderSampleConfig(): void {
@@ -775,31 +785,31 @@ class VieraTV implements VieraTV {
   }
 
   // Sends a command to the TV
-  public async sendCommand(cmd: string): Promise<Outcome> {
+  public async sendCommand<T>(cmd: string): Promise<Outcome<T>> {
     const parameters = `<X_KeyEvent>NRC_${cmd.toUpperCase()}-ONOFF</X_KeyEvent>`;
 
-    return this.sendRequest('command', 'X_SendKey', parameters);
+    return this.sendRequest<T>('command', 'X_SendKey', parameters);
   }
 
   // Send a change HDMI input to the TV
-  public async sendHDMICommand(hdmiInput: string): Promise<Outcome> {
+  public async sendHDMICommand<T>(hdmiInput: string): Promise<Outcome<T>> {
     const parameters = `<X_KeyEvent>NRC_HDMI${hdmiInput}-ONOFF</X_KeyEvent>`;
 
-    return this.sendRequest('command', 'X_SendKey', parameters);
+    return this.sendRequest<T>('command', 'X_SendKey', parameters);
   }
 
   // Send command to open app on the TV
-  public async sendAppCommand(appId: string): Promise<Outcome> {
+  public async sendAppCommand<T>(appId: string): Promise<Outcome<T>> {
     const cmd =
       `${appId}`.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`;
     const parameters = `<X_AppType>vc_app</X_AppType><X_LaunchKeyword>${cmd}</X_LaunchKeyword>`;
 
-    return this.sendRequest('command', 'X_LaunchApp', parameters);
+    return this.sendRequest<T>('command', 'X_LaunchApp', parameters);
   }
 
   // Get volume from TV
-  public async getVolume(): Promise<Outcome> {
-    const callback = (data: string): Outcome => {
+  public async getVolume(): Promise<Outcome<string>> {
+    const callback = (data: string): Outcome<string> => {
       const match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data);
       if (match) {
         return { value: match[1] };
@@ -808,18 +818,23 @@ class VieraTV implements VieraTV {
     };
     const parameters = defaultAudioChannel;
 
-    return this.sendRequest('render', 'GetVolume', parameters, callback);
+    return this.sendRequest<string>(
+      'render',
+      'GetVolume',
+      parameters,
+      callback
+    );
   }
 
   // Set Volume
-  public async setVolume(volume: string): Promise<Outcome> {
+  public async setVolume<T>(volume: string): Promise<Outcome<T>> {
     const parameters = `${defaultAudioChannel}<DesiredVolume>${volume}</DesiredVolume>`;
-    return this.sendRequest('render', 'SetVolume', parameters);
+    return this.sendRequest<T>('render', 'SetVolume', parameters);
   }
 
   // Get the current mute setting
-  public async getMute(): Promise<Outcome> {
-    const callback = (data: string): Outcome => {
+  public async getMute(): Promise<Outcome<boolean>> {
+    const callback = (data: string): Outcome<boolean> => {
       const regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu;
       const match = regex.exec(data);
       if (match) {
@@ -829,29 +844,35 @@ class VieraTV implements VieraTV {
       return { value: true };
     };
 
-    return this.sendRequest('render', 'GetMute', defaultAudioChannel, callback);
+    return this.sendRequest<boolean>(
+      'render',
+      'GetMute',
+      defaultAudioChannel,
+      callback
+    );
   }
 
   // Set mute to on/off
-  public async setMute(enable: boolean): Promise<Outcome> {
+  public async setMute<T>(enable: boolean): Promise<Outcome<T>> {
     const mute = enable ? '1' : '0';
     const parameters = `${defaultAudioChannel}<DesiredMute>${mute}</DesiredMute>`;
 
-    return this.sendRequest('render', 'SetMute', parameters);
+    return this.sendRequest<T>('render', 'SetMute', parameters);
   }
 
   // Returns the list of apps on the TV
-  public async getApps(): Promise<Outcome> {
-    const callback = (data: string): Outcome => {
+  public async getApps(): Promise<Outcome<VieraApp[]>> {
+    const callback = (data: string): Outcome<VieraApp[]> => {
       // FIXME: getting junk at the end of the actual payload that sometimes
       //   breaks the XML parsing in getKey and induces crashes.
       //   trick bellow workarounds this. dunno yet if this only happens on
       //   this api call or if this is a more general issue
       const clean = data.replace(/[^>]+$/, '');
+
       const raw = getKey('X_AppList', clean);
       if (raw.error) {
         this.log.error('X_AppList returned originally', data);
-        return raw;
+        return { error: raw.error };
       }
       const decoded = decodeXML(raw.value as string);
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu;
@@ -866,7 +887,12 @@ class VieraTV implements VieraTV {
       }
       return { value: apps };
     };
-    return this.sendRequest('command', 'X_GetAppList', undefined, callback);
+    return this.sendRequest<VieraApp[]>(
+      'command',
+      'X_GetAppList',
+      undefined,
+      callback
+    );
   }
 }
 
