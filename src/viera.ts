@@ -843,13 +843,11 @@ class VieraTV implements VieraTV {
   // Returns the list of apps on the TV
   public async getApps(): Promise<Outcome> {
     const callback = (data: string): Outcome => {
-      // FIXME: getting junk at the end of the actual payload that sometimes breaks the XML parsing in getKey and crashes things
-      // trick bellow - wipes it. dunno yet if this only happens on this api call or if this is a more general issue
-      const clean = data.replace(
-        /<\/X_OriginalResult>.*$/gu,
-        '</X_OriginalResult>'
-      );
-
+      // FIXME: getting junk at the end of the actual payload that sometimes
+      //   breaks the XML parsing in getKey and induces crashes.
+      //   trick bellow workarounds this. dunno yet if this only happens on
+      //   this api call or if this is a more general issue
+      const clean = data.replace(/[^>]+$/, '');
       const raw = getKey('X_AppList', clean);
       if (raw.error) {
         this.log.error('X_AppList returned originally', data);
