@@ -3,13 +3,8 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
-  "editor.rulers": [ 140 ],
+  "editor.rulers": [80, 100],
   "eslint.enable": true,
-  "spellright.language": [
-    "en"
-  ],
-  "spellright.documentTypes": [
-    "plaintext",
-    "markdown"
-  ]
+  "spellright.language": ["en"],
+  "spellright.documentTypes": ["plaintext", "markdown"]
 }

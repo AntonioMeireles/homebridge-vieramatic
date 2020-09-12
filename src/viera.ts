@@ -11,9 +11,9 @@ import * as readlineSync from 'readline-sync';
 import url from 'url';
 
 // helpers and default settings
+const API_ENDPOINT = 55000;
 const curl: AxiosInstance = axios.create({ timeout: 2000 });
-const defaultAudioChannel =
-  '<InstanceID>0</InstanceID><Channel>Master</Channel>';
+const AudioChannel = '<InstanceID>0</InstanceID><Channel>Master</Channel>';
 
 interface VieraSpecs {
   friendlyName: string;
@@ -24,13 +24,14 @@ interface VieraSpecs {
   requiresEncryption: boolean;
 }
 
-export interface VieraApp {
+interface VieraApp {
   name: string;
   id: string;
 }
+export type VieraApps = VieraApp[];
 
 type RequestType = 'command' | 'render';
-// eslint-disable-next-line no-shadow
+/* eslint-disable-next-line no-shadow */
 enum AlwaysInPlainText {
   /* eslint-disable camelcase */
   X_GetEncryptSessionId = 'X_GetEncryptSessionId',
@@ -74,10 +75,12 @@ const getKey = (key: string, xml: string): Outcome<string> => {
   };
   let result: string;
   try {
-    // FIXME: we should do some fine grained error handling here.
-    //        sadly the obvious one can't be done as we 'd get ...
-    //          Error: Multiple possible root nodes found.
-    //        which of all things breaks pairing (#34)
+    /*
+     * FIXME: we should do some fine grained error handling here, sadly the
+     *        obvious one can't be done as we 'd get ...
+     *          Error: Multiple possible root nodes found.
+     *        which of all things breaks pairing (#34)
+     */
     result = fn(parser.parse(xml), key);
   } catch (error: unknown) {
     return { error };
@@ -85,10 +88,10 @@ const getKey = (key: string, xml: string): Outcome<string> => {
   return { value: result };
 };
 
-class VieraTV implements VieraTV {
+export class VieraTV implements VieraTV {
   readonly address: string;
 
-  readonly port = 55000;
+  readonly port = API_ENDPOINT;
 
   readonly baseURL: string;
 
@@ -111,7 +114,7 @@ class VieraTV implements VieraTV {
 
   public static async livenessProbe(
     tv: Address4,
-    port = 55000,
+    port = API_ENDPOINT,
     timeout = 2000
   ): Promise<boolean> {
     const probe = new Promise((resolve, reject) => {
@@ -141,7 +144,10 @@ class VieraTV implements VieraTV {
   }
 
   async isTurnedOn(): Promise<boolean> {
-    // this endpoint is only available if the TV is turned ON, otherwise we'll get a 400...
+    /*
+     * since this endpoint is only available if the TV is turned ON, otherwise
+     * we'll get a 400...
+     */
     return curl
       .get(`${this.baseURL}/pac/ddd.xml`)
       .then(() => {
@@ -201,13 +207,12 @@ class VieraTV implements VieraTV {
   }
 
   deriveSessionKey(key: string): [Buffer, Buffer] {
-    /* eslint-disable prefer-const */
     let [i, j]: number[] = [];
     const iv = Buffer.from(key, 'base64');
 
     this.session.iv = iv;
 
-    let keyVals = Buffer.alloc(16);
+    const keyVals = Buffer.alloc(16);
     for (i = j = 0; j < 16; i = j += 4) {
       keyVals[i] = iv[i + 2];
       keyVals[i + 1] = iv[i + 3];
@@ -247,20 +252,20 @@ class VieraTV implements VieraTV {
     let sig: Buffer;
 
     try {
-      let data = Buffer.from(original);
-      let headerPrefix = Buffer.from(
+      const data = Buffer.from(original);
+      const headerPrefix = Buffer.from(
         [...new Array(12)].map(() => Math.round(Math.random() * 255))
       );
 
-      let headerSufix = Buffer.alloc(4);
+      const headerSufix = Buffer.alloc(4);
       headerSufix.writeIntBE(data.length, 0, 4);
-      let header = Buffer.concat([headerPrefix, headerSufix]);
-      let payload = pad(Buffer.concat([header, data]));
-      let cipher = crypto
+      const header = Buffer.concat([headerPrefix, headerSufix]);
+      const payload = pad(Buffer.concat([header, data]));
+      const cipher = crypto
         .createCipheriv('aes-128-cbc', key, iv)
         .setAutoPadding(false);
       ciphered = Buffer.concat([cipher.update(payload), cipher.final()]);
-      let hmac = crypto.createHmac('sha256', hmacKey);
+      const hmac = crypto.createHmac('sha256', hmacKey);
       sig = hmac.update(ciphered).digest();
     } catch (error: unknown) {
       return { error };
@@ -268,7 +273,9 @@ class VieraTV implements VieraTV {
     return { value: Buffer.concat([ciphered, sig]).toString('base64') };
   }
 
-  // Returns the TV specs
+  /*
+   * Returns the TV specs
+   */
   async getSpecs(): Promise<VieraSpecs> {
     return curl
       .get(`${this.baseURL}/nrc/ddd.xml`)
@@ -289,7 +296,11 @@ class VieraTV implements VieraTV {
             : '';
 
           this.log.info(
-            `found a '${specs.modelName}' TV (${specs.modelNumber}) at '${this.address}' ${extra}.\n`
+            "found a '%s' TV (%s) at '%s' %s.\n",
+            specs.modelName,
+            specs.modelNumber,
+            this.address,
+            extra
           );
           return specs;
         }
@@ -439,7 +450,7 @@ class VieraTV implements VieraTV {
   }
 
   private async authorizePinCode<T>(pin: string): Promise<Outcome<T>> {
-    /* eslint-disable no-bitwise, unicorn/number-literal-case */
+    /* eslint-disable no-bitwise */
     const [iv, key, hmacKey] = [
       this.session.challenge,
       Buffer.alloc(16),
@@ -548,8 +559,9 @@ class VieraTV implements VieraTV {
     };
 
     console.info(
-      // eslint-disable-next-line quotes
-      "\nPlease add, as a starting point, the snippet bellow inside the 'platforms' array of your homebridge's 'config.json'\n--x--"
+      '\n',
+      "Please add, as a starting point, the snippet bellow inside the'",
+      "'platforms' array of your homebridge's 'config.json'\n--x--"
     );
 
     console.group();
@@ -784,21 +796,27 @@ class VieraTV implements VieraTV {
     tv.renderSampleConfig();
   }
 
-  // Sends a command to the TV
+  /**
+   * Sends a command to the TV
+   */
   public async sendCommand<T>(cmd: string): Promise<Outcome<T>> {
     const parameters = `<X_KeyEvent>NRC_${cmd.toUpperCase()}-ONOFF</X_KeyEvent>`;
 
     return this.sendRequest<T>('command', 'X_SendKey', parameters);
   }
 
-  // Send a change HDMI input to the TV
+  /**
+   * Send a change HDMI input to the TV
+   */
   public async sendHDMICommand<T>(hdmiInput: string): Promise<Outcome<T>> {
     const parameters = `<X_KeyEvent>NRC_HDMI${hdmiInput}-ONOFF</X_KeyEvent>`;
 
     return this.sendRequest<T>('command', 'X_SendKey', parameters);
   }
 
-  // Send command to open app on the TV
+  /**
+   * Send command to open app on the TV
+   */
   public async sendAppCommand<T>(appId: string): Promise<Outcome<T>> {
     const cmd =
       `${appId}`.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`;
@@ -807,7 +825,9 @@ class VieraTV implements VieraTV {
     return this.sendRequest<T>('command', 'X_LaunchApp', parameters);
   }
 
-  // Get volume from TV
+  /**
+   * Get volume from TV
+   */
   public async getVolume(): Promise<Outcome<string>> {
     const callback = (data: string): Outcome<string> => {
       const match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data);
@@ -816,7 +836,7 @@ class VieraTV implements VieraTV {
       }
       return { value: '0' };
     };
-    const parameters = defaultAudioChannel;
+    const parameters = AudioChannel;
 
     return this.sendRequest<string>(
       'render',
@@ -826,19 +846,23 @@ class VieraTV implements VieraTV {
     );
   }
 
-  // Set Volume
+  /**
+   * Set Volume
+   */
   public async setVolume<T>(volume: string): Promise<Outcome<T>> {
-    const parameters = `${defaultAudioChannel}<DesiredVolume>${volume}</DesiredVolume>`;
+    const parameters = `${AudioChannel}<DesiredVolume>${volume}</DesiredVolume>`;
     return this.sendRequest<T>('render', 'SetVolume', parameters);
   }
 
-  // Get the current mute setting
+  /**
+   * Get the current mute setting
+   */
   public async getMute(): Promise<Outcome<boolean>> {
     const callback = (data: string): Outcome<boolean> => {
       const regex = /<CurrentMute>([0-1])<\/CurrentMute>/gmu;
       const match = regex.exec(data);
       if (match) {
-        // eslint-disable-next-line no-constant-condition
+        /* eslint-disable-next-line no-constant-condition */
         return { value: true ? match[1] === '1' : false };
       }
       return { value: true };
@@ -847,26 +871,32 @@ class VieraTV implements VieraTV {
     return this.sendRequest<boolean>(
       'render',
       'GetMute',
-      defaultAudioChannel,
+      AudioChannel,
       callback
     );
   }
 
-  // Set mute to on/off
+  /**
+   * Set mute to on/off
+   */
   public async setMute<T>(enable: boolean): Promise<Outcome<T>> {
     const mute = enable ? '1' : '0';
-    const parameters = `${defaultAudioChannel}<DesiredMute>${mute}</DesiredMute>`;
+    const parameters = `${AudioChannel}<DesiredMute>${mute}</DesiredMute>`;
 
     return this.sendRequest<T>('render', 'SetMute', parameters);
   }
 
-  // Returns the list of apps on the TV
-  public async getApps(): Promise<Outcome<VieraApp[]>> {
-    const callback = (data: string): Outcome<VieraApp[]> => {
-      // FIXME: getting junk at the end of the actual payload that sometimes
-      //   breaks the XML parsing in getKey and induces crashes.
-      //   trick bellow workarounds this. dunno yet if this only happens on
-      //   this api call or if this is a more general issue
+  /**
+   * Returns the list of apps on the TV
+   */
+  public async getApps<T>(): Promise<Outcome<T>> {
+    const callback = (data: string): Outcome<T> => {
+      /*
+       * FIXME: getting junk at the end of the actual payload that sometimes
+       *   breaks the XML parsing in getKey and induces crashes.
+       *   trick bellow workarounds this. dunno yet if this only happens on
+       *   this api call or if this is a more general issue
+       */
       const clean = data.replace(/[^>]+$/, '');
 
       const raw = getKey('X_AppList', clean);
@@ -877,23 +907,16 @@ class VieraTV implements VieraTV {
       const decoded = decodeXML(raw.value as string);
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu;
       let i;
-      let apps: { name: string; id: string }[] = [];
-      // eslint-disable-next-line no-cond-assign
+      const apps: VieraApps = [];
+      /* eslint-disable-next-line no-cond-assign */
       while ((i = re.exec(decoded))) {
         apps.push({ name: i.groups.appName, id: i.groups.id });
       }
       if (apps.length === 0) {
         return { error: new Error('The TV is in standby!') };
       }
-      return { value: apps };
+      return { value: (apps as unknown) as T };
     };
-    return this.sendRequest<VieraApp[]>(
-      'command',
-      'X_GetAppList',
-      undefined,
-      callback
-    );
+    return this.sendRequest<T>('command', 'X_GetAppList', undefined, callback);
   }
 }
-
-export default VieraTV;

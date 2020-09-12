@@ -1,9 +1,9 @@
-import VieraTV from './viera';
+import { VieraTV } from './viera';
 
 const ip = process.argv.slice(2);
 
 if (ip.length !== 1) {
-  // eslint-disable-next-line no-console
+  /* eslint-disable-next-line no-console */
   console.error(
     'Please (only) your Panasonic TV IP address as the (only) argument'
   );

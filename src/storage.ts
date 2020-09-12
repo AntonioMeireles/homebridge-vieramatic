@@ -1,9 +1,9 @@
 import * as fs from 'fs-extra';
-// eslint-disable-next-line import/no-extraneous-dependencies
+/* eslint-disable-next-line import/no-extraneous-dependencies */
 import { API } from 'homebridge';
 import path from 'path';
 
-class Storage {
+export class Storage {
   public accessories;
 
   public filePath: string;
@@ -41,5 +41,3 @@ class Storage {
     fs.writeJSONSync(this.filePath, this.accessories);
   }
 }
-
-export default Storage;

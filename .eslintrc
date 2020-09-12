@@ -41,7 +41,7 @@
   "ignorePatterns": ["dist"],
 
   "rules": {
-    "quotes": ["warn", "single"],
+    "quotes": ["warn", "single", { "avoidEscape": true }],
     "indent": ["error", 2, { "SwitchCase": 1 }],
     "linebreak-style": ["error", "unix"],
     "semi": ["error", "always"],
@@ -61,12 +61,14 @@
       "always",
       { "exceptAfterSingleLine": true }
     ],
-    "array-callback-return": [
-      "error",
-      {
-        "allowImplicit": true
-      }
-    ],
+    "array-callback-return": ["error", { "allowImplicit": true }],
+
+    "multiline-comment-style": ["error", "starred-block"],
+    "no-inline-comments": "warn",
+    "spaced-comment": ["error", "always"],
+    "eslint-comments/no-unused-disable": "error",
+    "eslint-comments/disable-enable-pair": "off",
+    "import/prefer-default-export": "off",
     "simple-import-sort/sort": "error",
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/no-non-null-assertion": "off",
@@ -76,7 +78,6 @@
     // prettier ...
     "prettier/prettier": 2, // Means error
 
-    "eslint-comments/no-unused-disable": "error",
-    "eslint-comments/disable-enable-pair": "off"
+    "unicorn/number-literal-case": "off" // conflicts with stock eslint
   }
 }

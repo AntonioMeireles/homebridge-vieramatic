@@ -6,17 +6,17 @@ import {
   PlatformAccessory,
   PlatformConfig,
   Service
-  // eslint-disable-next-line import/no-extraneous-dependencies
+  /* eslint-disable-next-line import/no-extraneous-dependencies */
 } from 'homebridge';
 import { Address4 } from 'ip-address';
 
-// eslint-disable-next-line import/no-cycle
+/* eslint-disable-next-line import/no-cycle */
 import { sleep, VieramaticPlatformAccessory } from './accessory';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import Storage from './storage';
-import VieraTV from './viera';
+import { Storage } from './storage';
+import { VieraApps, VieraTV } from './viera';
 
-class VieramaticPlatform implements DynamicPlatformPlugin {
+export class VieramaticPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;
 
   public readonly Characteristic: typeof Characteristic = this.api.hap
@@ -71,14 +71,15 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (ip.isValid() !== true) {
       this.log.error(
-        `IGNORING '${ip.address}' as it is not a valid ip address.`
+        "IGNORING '%s' as it is not a valid ip address.",
+        ip.address
       );
       this.log.error(device);
       return;
     }
 
     if ((await VieraTV.livenessProbe(ip)) === false) {
-      this.log.error(`IGNORING '${ip.address}' as it is not reachable.`);
+      this.log.error("IGNORING '%s' as it is not reachable.", ip.address);
       this.log.error(
         'Please make sure that your TV is powered ON and connected to the network.'
       );
@@ -89,7 +90,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (specs === undefined) {
       this.log.error(
-        `IGNORING '${ip.address}' as an unexpected error occurred - was unable to fetch specs from the TV.`
+        "IGNORING '%s' as an unexpected error occurred - was unable to fetch specs from the TV.",
+        ip.address
       );
       return;
     }
@@ -97,8 +99,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (tv.specs.requiresEncryption === true) {
       if (!(device.appId && device.encKey)) {
         this.log.error(
-          `IGNORING '${ip.address}' as it is from a Panasonic TV that requires encryption
-           '${tv.specs.modelName}' and no valid credentials were supplied.`
+          "IGNORING '%s' as it is from a Panasonic TV that requires encryption '%s'",
+          ip.address,
+          tv.specs.modelName,
+          'and no valid credentials were supplied.'
         );
         return;
       }
@@ -107,13 +111,15 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       const result = await tv.requestSessionId();
       if (result.error) {
         this.log.error(
-          `IGNORING '${ip.address}' ('${tv.specs.modelName}') as no working credentials were supplied.`,
+          "IGNORING '%s' ('%s') as no working credentials were supplied.",
+          ip.address,
+          tv.specs.modelName,
           result.error
         );
         return;
       }
     }
-    // eslint-disable-next-line new-cap
+    /* eslint-disable-next-line new-cap */
     const accessory = new this.api.platformAccessory(
       tv.specs.friendlyName,
       tv.specs.serialNumber
@@ -129,7 +135,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       await tv.sendCommand('POWER');
       await sleep(2000);
     }
-    const cmd = await tv.getApps();
+    const cmd = await tv.getApps<VieraApps>();
     if (status !== true) {
       await sleep(500);
       await tv.sendCommand('POWER');
@@ -141,12 +147,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     }
     const apps = cmd.value || [];
 
-    // eslint-disable-next-line no-new
+    /* eslint-disable-next-line no-new */
     new VieramaticPlatformAccessory(this, accessory, device, apps);
     this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
 
     this.log.info('successfully loaded', accessory.displayName);
   }
 }
-
-export default VieramaticPlatform;
