@@ -297,7 +297,6 @@ export class VieramaticPlatformAccessory {
           this.platform.log.debug('(setInput) switching to internal TV tunner');
           return this.accessory.context.device.sendCommand('AD_CHANGE');
       }
-      return {};
     };
 
     const cmd = await fn();
@@ -400,7 +399,7 @@ export class VieramaticPlatformAccessory {
       );
     source
       .getCharacteristic(this.platform.Characteristic.TargetVisibilityState)
-      .on('set', visibilityState.bind(this));
+      .on('set', visibilityState);
 
     this.accessory
       .getService(this.platform.Service.Television)!
