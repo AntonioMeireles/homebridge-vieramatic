@@ -231,10 +231,19 @@ export class VieraTV implements VieraTV {
       .createDecipheriv('aes-128-cbc', key, iv)
       .setAutoPadding(false);
 
-    return Buffer.concat([decipher.update(payload, 'base64'), decipher.final()])
-      .toString('binary')
-      .slice(16)
-      .split('\0')[0];
+    const decrypted = Buffer.concat([
+      decipher.update(payload, 'base64'),
+      decipher.final()
+    ]).slice(16);
+
+    const zero = decrypted.indexOf(0);
+    let clean = zero > -1 ? decrypted.slice(0, zero - 1) : decrypted;
+
+    const finalizer = '</X_OriginalResult>';
+    const junk = clean.lastIndexOf(finalizer);
+    clean = junk > -1 ? clean.slice(0, junk + finalizer.length) : clean;
+
+    return clean.toString('binary');
   }
 
   private encryptPayload(
@@ -891,15 +900,7 @@ export class VieraTV implements VieraTV {
    */
   public async getApps<T>(): Promise<Outcome<T>> {
     const callback = (data: string): Outcome<T> => {
-      /*
-       * FIXME: getting junk at the end of the actual payload that sometimes
-       *   breaks the XML parsing in getKey and induces crashes.
-       *   trick bellow workarounds this. dunno yet if this only happens on
-       *   this api call or if this is a more general issue
-       */
-      const clean = data.replace(/[^>]+$/, '');
-
-      const raw = getKey('X_AppList', clean);
+      const raw = getKey('X_AppList', data);
       if (raw.error) {
         this.log.error('X_AppList returned originally', data);
         return { error: raw.error };
