@@ -584,10 +584,7 @@ export class VieraTV implements VieraTV {
       let tv: VieraTV;
       const urlObject = url.parse(request.url!, true, false);
       let returnCode = 200;
-      let body = `
-      <html>
-        <body></body>
-      </html>`;
+      let body = 'nothing to see here - move on';
 
       if (urlObject.query.pin) {
         if (urlObject.query.tv) {
@@ -611,22 +608,16 @@ export class VieraTV implements VieraTV {
                   );
                   const result = await tv.authorizePinCode(pin as string);
                   if (result.error) {
-                    returnCode = 500;
-                    body = `
-                    <html>
-                      <body>
-                        Wrong Pin code...
-                      </body>
-                    </html>`;
+                    [returnCode, body] = [500, 'Wrong Pin code...'];
                   } else {
                     body = `
-                    <html>
-                      <body>
-                        Paired with your TV sucessfully!.<br />
-                        <b>Encryption Key</b>: ${tv!.auth.key}<br />
-                        <b>AppId</b>: ${tv!.auth.appId}<br />
-                      </body>
-                    </html>`;
+                      Paired with your TV sucessfully!.
+                      <br />
+                        <b>Encryption Key</b>: <b>${tv!.auth.key}</b>
+                      <br />
+                        <b>AppId</b>: <b>${tv!.auth.appId}</b>
+                      <br />
+                    `;
                   }
                 }
               }
@@ -639,111 +630,82 @@ export class VieraTV implements VieraTV {
 
         if (address.isValid() !== true) {
           returnCode = 500;
-          body = `
-          <html>
-            <body>
-              the supplied TV ip address ('${ip}') is NOT a valid IPv4 address...
-            </body>
-          </html>`;
+          body = `the supplied TV ip address ('${ip}') is NOT a valid IPv4 address...`;
         } else if ((await VieraTV.livenessProbe(address)) === false) {
-          body = `
-          <html>
-            <body>
-              the supplied TV ip address '${ip}' is unreachable...
-            </body>
-          </html>`;
+          body = `the supplied TV ip address '${ip}' is unreachable...`;
         } else {
           tv = new VieraTV(address);
           const specs = await tv.getSpecs();
           if (specs === undefined) {
             returnCode = 500;
             body = `
-            <html>
-              <body>
-                An unexpected error occurred - Unable to fetch specs from the
-                TV(with ip address ${ip}) .
-              </body>
-            </html>`;
+              An unexpected error occurred:
+              <br />
+              Unable to fetch specs from the TV (with ip address ${ip}).
+            `;
           } else if (specs.requiresEncryption === false) {
             returnCode = 500;
             body = `
-              <html>
-                <body>
-                  Found a <b>${specs.modelNumber}</b> on ip address ${ip}! It's just that this specific model does not
-                  require encryption!'
-                </body>
-              </html>
+              Found a <b>${specs.modelNumber}</b> on ip address ${ip}!
+              <br />
+              It's just that <b>this specific model does not require encryption</b>!
             `;
           } else if (!(await tv.isTurnedOn())) {
             returnCode = 500;
             body = `
-              <html>
-                <body>
-                  Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires
-                  encryption; Unfortunatelly the TV seems to be in standby. <b>Please
-                  turn it ON</b> and try again ...
-                </body>
-              </html>
+              Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
+              <br />
+              Unfortunatelly the TV seems to be in standby. <b>Please turn it ON</b> and try again.
             `;
           } else {
             const newRequest = await tv.requestPinCode();
             if (newRequest.error) {
               returnCode = 500;
               body = `
-                <html>
-                  <body>
-                    Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption;
-                    <br />
-                    Sadly An unexpected error ocurred while attempting to request a
-                    pin code from the TV. Please make sure that the TV is
-                    powered ON (and NOT in standby)
-                  </body>
-                </html>`;
+                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
+                <br />
+                Sadly an unexpected error ocurred while attempting to request a pin code from the TV.
+                Please make sure that the TV is powered ON (and NOT in standby).
+              `;
             } else {
+              /* eslint-disable prettier/prettier */
               body = `
-                <html>
-                  <body>
-                    ip ${ip} found - '${specs.modelNumber}' and it requires
-                    encryption;
-                    <br />
-                    <form action="/">
-                      <label for="pin">
-                        Please enter the PIN just displayed in Panasonic™ Viera™ TV:
-                      </label>
-                      <br /><input type="text" id="pin" name="pin" />
-                      <input type="hidden" value=${ip} name="tv" />
-                      <input
-                        type="hidden"
-                        value=${tv.session.challenge.toString('base64')}
-                        name="challenge"
-                      />
-                      <input type="submit" value="Submit" />
-                    </form>
-                  </body>
-                </html>
+                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
+                <br />
+                <form action="/">
+                  <label for="pin">
+                    Please enter the PIN just displayed in Panasonic™ Viera™ TV:
+                  </label>
+                  <br /><input type="text" id="pin" name="pin" />
+                  <input type="hidden" value=${ip} name="tv" />
+                  <input
+                    type="hidden"
+                    value=${tv.session.challenge.toString('base64')}
+                    name="challenge"
+                  />
+                  <input type="submit" value="Submit" />
+                </form>
               `;
             }
           }
         }
       } else {
         body = `
-          <html>
-            <body>
-              <form action="/">
-                <label for="ip">
-                  Please enter your Panasonic™ Viera™ (2018 or later model) IP address:
-                </label>
-                <br />
-                <input type="text" id="ip" name="ip" /><input type="submit" value="Submit" />
-              </form>
-            </body>
-          </html>`;
+          <form action="/">
+            <label for="ip">
+              Please enter your Panasonic™ Viera™ (2018 or later model) IP address:
+            </label>
+            <br />
+            <input type="text" id="ip" name="ip" />
+            <input type="submit" value="Submit" />
+          </form>
+        `;
       }
 
       response.writeHead(returnCode, {
         'Content-Type': 'text/html; charset=utf-8'
       });
-      response.write(body);
+      response.write(`<!DOCTYPE html><html><body>${body}</body></html>`);
       response.end();
     });
 
