@@ -113,7 +113,24 @@ export class VieramaticPlatformAccessory {
         this.Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE
       );
 
-    this.service.addCharacteristic(this.Characteristic.PowerModeSelection);
+    this.service
+      .addCharacteristic(this.Characteristic.PowerModeSelection)
+      .on(
+        'set',
+        async (
+          value: CharacteristicValue,
+          callback: CharacteristicSetCallback
+        ) => {
+          const outcome = await device.sendCommand('MENU');
+          if (outcome.error) {
+            this.log.error(
+              'unexpected error in PowerModeSelection.set',
+              outcome.error
+            );
+          }
+          callback(undefined, value);
+        }
+      );
 
     this.service
       .getCharacteristic(this.Characteristic.Active)
