@@ -1,28 +1,39 @@
 import {
   Characteristic,
   CharacteristicGetCallback,
-  // CharacteristicChange,
   CharacteristicSetCallback,
   CharacteristicValue,
   Logger,
   PlatformAccessory,
   Service
-  /* eslint-disable-next-line import/no-extraneous-dependencies */
 } from 'homebridge';
 
 /* eslint-disable-next-line import/no-cycle */
 import { VieramaticPlatform } from './platform';
-import { Outcome, VieraApps } from './viera';
+import { Outcome, VieraApps, VieraTV } from './viera';
 
 // helpers ...
 const displayName = (string: string): string => {
   return string.toLowerCase().replace(/\s+/gu, '');
 };
 
+export interface UserConfig {
+  ipAddress: string;
+  encKey?: string;
+  appId?: string;
+  customVolumeSlider?: boolean;
+  hdmiInputs: {
+    name: string;
+    id: string;
+    hidden?: 0 | 1;
+  }[];
+}
+
+type InputType = 'HDMI' | 'APPLICATION' | 'TUNER';
+
 export function sleep(ms: number): Promise<unknown> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-type InputType = 'HDMI' | 'APPLICATION' | 'TUNER';
 
 export class VieramaticPlatformAccessory {
   private service: Service;
@@ -37,15 +48,15 @@ export class VieramaticPlatformAccessory {
 
   constructor(
     private readonly platform: VieramaticPlatform,
-    private readonly accessory: PlatformAccessory,
-    private readonly userConfig,
+    private readonly accessory: PlatformAccessory<Record<string, VieraTV>>,
+    private readonly userConfig: UserConfig,
     private readonly tvApps: VieraApps
   ) {
     this.log = this.platform.log;
     this.Service = this.platform.Service;
     this.Characteristic = this.platform.Characteristic;
 
-    this.log.debug(this.userConfig);
+    this.log.debug(JSON.stringify(this.userConfig, undefined, 2));
 
     const handler = {
       get(target, key): unknown {
@@ -73,7 +84,7 @@ export class VieramaticPlatformAccessory {
 
     const { device } = this.accessory.context;
     this.storage = new Proxy(
-      this.platform.storage.get(device.specs.serialNumber!),
+      this.platform.storage.get(device.specs.serialNumber),
       handler
     );
 
@@ -259,8 +270,7 @@ export class VieramaticPlatformAccessory {
         }
       });
       // check for user removed inputs
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      const shallow: any[] = [];
+      const shallow: void[] = [];
       this.storage.data.inputs.hdmi.forEach((input) => {
         const fn = function isThere(element): boolean {
           return element.id === input.id;
@@ -316,7 +326,9 @@ export class VieramaticPlatformAccessory {
       switch (false) {
         case !(value < 100):
           this.log.debug('(setInput) switching to HDMI INPUT ', value);
-          return this.accessory.context.device.sendHDMICommand(value);
+          return this.accessory.context.device.sendHDMICommand(
+            value.toString()
+          );
         case !(value > 999):
           real = (value as number) - 1000;
           app = this.storage.data.inputs.applications[real];
@@ -351,7 +363,7 @@ export class VieramaticPlatformAccessory {
 
       switch (type) {
         case 'HDMI':
-          idx = this.storage.data.inputs.hdmi.findIndex((x) => fn(x));
+          idx = inputs.hdmi.findIndex((x) => fn(x));
           hidden = inputs.hdmi[idx].hidden;
           break;
         case 'APPLICATION':
@@ -375,16 +387,17 @@ export class VieramaticPlatformAccessory {
       callback: CharacteristicSetCallback
     ): void => {
       let idx: number;
-      const id = source.getCharacteristic(this.Characteristic.Identifier).value;
+      const id =
+        source.getCharacteristic(this.Characteristic.Identifier).value || 500;
       const { inputs } = this.storage.data;
 
       switch (false) {
-        case !(id! < 100):
+        case !(id < 100):
           // hdmi input
-          idx = this.storage.data.inputs.hdmi.findIndex((x) => fn(x));
+          idx = inputs.hdmi.findIndex((x) => fn(x));
           inputs.hdmi[idx].hidden = state;
           break;
-        case !(id! > 999):
+        case !(id > 999):
           // APP
           idx = (id as number) - 1000;
           inputs.applications[idx].hidden = state;
@@ -418,9 +431,10 @@ export class VieramaticPlatformAccessory {
       .getCharacteristic(this.Characteristic.TargetVisibilityState)
       .on('set', visibilityState);
 
-    this.accessory
-      .getService(this.Service.Television)!
-      .addLinkedService(source);
+    const svc = this.accessory.getService(this.Service.Television);
+    if (svc) {
+      svc.addLinkedService(source);
+    }
   }
 
   async setPowerStatus(
@@ -464,7 +478,7 @@ export class VieramaticPlatformAccessory {
     if (state === true) {
       const cmd = await this.accessory.context.device.getMute();
 
-      mute = !cmd.error ? cmd.value : true;
+      mute = (!cmd.error ? cmd.value : true) as boolean;
     } else {
       mute = true;
     }
@@ -477,7 +491,7 @@ export class VieramaticPlatformAccessory {
     callback: CharacteristicSetCallback
   ): Promise<void> {
     this.log.debug('(setMute) is', state);
-    const cmd = await this.accessory.context.device.setMute(state);
+    const cmd = await this.accessory.context.device.setMute(state as boolean);
     if (cmd.error) {
       this.log.error(
         '(setMute)/(%s) unable to change mute state on TV...',
@@ -495,7 +509,7 @@ export class VieramaticPlatformAccessory {
     callback: CharacteristicSetCallback
   ): Promise<void> {
     this.log.debug('(setVolume)', value);
-    const cmd = await this.accessory.context.device.setVolume(value);
+    const cmd = await this.accessory.context.device.setVolume(value.toString());
     if (cmd.error) {
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value);
       /* eslint-disable-next-line no-param-reassign */
@@ -511,7 +525,7 @@ export class VieramaticPlatformAccessory {
       this.log.error('(getVolume) unable to get volume from TV...');
       volume = 0;
     } else {
-      volume = cmd.value;
+      volume = Number(cmd.value);
     }
     callback(undefined, volume);
   }
@@ -539,24 +553,28 @@ export class VieramaticPlatformAccessory {
       this.Service.TelevisionSpeaker
     );
 
+    if (tvService === undefined || speakerService === undefined) {
+      return;
+    }
+
     if (this.userConfig.customVolumeSlider === true) {
       customSpeakerService = this.accessory.getService(this.Service.Fan);
     }
 
-    speakerService!
+    speakerService
       .getCharacteristic(this.Characteristic.Active)
       .updateValue(newState);
-    tvService!
+    tvService
       .getCharacteristic(this.Characteristic.Active)
       .updateValue(newState);
     if (newState === true) {
       const cmd = await this.accessory.context.device.getMute();
-      if (!cmd.error) {
+      if (!cmd.error && cmd.value !== undefined) {
         if (
           cmd.value !==
-          speakerService!.getCharacteristic(this.Characteristic.Mute).value
+          speakerService.getCharacteristic(this.Characteristic.Mute).value
         ) {
-          speakerService!
+          speakerService
             .getCharacteristic(this.Characteristic.Mute)
             .updateValue(cmd.value);
           if (customSpeakerService) {
@@ -567,7 +585,7 @@ export class VieramaticPlatformAccessory {
         }
       }
     } else {
-      speakerService!
+      speakerService
         .getCharacteristic(this.Characteristic.Mute)
         .updateValue(true);
 

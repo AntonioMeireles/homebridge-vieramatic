@@ -43,10 +43,10 @@
     "@types/entities": "^1.1.1",
     "@types/fs-extra": "^9.0.1",
     "@types/ip-address": "^5.8.2",
-    "@types/node": "^14.10.1",
+    "@types/node": "^14.10.3",
     "@types/readline-sync": "^1.4.3",
-    "@typescript-eslint/eslint-plugin": "^4.1.0",
-    "@typescript-eslint/parser": "^4.1.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
     "eslint": "^7.9.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-config-airbnb-typescript": "^10.0.0",
@@ -59,9 +59,9 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-simple-import-sort": "^5.0.3",
     "eslint-plugin-unicorn": "^21.0.0",
-    "homebridge": "^1.1.6",
+    "homebridge": "^1.2.2",
     "nodemon": "^2.0.4",
-    "prettier": "^2.1.1",
+    "prettier": "^2.1.2",
     "rimraf": "^3.0.2",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.2"
@@ -71,7 +71,7 @@
     "entities": "^2.0.3",
     "fast-xml-parser": "^3.17.4",
     "fs-extra": "^9.0.1",
-    "ip-address": "^6.3.0",
+    "ip-address": "^6.4.0",
     "readline-sync": "^1.4.10"
   }
 }

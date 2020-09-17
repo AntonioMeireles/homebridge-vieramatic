@@ -8,7 +8,7 @@ import http from 'http';
 import { Address4 } from 'ip-address';
 import net from 'net';
 import * as readlineSync from 'readline-sync';
-import url from 'url';
+import { URL } from 'url';
 
 // helpers and default settings
 const API_ENDPOINT = 55000;
@@ -369,7 +369,7 @@ export class VieraTV implements VieraTV {
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
-    callback?
+    callback?: (...unknown) => Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = [];
 
@@ -582,14 +582,18 @@ export class VieraTV implements VieraTV {
   public static async webSetup(): Promise<void> {
     const server = http.createServer(async (request, response) => {
       let tv: VieraTV;
-      const urlObject = url.parse(request.url!, true, false);
+      const urlObject = new URL(
+        request.url || '',
+        `http://${request.headers.host}`
+      );
+      console.log(urlObject);
       let returnCode = 200;
       let body = 'nothing to see here - move on';
 
-      if (urlObject.query.pin) {
-        if (urlObject.query.tv) {
-          const ip = urlObject.query.tv;
-          const { pin } = urlObject.query;
+      if (urlObject.searchParams.get('pin')) {
+        if (urlObject.searchParams.get('tv')) {
+          const ip = urlObject.searchParams.get('tv');
+          const pin = urlObject.searchParams.get('pin');
           console.log(urlObject);
           const address = new Address4(ip as string);
 
@@ -601,9 +605,9 @@ export class VieraTV implements VieraTV {
             const specs = await tv.getSpecs();
             if (specs !== undefined) {
               if (specs.requiresEncryption === true) {
-                if (urlObject.query.challenge) {
+                if (urlObject.searchParams.get('challenge')) {
                   tv.session.challenge = Buffer.from(
-                    urlObject.query.challenge as string,
+                    urlObject.searchParams.get('challenge') as string,
                     'base64'
                   );
                   const result = await tv.authorizePinCode(pin as string);
@@ -613,9 +617,9 @@ export class VieraTV implements VieraTV {
                     body = `
                       Paired with your TV sucessfully!.
                       <br />
-                        <b>Encryption Key</b>: <b>${tv!.auth.key}</b>
+                        <b>Encryption Key</b>: <b>${tv.auth.key}</b>
                       <br />
-                        <b>AppId</b>: <b>${tv!.auth.appId}</b>
+                        <b>AppId</b>: <b>${tv.auth.appId}</b>
                       <br />
                     `;
                   }
@@ -624,8 +628,8 @@ export class VieraTV implements VieraTV {
             }
           }
         }
-      } else if (urlObject.query.ip) {
-        const { ip } = urlObject.query;
+      } else if (urlObject.searchParams.get('ip')) {
+        const ip = urlObject.searchParams.get('ip');
         const address = new Address4(ip as string);
 
         if (address.isValid() !== true) {
@@ -670,7 +674,9 @@ export class VieraTV implements VieraTV {
             } else {
               /* eslint-disable prettier/prettier */
               body = `
-                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
+                Found a <b>${
+  specs.modelNumber
+}</b>, on ip address ${ip}, which requires encryption.
                 <br />
                 <form action="/">
                   <label for="pin">

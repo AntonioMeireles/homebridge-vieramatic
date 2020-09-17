@@ -6,12 +6,11 @@ import {
   PlatformAccessory,
   PlatformConfig,
   Service
-  /* eslint-disable-next-line import/no-extraneous-dependencies */
 } from 'homebridge';
 import { Address4 } from 'ip-address';
 
 /* eslint-disable-next-line import/no-cycle */
-import { sleep, VieramaticPlatformAccessory } from './accessory';
+import { sleep, UserConfig, VieramaticPlatformAccessory } from './accessory';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { Storage } from './storage';
 import { VieraApps, VieraTV } from './viera';
@@ -57,14 +56,14 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
 
     this.storage.init();
     VieraTV.webSetup();
-    const devices = this.config.tvs;
+    const devices = this.config.tvs as UserConfig[];
 
-    devices.forEach(async (device) => {
+    devices.forEach(async (device: UserConfig) => {
       await this.deviceSetup(device);
     });
   }
 
-  private async deviceSetup(device): Promise<void> {
+  private async deviceSetup(device: UserConfig): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json');
 
     const ip = new Address4(device.ipAddress);
@@ -74,7 +73,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
         "IGNORING '%s' as it is not a valid ip address.",
         ip.address
       );
-      this.log.error(device);
+      this.log.error(JSON.stringify(device, undefined, 2));
       return;
     }
 
@@ -107,7 +106,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
         return;
       }
       [tv.auth.appId, tv.auth.key] = [device.appId, device.encKey];
-      [tv.session.key, tv.session.hmacKey] = tv.deriveSessionKey(tv.auth.key!);
+      [tv.session.key, tv.session.hmacKey] = tv.deriveSessionKey(tv.auth.key);
       const result = await tv.requestSessionId();
       if (result.error) {
         this.log.error(
@@ -120,7 +119,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
       }
     }
     /* eslint-disable-next-line new-cap */
-    const accessory = new this.api.platformAccessory(
+    const accessory = new this.api.platformAccessory<Record<string, VieraTV>>(
       tv.specs.friendlyName,
       tv.specs.serialNumber
     );
