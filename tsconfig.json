@@ -2,13 +2,16 @@
   "compilerOptions": {
     "target": "ES2018", // ~node10
     "module": "commonjs",
-    // the 'dom' bellow is a bizarre workaround for https://github.com/axios/axios/issues/3219 and allows us to ship an up to dae axios lib
+    // the 'dom' bellow is a bizarre workaround for
+    //   https://github.com/axios/axios/issues/3219
+    //   which allows us to ship an up to date axios
     "lib": ["es2015", "es2016", "es2017", "es2018", "dom"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
+    "removeComments": true,
     "strict": true,
     "esModuleInterop": true,
     "noImplicitAny": false, //XXX

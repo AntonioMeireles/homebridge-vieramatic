@@ -23,19 +23,18 @@
   "extends": [
     "airbnb-typescript",
     "airbnb/hooks",
-    "plugin:@typescript-eslint/recommended",
-    // "plugin:@typescript-eslint/recommended-requiring-type-checking",
     "plugin:eslint-comments/recommended",
     "plugin:promise/recommended",
     "plugin:unicorn/recommended",
-    "plugin:prettier/recommended",
     "plugin:json/recommended",
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
-    "prettier",
+    "plugin:@typescript-eslint/recommended",
+    // "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "airbnb-typescript-prettier",
     "prettier/@typescript-eslint",
-    "airbnb-typescript-prettier"
+    "plugin:prettier/recommended"
   ],
   "parserOptions": {
     "ecmaVersion": 2018,
@@ -93,7 +92,18 @@
     ],
     "@typescript-eslint/type-annotation-spacing": "error",
     "@typescript-eslint/unified-signatures": "error",
-    "prettier/prettier": ["error"],
+    "prettier/prettier": [
+      "error",
+      {
+        "semi": true,
+        "trailingComma": "none",
+        "singleQuote": true,
+        "printWidth": 80,
+        "tabWidth": 2,
+        "arrowParens": "always",
+        "endOfLine": "auto"
+      }
+    ],
     "unicorn/number-literal-case": "off", // prefer stock eslint scheme here
     "json/*": ["error", "allowComments"]
   }
