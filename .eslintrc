@@ -105,6 +105,7 @@
       }
     ],
     "unicorn/number-literal-case": "off", // prefer stock eslint scheme here
+    "unicorn/prevent-abbreviations": "off",
     "json/*": ["error", "allowComments"]
   }
 }

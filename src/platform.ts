@@ -66,16 +66,15 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
   private async deviceSetup(device: UserConfig): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json');
 
-    const ip = new Address4(device.ipAddress);
-
-    if (ip.isValid() !== true) {
+    if (Address4.isValid(device.ipAddress) !== true) {
       this.log.error(
         "IGNORING '%s' as it is not a valid ip address.",
-        ip.address
+        device.ipAddress
       );
       this.log.error(JSON.stringify(device, undefined, 2));
       return;
     }
+    const ip = new Address4(device.ipAddress);
 
     if ((await VieraTV.livenessProbe(ip)) === false) {
       this.log.error("IGNORING '%s' as it is not reachable.", ip.address);

@@ -595,26 +595,24 @@ export class VieraTV implements VieraTV {
           const ip = urlObject.searchParams.get('tv');
           const pin = urlObject.searchParams.get('pin');
           console.log(urlObject);
-          const address = new Address4(ip as string);
 
-          if (
-            address.isValid() === true &&
-            (await VieraTV.livenessProbe(address)) === true
-          ) {
-            tv = new VieraTV(address);
-            const specs = await tv.getSpecs();
-            if (specs !== undefined) {
-              if (specs.requiresEncryption === true) {
-                if (urlObject.searchParams.get('challenge')) {
-                  tv.session.challenge = Buffer.from(
-                    urlObject.searchParams.get('challenge') as string,
-                    'base64'
-                  );
-                  const result = await tv.authorizePinCode(pin as string);
-                  if (result.error) {
-                    [returnCode, body] = [500, 'Wrong Pin code...'];
-                  } else {
-                    body = `
+          if (Address4.isValid(ip as string) === true) {
+            const address = new Address4(ip as string);
+            if ((await VieraTV.livenessProbe(address)) === true) {
+              tv = new VieraTV(address);
+              const specs = await tv.getSpecs();
+              if (specs !== undefined) {
+                if (specs.requiresEncryption === true) {
+                  if (urlObject.searchParams.get('challenge')) {
+                    tv.session.challenge = Buffer.from(
+                      urlObject.searchParams.get('challenge') as string,
+                      'base64'
+                    );
+                    const result = await tv.authorizePinCode(pin as string);
+                    if (result.error) {
+                      [returnCode, body] = [500, 'Wrong Pin code...'];
+                    } else {
+                      body = `
                       Paired with your TV sucessfully!.
                       <br />
                         <b>Encryption Key</b>: <b>${tv.auth.key}</b>
@@ -622,6 +620,7 @@ export class VieraTV implements VieraTV {
                         <b>AppId</b>: <b>${tv.auth.appId}</b>
                       <br />
                     `;
+                    }
                   }
                 }
               }
@@ -630,52 +629,53 @@ export class VieraTV implements VieraTV {
         }
       } else if (urlObject.searchParams.get('ip')) {
         const ip = urlObject.searchParams.get('ip');
-        const address = new Address4(ip as string);
+        // const address = new Address4(ip as string);
 
-        if (address.isValid() !== true) {
+        if (Address4.isValid(ip as string) !== true) {
           returnCode = 500;
           body = `the supplied TV ip address ('${ip}') is NOT a valid IPv4 address...`;
-        } else if ((await VieraTV.livenessProbe(address)) === false) {
-          body = `the supplied TV ip address '${ip}' is unreachable...`;
         } else {
-          tv = new VieraTV(address);
-          const specs = await tv.getSpecs();
-          if (specs === undefined) {
-            returnCode = 500;
-            body = `
+          const address = new Address4(ip as string);
+          if ((await VieraTV.livenessProbe(address)) === false) {
+            body = `the supplied TV ip address '${ip}' is unreachable...`;
+          } else {
+            tv = new VieraTV(address);
+            const specs = await tv.getSpecs();
+            if (specs === undefined) {
+              returnCode = 500;
+              body = `
               An unexpected error occurred:
               <br />
               Unable to fetch specs from the TV (with ip address ${ip}).
             `;
-          } else if (specs.requiresEncryption === false) {
-            returnCode = 500;
-            body = `
+            } else if (specs.requiresEncryption === false) {
+              returnCode = 500;
+              body = `
               Found a <b>${specs.modelNumber}</b> on ip address ${ip}!
               <br />
               It's just that <b>this specific model does not require encryption</b>!
             `;
-          } else if (!(await tv.isTurnedOn())) {
-            returnCode = 500;
-            body = `
+            } else if (!(await tv.isTurnedOn())) {
+              returnCode = 500;
+              body = `
               Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
               <br />
               Unfortunatelly the TV seems to be in standby. <b>Please turn it ON</b> and try again.
             `;
-          } else {
-            const newRequest = await tv.requestPinCode();
-            if (newRequest.error) {
-              returnCode = 500;
-              body = `
+            } else {
+              const newRequest = await tv.requestPinCode();
+              if (newRequest.error) {
+                returnCode = 500;
+                body = `
                 Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
                 <br />
                 Sadly an unexpected error ocurred while attempting to request a pin code from the TV.
                 Please make sure that the TV is powered ON (and NOT in standby).
               `;
-            } else {
-              /* eslint-disable prettier/prettier */
-              body = `
-                Found a <b>${
-  specs.modelNumber
+              } else {
+                /* eslint-disable prettier/prettier */
+                body = `
+                Found a <b>${specs.modelNumber
 }</b>, on ip address ${ip}, which requires encryption.
                 <br />
                 <form action="/">
@@ -692,6 +692,7 @@ export class VieraTV implements VieraTV {
                   <input type="submit" value="Submit" />
                 </form>
               `;
+              }
             }
           }
         }
@@ -723,12 +724,12 @@ export class VieraTV implements VieraTV {
   }
 
   public static async setup(target: string): Promise<void> {
-    const ip = new Address4(target);
-    if (ip.isValid() !== true) {
+    if (Address4.isValid(target) !== true) {
       console.error('Please introduce a valid ip address!');
       process.exitCode = 1;
       return;
     }
+    const ip = new Address4(target);
     if ((await this.livenessProbe(ip)) === false) {
       console.error('The IP you provided is unreachable.');
       process.exitCode = 1;
