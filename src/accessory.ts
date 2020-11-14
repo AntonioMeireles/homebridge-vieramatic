@@ -228,7 +228,7 @@ export class VieramaticPlatformAccessory {
       this.log.info(
         'Initializing',
         device.specs.friendlyName,
-        'for the first time.'
+        'for the first time. [II]'
       );
       this.storage.data = {
         inputs: {

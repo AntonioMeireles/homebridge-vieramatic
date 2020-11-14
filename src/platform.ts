@@ -10,7 +10,7 @@ import {
 import { Address4 } from 'ip-address';
 
 /* eslint-disable-next-line import/no-cycle */
-import { sleep, UserConfig, VieramaticPlatformAccessory } from './accessory';
+import { UserConfig, VieramaticPlatformAccessory } from './accessory';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { Storage } from './storage';
 import { VieraApps, VieraTV } from './viera';
@@ -124,26 +124,34 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
     );
     accessory.category = this.api.hap.Categories.TELEVISION;
     accessory.context.device = tv;
-
-    const status = await tv.isTurnedOn();
-    if (status !== true) {
+    let apps: VieraApps = [];
+    if (
+      this.storage.accessories === null ||
+      this.storage.accessories[`${tv.specs.serialNumber}`] === undefined
+    ) {
       this.log.info(
-        'TV was OFF; turning it ON for a bit in order to fetch its built-in app list'
+        'Initializing',
+        tv.specs.friendlyName,
+        'for the first time. [I]'
       );
-      await tv.sendCommand('POWER');
-      await sleep(2000);
+      const status = await tv.isTurnedOn();
+      if (status !== true) {
+        this.log.error(
+          'Unable to finish initial setup of',
+          tv.specs.friendlyName,
+          '. Please make sure that this TV is powered ON and NOT in stand-by.'
+        );
+        return;
+      }
+      const cmd = await tv.getApps<VieraApps>();
+      if (cmd.error) {
+        this.log.error('unable to fetch Apps list from the TV', cmd);
+        return;
+      }
+      if (cmd.value) {
+        apps = cmd.value;
+      }
     }
-    const cmd = await tv.getApps<VieraApps>();
-    if (status !== true) {
-      await sleep(500);
-      await tv.sendCommand('POWER');
-      this.log.info('turning TV OFF again');
-    }
-    if (cmd.error) {
-      this.log.error('unable to fetch Apps list from the TV', cmd);
-      return;
-    }
-    const apps = cmd.value || [];
 
     /* eslint-disable-next-line no-new */
     new VieramaticPlatformAccessory(this, accessory, device, apps);
