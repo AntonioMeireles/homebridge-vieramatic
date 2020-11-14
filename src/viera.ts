@@ -293,23 +293,23 @@ export class VieraTV implements VieraTV {
           const jsonObject = parser.parse(raw.data);
           const { device } = jsonObject.root;
           const specs = <VieraSpecs>{
-            friendlyName: device.friendlyName,
+            friendlyName:
+              device.friendlyName.length > 0
+                ? device.friendlyName
+                : device.modelName,
             modelName: device.modelName,
             modelNumber: device.modelNumber,
             manufacturer: device.manufacturer,
             serialNumber: device.UDN.slice(5),
             requiresEncryption: await this.needsCrypto()
           };
-          const extra = specs.requiresEncryption
-            ? '(requires crypto for comunication)'
-            : '';
 
           this.log.info(
             "found a '%s' TV (%s) at '%s' %s.\n",
             specs.modelName,
             specs.modelNumber,
             this.address,
-            extra
+            specs.requiresEncryption ? '(requires crypto for comunication)' : ''
           );
           return specs;
         }
