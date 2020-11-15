@@ -12,7 +12,7 @@ import { URL } from 'url';
 
 // helpers and default settings
 const API_ENDPOINT = 55000;
-const curl: AxiosInstance = axios.create({ timeout: 2000 });
+const curl: AxiosInstance = axios.create({ timeout: 3500 });
 const AudioChannel = '<InstanceID>0</InstanceID><Channel>Master</Channel>';
 
 interface VieraSpecs {
@@ -109,7 +109,7 @@ export class VieraTV implements VieraTV {
     this.log = log;
     this.auth = auth;
     this.session = {} as VieraAuthSession;
-    this.specs = {} as VieraSpecs;
+    this.specs = (undefined as unknown) as VieraSpecs;
   }
 
   public static async livenessProbe(
@@ -314,7 +314,10 @@ export class VieraTV implements VieraTV {
           return specs;
         }
       )
-      .catch(() => ({} as VieraSpecs));
+      .catch((error) => {
+        this.log.error('getSpecs:', error);
+        return (undefined as unknown) as VieraSpecs;
+      });
   }
 
   private renderEncryptedRequest(
