@@ -71,6 +71,7 @@
     "fast-xml-parser": "^3.17.4",
     "fs-extra": "^9.0.1",
     "ip-address": "^7.1.0",
+    "node-upnp-subscription": "^1.0.6",
     "readline-sync": "^1.4.10"
   }
 }
