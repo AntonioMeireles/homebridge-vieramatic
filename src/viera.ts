@@ -145,48 +145,24 @@ export class VieraTV implements VieraTV {
   }
 
   async isTurnedOn(): Promise<boolean> {
-    /*
-     * since this endpoint is only available if the TV is turned ON, otherwise
-     * we'll get a 400...
-     */
-    /*
-     * return curl
-     *   .get(`${this.baseURL}/pac/ddd.xml`)
-     *   .then(() => {
-     *     return true;
-     *   })
-     *   .catch(() => {
-     *     return false;
-     *   });
-     */
-
-    const stateSub = new UPnPsub(this.address, API_ENDPOINT, '/nrc/event_0');
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    setTimeout(stateSub.unsubscribe, 1500);
-
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, promise/param-names
-    const status = await new Promise((resolve, _reject) => {
+    const status = await new Promise((res, _rej) => {
+      const watcher = new UPnPsub(this.address, API_ENDPOINT, '/nrc/event_0');
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      setTimeout(watcher.unsubscribe, 1500);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      stateSub.once('message', (message: any): void => {
-        const props = message.body['e:propertyset']['e:property'];
-
-        if (Object.prototype.toString.call(props) !== '[object Array]') {
+      watcher.once('message', (message: any): void => {
+        const properties = message.body['e:propertyset']['e:property'];
+        if ({}.toString.call(properties) !== '[object Array]') {
           this.log.error('Unsuccessful (!) communication with TV.');
-          resolve(false);
-        } else {
-          const match = props.filter(
-            (prop) =>
-              prop.X_ScreenState === 'on' || prop.X_ScreenState === 'off'
-          );
-          if (match !== []) {
-            const screenState = match[0].X_ScreenState;
-            resolve(screenState === 'on');
-          } else {
-            resolve(false);
-          }
+          res(false);
         }
+        const match = properties.filter((prop) =>
+          ['on', 'off'].includes(prop.X_ScreenState)
+        );
+        match !== [] ? res(match[0].X_ScreenState === 'on') : res(false);
       });
-      stateSub.on('error', () => resolve(false));
+      watcher.on('error', () => res(false));
     });
     return status as boolean;
   }
@@ -195,10 +171,7 @@ export class VieraTV implements VieraTV {
     return curl
       .get(`${this.baseURL}/nrc/sdd_0.xml`)
       .then((reply) => {
-        if (reply.data.match(/X_GetEncryptSessionId/u)) {
-          return true;
-        }
-        return false;
+        return !!reply.data.match(/X_GetEncryptSessionId/u);
       })
       .catch(() => {
         return false;
