@@ -117,9 +117,10 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
         return;
       }
     }
+    const tvName = (device.tvName ?? tv.specs.friendlyName)
     /* eslint-disable-next-line new-cap */
     const accessory = new this.api.platformAccessory<Record<string, VieraTV>>(
-      tv.specs.friendlyName,
+      tvName,
       tv.specs.serialNumber
     );
     accessory.category = this.api.hap.Categories.TELEVISION;
@@ -131,14 +132,14 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
     ) {
       this.log.info(
         'Initializing',
-        tv.specs.friendlyName,
+        tvName,
         'for the first time. [I]'
       );
       const status = await tv.isTurnedOn();
       if (status !== true) {
         this.log.error(
           'Unable to finish initial setup of',
-          tv.specs.friendlyName,
+          tvName,
           '. Please make sure that this TV is powered ON and NOT in stand-by.'
         );
         return;

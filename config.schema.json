@@ -14,7 +14,7 @@
         "properties": {
           "tvName": {
             "title": "TV Name",
-            "description": "The name you'd like to set for the TV.",
+            "description": "The name you'd like to set for the TV. If unset, the name set on the TV will be used.",
             "type": "string",
             "required": false
           },
@@ -59,7 +59,6 @@
               }
             }
           },
-
           "customVolumeSlider": {
             "title": "Volume control service",
             "description": "Whether to enable a fan as an additional TV volume control artifact to HomeKit",
@@ -97,12 +96,14 @@
         {
           "key": "tvs[].hdmiInputs",
           "type": "tabarray",
-
           "items": [
             {
               "type": "flex",
               "flex-flow": "row",
-              "items": ["tvs[].hdmiInputs[].id", "tvs[].hdmiInputs[].name"]
+              "items": [
+                "tvs[].hdmiInputs[].id",
+                "tvs[].hdmiInputs[].name"
+              ]
             }
           ]
         },
