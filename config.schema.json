@@ -12,6 +12,12 @@
       "items": {
         "type": "object",
         "properties": {
+          "tvName": {
+            "title": "TV Name",
+            "description": "The name you'd like to set for the TV.",
+            "type": "string",
+            "required": false
+          },
           "ipAddress": {
             "title": "IP address",
             "description": "The IP address of your TV.",
@@ -70,6 +76,7 @@
       "flex-flow": "row wrap",
       "key": "tvs",
       "items": [
+        "tvs[].tvName",
         "tvs[].ipAddress",
         {
           "key": "tvs[]",
