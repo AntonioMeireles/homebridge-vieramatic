@@ -84,6 +84,7 @@
    >       "platform": "PanasonicVieraTV",
    >       "tvs": [
    >          {
+   >            "tvName": "YOUR_TV_NAME_HERE",
    >            "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
    >            "hdmiInputs": [
    >              {
@@ -107,9 +108,11 @@
      >
      > "tvs": [
      >   {
+     >     "tvName": "YOUR_TV_NAME_HERE",
      >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
      >     "hdmiInputs": []
      >   }, {
+     >     "tvName": "YOUR_TV_NAME_HERE",
      >     "ipAddress": "YOUR_SECOND_TV_IP_ADDRESS_HERE",
      >     "hdmiInputs": []
      >   }
@@ -129,6 +132,28 @@
 7. [re]start homebridge
 
 ## tips and tricks
+
+### TV Naming
+
+If you'd prefer for Vieramatic to automatically detect the name on your TV, then you can remove the "tvName" field from your config.
+
+Your config.json file will look like this:
+
+   > ```JSON
+   > "tvs": [
+   >   {
+   >     "tvName": "YOUR_TV_NAME_HERE",
+   >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+   >     "hdmiInputs": [
+   >       {
+   >         "id" : "1",
+   >         "name": "Apple TV"
+   >       }, {
+   >         "id" : "2",
+   >         "name": "VodafoneTV box"
+   >       }
+   > ]
+   > ```
 
 ### supported TV sets
 
