@@ -133,9 +133,9 @@
 
 ## tips and tricks
 
-### TV Naming
+### TV naming
 
-If you'd prefer for Vieramatic to automatically detect the name on your TV, then you can remove the "tvName" field from your config.
+If you'd prefer for Vieramatic to automatically detect and consume the name on your TV, then you can remove the "tvName" field from your config.
 
 Your config.json file will look like this:
 
