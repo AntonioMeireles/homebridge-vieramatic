@@ -112,13 +112,14 @@ export class VieramaticPlatformAccessory {
 
     this.service.setCharacteristic(
       this.Characteristic.Name,
-      device.specs.friendlyName
+      // device.specs.friendlyName <- Not too sure what the difference is between Name and ConfiguredName
+      accessory.displayName
     );
 
     this.service
       .setCharacteristic(
         this.Characteristic.ConfiguredName,
-        device.specs.friendlyName
+        accessory.displayName
       )
       .setCharacteristic(
         this.Characteristic.SleepDiscoveryMode,
@@ -157,7 +158,7 @@ export class VieramaticPlatformAccessory {
 
     const speakerService = this.accessory.addService(
       this.Service.TelevisionSpeaker,
-      `${device.specs.friendlyName} Volume`,
+      `${accessory.displayName} Volume`,
       'volumeService'
     );
 
@@ -184,7 +185,7 @@ export class VieramaticPlatformAccessory {
     if (this.userConfig.customVolumeSlider === true) {
       const customSpeakerService = this.accessory.addService(
         this.Service.Fan,
-        `${device.specs.modelNumber} Volume`,
+        `${accessory.displayName} Volume`,
         'VolumeAsFanService'
       );
       this.service.addLinkedService(customSpeakerService);
@@ -228,7 +229,7 @@ export class VieramaticPlatformAccessory {
     if (!this.storage.data) {
       this.log.info(
         'Initializing',
-        device.specs.friendlyName,
+        accessory.displayName,
         'for the first time. [II]'
       );
       this.storage.data = {
@@ -252,7 +253,7 @@ export class VieramaticPlatformAccessory {
         }
       );
     } else {
-      this.log.debug('Restoring', device.specs.friendlyName);
+      this.log.debug('Restoring', accessory.displayName);
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
         const fn = function isThere(element): boolean {
