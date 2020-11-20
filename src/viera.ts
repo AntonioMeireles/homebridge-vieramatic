@@ -685,8 +685,7 @@ export class VieraTV implements VieraTV {
               } else {
                 /* eslint-disable prettier/prettier */
                 body = `
-                Found a <b>${specs.modelNumber
-}</b>, on ip address ${ip}, which requires encryption.
+                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
                 <br />
                 <form action="/">
                   <label for="pin">

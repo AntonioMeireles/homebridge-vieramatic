@@ -18,6 +18,7 @@ const displayName = (string: string): string => {
 };
 
 export interface UserConfig {
+  friendlyName?: string;
   ipAddress: string;
   encKey?: string;
   appId?: string;
@@ -104,7 +105,7 @@ export class VieramaticPlatformAccessory {
       );
 
     this.accessory.on('identify', () => {
-      this.log.info(accessory.displayName, 'Identify!!!');
+      this.log.info(device.specs.friendlyName, 'Identify!!!');
     });
 
     this.service = this.accessory.addService(this.Service.Television);
@@ -183,7 +184,7 @@ export class VieramaticPlatformAccessory {
     if (this.userConfig.customVolumeSlider === true) {
       const customSpeakerService = this.accessory.addService(
         this.Service.Fan,
-        `${device.specs.modelNumber} Volume`,
+        `${device.specs.friendlyName} Volume`,
         'VolumeAsFanService'
       );
       this.service.addLinkedService(customSpeakerService);
@@ -202,7 +203,7 @@ export class VieramaticPlatformAccessory {
           (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
             this.log.debug('(customSpeakerService/On.set)', value);
             switch (
-              this.service.getCharacteristic(this.Characteristic.Active).value
+            this.service.getCharacteristic(this.Characteristic.Active).value
             ) {
               case this.Characteristic.Active.INACTIVE:
                 return callback(undefined, false);

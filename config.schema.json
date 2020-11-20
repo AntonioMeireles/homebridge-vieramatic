@@ -12,6 +12,12 @@
       "items": {
         "type": "object",
         "properties": {
+          "friendlyName": {
+            "title": "TV Name",
+            "description": "The name you'd like to set for the TV. If unset, the name set on the TV will be used.",
+            "type": "string",
+            "required": false
+          },
           "ipAddress": {
             "title": "IP address",
             "description": "The IP address of your TV.",
@@ -53,7 +59,6 @@
               }
             }
           },
-
           "customVolumeSlider": {
             "title": "Volume control service",
             "description": "Whether to enable a fan as an additional TV volume control artifact to HomeKit",
@@ -70,6 +75,7 @@
       "flex-flow": "row wrap",
       "key": "tvs",
       "items": [
+        "tvs[].friendlyName",
         "tvs[].ipAddress",
         {
           "key": "tvs[]",
@@ -90,12 +96,14 @@
         {
           "key": "tvs[].hdmiInputs",
           "type": "tabarray",
-
           "items": [
             {
               "type": "flex",
               "flex-flow": "row",
-              "items": ["tvs[].hdmiInputs[].id", "tvs[].hdmiInputs[].name"]
+              "items": [
+                "tvs[].hdmiInputs[].id",
+                "tvs[].hdmiInputs[].name"
+              ]
             }
           ]
         },
