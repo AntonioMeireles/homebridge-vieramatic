@@ -118,7 +118,7 @@ export class VieraTV implements VieraTV {
     port = API_ENDPOINT,
     timeout = 2000
   ): Promise<boolean> {
-    const probe = new Promise((resolve, reject) => {
+    const probe = new Promise<void>((resolve, reject) => {
       const socket = new net.Socket();
 
       const onError = (): void => {
@@ -156,11 +156,12 @@ export class VieraTV implements VieraTV {
         if ({}.toString.call(properties) !== '[object Array]') {
           this.log.error('Unsuccessful (!) communication with TV.');
           res(false);
+        } else {
+          const match = properties.filter((prop) =>
+            ['on', 'off'].includes(prop.X_ScreenState)
+          );
+          match.length > 0 ? res(match[0].X_ScreenState === 'on') : res(false);
         }
-        const match = properties.filter((prop) =>
-          ['on', 'off'].includes(prop.X_ScreenState)
-        );
-        match !== [] ? res(match[0].X_ScreenState === 'on') : res(false);
       });
       watcher.on('error', () => res(false));
     });
