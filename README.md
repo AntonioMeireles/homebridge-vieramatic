@@ -84,7 +84,7 @@
    >       "platform": "PanasonicVieraTV",
    >       "tvs": [
    >          {
-   >            "tvName": "YOUR_TV_NAME_HERE",
+   >            "friendlyName": "YOUR_TV_NAME_HERE",
    >            "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
    >            "hdmiInputs": [
    >              {
@@ -108,11 +108,11 @@
      >
      > "tvs": [
      >   {
-     >     "tvName": "YOUR_TV_NAME_HERE",
+     >     "friendlyName": "YOUR_TV_NAME_HERE",
      >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
      >     "hdmiInputs": []
      >   }, {
-     >     "tvName": "YOUR_TV_NAME_HERE",
+     >     "friendlyName": "YOUR_TV_NAME_HERE",
      >     "ipAddress": "YOUR_SECOND_TV_IP_ADDRESS_HERE",
      >     "hdmiInputs": []
      >   }
@@ -142,7 +142,7 @@ Your config.json file will look like this:
    > ```JSON
    > "tvs": [
    >   {
-   >     "tvName": "YOUR_TV_NAME_HERE",
+   >     "friendlyName": "YOUR_TV_NAME_HERE",
    >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
    >     "hdmiInputs": [
    >       {

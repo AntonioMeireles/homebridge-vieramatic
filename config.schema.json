@@ -12,7 +12,7 @@
       "items": {
         "type": "object",
         "properties": {
-          "tvName": {
+          "friendlyName": {
             "title": "TV Name",
             "description": "The name you'd like to set for the TV. If unset, the name set on the TV will be used.",
             "type": "string",
@@ -75,7 +75,7 @@
       "flex-flow": "row wrap",
       "key": "tvs",
       "items": [
-        "tvs[].tvName",
+        "tvs[].friendlyName",
         "tvs[].ipAddress",
         {
           "key": "tvs[]",

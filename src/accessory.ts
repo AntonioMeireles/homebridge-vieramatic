@@ -18,7 +18,7 @@ const displayName = (string: string): string => {
 };
 
 export interface UserConfig {
-  tvName?: string;
+  friendlyName?: string;
   ipAddress: string;
   encKey?: string;
   appId?: string;
@@ -105,21 +105,20 @@ export class VieramaticPlatformAccessory {
       );
 
     this.accessory.on('identify', () => {
-      this.log.info(accessory.displayName, 'Identify!!!');
+      this.log.info(device.specs.friendlyName, 'Identify!!!');
     });
 
     this.service = this.accessory.addService(this.Service.Television);
 
     this.service.setCharacteristic(
       this.Characteristic.Name,
-      // device.specs.friendlyName <- Not too sure what the difference is between Name and ConfiguredName
-      accessory.displayName
+      device.specs.friendlyName
     );
 
     this.service
       .setCharacteristic(
         this.Characteristic.ConfiguredName,
-        accessory.displayName
+        device.specs.friendlyName
       )
       .setCharacteristic(
         this.Characteristic.SleepDiscoveryMode,
@@ -158,7 +157,7 @@ export class VieramaticPlatformAccessory {
 
     const speakerService = this.accessory.addService(
       this.Service.TelevisionSpeaker,
-      `${accessory.displayName} Volume`,
+      `${device.specs.friendlyName} Volume`,
       'volumeService'
     );
 
@@ -185,7 +184,7 @@ export class VieramaticPlatformAccessory {
     if (this.userConfig.customVolumeSlider === true) {
       const customSpeakerService = this.accessory.addService(
         this.Service.Fan,
-        `${accessory.displayName} Volume`,
+        `${device.specs.friendlyName} Volume`,
         'VolumeAsFanService'
       );
       this.service.addLinkedService(customSpeakerService);
@@ -229,7 +228,7 @@ export class VieramaticPlatformAccessory {
     if (!this.storage.data) {
       this.log.info(
         'Initializing',
-        accessory.displayName,
+        device.specs.friendlyName,
         'for the first time. [II]'
       );
       this.storage.data = {
@@ -253,7 +252,7 @@ export class VieramaticPlatformAccessory {
         }
       );
     } else {
-      this.log.debug('Restoring', accessory.displayName);
+      this.log.debug('Restoring', device.specs.friendlyName);
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
         const fn = function isThere(element): boolean {
