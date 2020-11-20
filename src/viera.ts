@@ -118,7 +118,7 @@ export class VieraTV implements VieraTV {
     port = API_ENDPOINT,
     timeout = 2000
   ): Promise<boolean> {
-    const probe = new Promise((resolve, reject) => {
+    const probe = new Promise<void>((resolve, reject) => {
       const socket = new net.Socket();
 
       const onError = (): void => {
