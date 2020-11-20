@@ -156,11 +156,12 @@ export class VieraTV implements VieraTV {
         if ({}.toString.call(properties) !== '[object Array]') {
           this.log.error('Unsuccessful (!) communication with TV.');
           res(false);
+        } else {
+          const match = properties.filter((prop) =>
+            ['on', 'off'].includes(prop.X_ScreenState)
+          );
+          match.length > 0 ? res(match[0].X_ScreenState === 'on') : res(false);
         }
-        const match = properties.filter((prop) =>
-          ['on', 'off'].includes(prop.X_ScreenState)
-        );
-        match !== [] ? res(match[0].X_ScreenState === 'on') : res(false);
       });
       watcher.on('error', () => res(false));
     });
