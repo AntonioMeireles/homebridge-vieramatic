@@ -46,7 +46,7 @@
     "@types/readline-sync": "^1.4.3",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
-    "eslint": "^7.13.0",
+    "eslint": "^7.14.0",
     "eslint-config-airbnb-base": "^14.2.1",
     "eslint-config-airbnb-typescript": "^12.0.0",
     "eslint-config-airbnb-typescript-prettier": "^4.0.0",
