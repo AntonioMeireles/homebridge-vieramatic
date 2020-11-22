@@ -4,7 +4,7 @@
 [![License: Apache 2](https://img.shields.io/badge/License-Apache_2-blue.svg)](./LICENSE.md)
 [![npm version](https://img.shields.io/npm/v/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![downloads](https://img.shields.io/npm/dt/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
-[![Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/npm/homebridge-vieramatic)](https://snyk.io/vuln/npm:homebridge-vieramatic)
+[![GitHub last commit](https://img.shields.io/github/last-commit/AntonioMeireles/homebridge-vieramatic.svg?color=blue)](https://github.com/AntonioMeireles/homebridge-vieramatic)
 
 ## features
 
@@ -139,21 +139,21 @@ If you'd prefer for Vieramatic to automatically detect and consume the name on y
 
 Your config.json file will look like this:
 
-   > ```JSON
-   > "tvs": [
-   >   {
-   >     "friendlyName": "YOUR_TV_NAME_HERE",
-   >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
-   >     "hdmiInputs": [
-   >       {
-   >         "id" : "1",
-   >         "name": "Apple TV"
-   >       }, {
-   >         "id" : "2",
-   >         "name": "VodafoneTV box"
-   >       }
-   > ]
-   > ```
+> ```JSON
+> "tvs": [
+>   {
+>     "friendlyName": "YOUR_TV_NAME_HERE",
+>     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+>     "hdmiInputs": [
+>       {
+>         "id" : "1",
+>         "name": "Apple TV"
+>       }, {
+>         "id" : "2",
+>         "name": "VodafoneTV box"
+>       }
+> ]
+> ```
 
 ### supported TV sets
 
