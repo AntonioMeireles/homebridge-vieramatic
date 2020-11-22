@@ -117,9 +117,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
         return;
       }
     }
-    if (device.friendlyName) {
-      tv.specs.friendlyName = device.friendlyName;
-    }
+    tv.specs.friendlyName = device.friendlyName ?? tv.specs.friendlyName;
     /* eslint-disable-next-line new-cap */
     const accessory = new this.api.platformAccessory<Record<string, VieraTV>>(
       tv.specs.friendlyName,

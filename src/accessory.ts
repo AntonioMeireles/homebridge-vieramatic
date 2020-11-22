@@ -203,7 +203,7 @@ export class VieramaticPlatformAccessory {
           (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
             this.log.debug('(customSpeakerService/On.set)', value);
             switch (
-            this.service.getCharacteristic(this.Characteristic.Active).value
+              this.service.getCharacteristic(this.Characteristic.Active).value
             ) {
               case this.Characteristic.Active.INACTIVE:
                 return callback(undefined, false);

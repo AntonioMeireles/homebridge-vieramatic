@@ -150,8 +150,7 @@ export class VieraTV implements VieraTV {
       const watcher = new UPnPsub(this.address, API_ENDPOINT, '/nrc/event_0');
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
       setTimeout(watcher.unsubscribe, 1500);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      watcher.once('message', (message: any): void => {
+      watcher.once('message', (message): void => {
         const properties = message.body['e:propertyset']['e:property'];
         if ({}.toString.call(properties) !== '[object Array]') {
           this.log.error('Unsuccessful (!) communication with TV.');
@@ -160,7 +159,19 @@ export class VieraTV implements VieraTV {
           const match = properties.filter((prop) =>
             ['on', 'off'].includes(prop.X_ScreenState)
           );
-          match.length > 0 ? res(match[0].X_ScreenState === 'on') : res(false);
+          /*
+           * TODO: FIXME:
+           *
+           * if we do not get a match, we assume that we're facing an older TV set
+           * which may only reply when it is ON (which is what we want to spot after all)
+           *
+           * heuristic bellow is likely not enough to cover all angles as it seems
+           * that there are old models which shutdown the wifi interface when in
+           * standby but not the wired one i.e the exact same model may behave
+           * differently depending on how it is connected to the network
+           *
+           */
+          match.length > 0 ? res(match[0].X_ScreenState === 'on') : res(true);
         }
       });
       watcher.on('error', () => res(false));
