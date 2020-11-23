@@ -32,7 +32,7 @@ interface VieraApp {
 export type VieraApps = VieraApp[];
 
 type RequestType = 'command' | 'render';
-/* eslint-disable-next-line no-shadow */
+
 enum AlwaysInPlainText {
   /* eslint-disable camelcase */
   X_GetEncryptSessionId = 'X_GetEncryptSessionId',
