@@ -92,6 +92,8 @@ const getKey = (key: string, xml: string): Outcome<string> => {
 export class VieraTV implements VieraTV {
   readonly address: string;
 
+  readonly mac: string;
+
   readonly port = API_ENDPOINT;
 
   readonly baseURL: string;
@@ -104,13 +106,19 @@ export class VieraTV implements VieraTV {
 
   specs: VieraSpecs;
 
-  constructor(ip: Address4, log: Console = console, auth = {} as VieraAuth) {
+  constructor(
+    ip: Address4,
+    mac = (undefined as unknown) as string,
+    log: Console = console,
+    auth = {} as VieraAuth
+  ) {
     this.address = ip.address;
     this.baseURL = `http://${this.address}:${this.port}`;
     this.log = log;
     this.auth = auth;
     this.session = {} as VieraAuthSession;
     this.specs = (undefined as unknown) as VieraSpecs;
+    this.mac = mac;
   }
 
   public static async livenessProbe(
@@ -696,7 +704,9 @@ export class VieraTV implements VieraTV {
               } else {
                 /* eslint-disable prettier/prettier */
                 body = `
-                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
+                Found a <b>${
+  specs.modelNumber
+}</b>, on ip address ${ip}, which requires encryption.
                 <br />
                 <form action="/">
                   <label for="pin">

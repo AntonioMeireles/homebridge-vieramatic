@@ -142,8 +142,8 @@ Your config.json file will look like this:
 > ```JSON
 > "tvs": [
 >   {
->     "friendlyName": "YOUR_TV_NAME_HERE",
 >     "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+>     "friendlyName": "OPTIONAL_CUSTOMIZED_TV_NAME_HERE",
 >     "hdmiInputs": [
 >       {
 >         "id" : "1",
@@ -164,6 +164,26 @@ mobile app ([**IOS** install link](https://apps.apple.com/us/app/panasonic-tv-re
 So, if experiencing setup problems, do make sure, in advance, that the TV is discoverable/manageable by the mobile
 app while connected to the exact same network as your homebridge setup, because if it isn't there's not much that the
 plugin could do.
+
+> some older sets became unreachable from the network either immediately
+> after entering into stand-by, or after a while, and a subset of those sets
+> supports being awaken via '**Wake On Lan**'.
+> If your set is one of those, you'll need to specify your TVs MAC address,
+> either via the Homebridge UI's or directly into the TV's definition in
+> homebridge's `config.json` along:
+>
+> ```JSON
+>   "tvs": [
+>     {
+>       "ipAddress": "YOUR_TV_IP_ADDRESS_HERE",
+>        (...)
+>       "mac": "YOUR_TV_MAC_ADDRESS",
+>       (...)
+>      }
+>    ]
+> ```
+>
+> so that the the plugin could turn the TV ON.
 
 ### input switching - how to get Siri to do it
 

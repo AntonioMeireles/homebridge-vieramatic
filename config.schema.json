@@ -13,8 +13,8 @@
         "type": "object",
         "properties": {
           "friendlyName": {
-            "title": "TV Name",
-            "description": "The name you'd like to set for the TV. If unset, the name set on the TV will be used.",
+            "title": "HomeKit / HomeBridge TV Name",
+            "description": "The name with you'd like your set to appear on HomeKit.",
             "type": "string",
             "required": false
           },
@@ -24,6 +24,13 @@
             "type": "string",
             "format": "ipv4",
             "required": true
+          },
+          "mac": {
+            "title": "MAC address",
+            "description": "The MAC address of your TV.",
+            "type": "string",
+            "required": false,
+            "pattern": "^([A-Fa-f0-9]{2}(:|-)){5}[A-Fa-f0-9]{2}$"
           },
           "encKey": {
             "title": "Encryption Key",
@@ -75,8 +82,15 @@
       "flex-flow": "row wrap",
       "key": "tvs",
       "items": [
-        "tvs[].friendlyName",
         "tvs[].ipAddress",
+        {
+          "key": "tvs[].friendlyName",
+          "placeholder": "If unset, the name set on the TV will be used."
+        },
+        {
+          "key": "tvs[].mac",
+          "placeholder": "leave empty except for older models that require Wake On Lan to power on from standby"
+        },
         {
           "key": "tvs[]",
           "title": "Authentication",
@@ -100,10 +114,7 @@
             {
               "type": "flex",
               "flex-flow": "row",
-              "items": [
-                "tvs[].hdmiInputs[].id",
-                "tvs[].hdmiInputs[].name"
-              ]
+              "items": ["tvs[].hdmiInputs[].id", "tvs[].hdmiInputs[].name"]
             }
           ]
         },

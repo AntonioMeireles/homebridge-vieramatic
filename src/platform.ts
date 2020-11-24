@@ -1,3 +1,4 @@
+import { isValidMACAddress } from '@mi-sec/mac-address';
 import {
   API,
   Characteristic,
@@ -75,6 +76,16 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
       return;
     }
     const ip = new Address4(device.ipAddress);
+    const { mac } = device;
+    if (device.mac && isValidMACAddress(device.mac) === false) {
+      this.log.error(
+        "IGNORING '%s' (from '%s') as it has a badly formated MAC address",
+        device.mac,
+        device.ipAddress
+      );
+      this.log.error(JSON.stringify(device, undefined, 2));
+      return;
+    }
 
     if ((await VieraTV.livenessProbe(ip)) === false) {
       this.log.error("IGNORING '%s' as it is not reachable.", ip.address);
@@ -83,7 +94,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
       );
       return;
     }
-    const tv = new VieraTV(ip);
+    const tv = new VieraTV(ip, mac);
     const specs = await tv.getSpecs();
 
     if (specs === undefined) {

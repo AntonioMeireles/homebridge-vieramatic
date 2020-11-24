@@ -1,3 +1,4 @@
+import wakeOnLan from '@mi-sec/wol';
 import {
   Characteristic,
   CharacteristicGetCallback,
@@ -20,6 +21,7 @@ const displayName = (string: string): string => {
 export interface UserConfig {
   friendlyName?: string;
   ipAddress: string;
+  mac?: string;
   encKey?: string;
   appId?: string;
   customVolumeSlider?: boolean;
@@ -448,6 +450,14 @@ export class VieramaticPlatformAccessory {
     this.log.debug('(setPowerStatus)', nextState, currentState);
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState) {
       this.log.debug('TV is already %s: Ignoring!', message);
+    } else if (
+      nextState === this.Characteristic.Active.ACTIVE &&
+      this.accessory.context.device.mac
+    ) {
+      this.log.debug('sending WOL packets to awake TV');
+      await wakeOnLan(this.accessory.context.device.mac, { packets: 10 });
+      await this.updateTVstatus(nextState);
+      this.log.debug('Turned TV', message);
     } else {
       const cmd = await this.accessory.context.device.sendCommand('POWER');
       if (cmd.error) {
