@@ -630,6 +630,7 @@ export class VieraTV implements VieraTV {
             if ((await VieraTV.livenessProbe(address)) === true) {
               tv = new VieraTV(address);
               const specs = await tv.getSpecs();
+              tv.specs = specs;
               if (specs !== undefined) {
                 if (specs.requiresEncryption === true) {
                   if (urlObject.searchParams.get('challenge')) {
@@ -670,6 +671,7 @@ export class VieraTV implements VieraTV {
           } else {
             tv = new VieraTV(address);
             const specs = await tv.getSpecs();
+            tv.specs = specs;
             if (specs === undefined) {
               returnCode = 500;
               body = `
