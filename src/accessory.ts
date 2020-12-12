@@ -228,16 +228,12 @@ export class VieramaticPlatformAccessory {
     this.userConfig.hdmiInputs ||= [];
 
     if (!this.storage.data) {
-      this.log.info(
-        'Initializing',
-        device.specs.friendlyName,
-        'for the first time. [II]'
-      );
       this.storage.data = {
         inputs: {
           hdmi: this.userConfig.hdmiInputs,
           applications: { ...this.tvApps }
         },
+        ipAddress: this.userConfig.ipAddress,
         specs: { ...device.specs }
       };
       // add default TUNER (live TV)... visible by default
@@ -290,6 +286,8 @@ export class VieramaticPlatformAccessory {
         }
       });
       this.storage.data.inputs.hdmi = [...shallow];
+      this.storage.data.ipAddress = this.userConfig.ipAddress;
+      this.storage.data.specs = { ...device.specs };
 
       // FIXME: check also for added/removed apps (just in case)
     }
@@ -298,22 +296,16 @@ export class VieramaticPlatformAccessory {
     this.configureInputSource('TUNER', 'TV Tuner', 500);
     // HDMI inputs ...
     this.storage.data.inputs.hdmi.forEach((input) => {
-      this.configureInputSource(
-        'HDMI',
-        input.name,
-        Number.parseInt(input.id, 10)
-      );
+      const sig = Number.parseInt(input.id, 10);
+      this.configureInputSource('HDMI', input.name, sig);
     });
     // Apps
     Object.entries(this.storage.data.inputs.applications).forEach(
       /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (line: any) => {
         const [id, app] = line;
-        this.configureInputSource(
-          'APPLICATION',
-          app.name,
-          1000 + Number.parseInt(id, 10)
-        );
+        const sig = 1000 + Number.parseInt(id, 10);
+        this.configureInputSource('APPLICATION', app.name, sig);
       }
     );
   }

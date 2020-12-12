@@ -14,7 +14,7 @@ import { Address4 } from 'ip-address';
 import { UserConfig, VieramaticPlatformAccessory } from './accessory';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { Storage } from './storage';
-import { VieraApps, VieraTV } from './viera';
+import { Outcome, VieraApps, VieraTV } from './viera';
 
 export class VieramaticPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;
@@ -64,47 +64,77 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
     });
   }
 
+  deviceSetupPreFlight = (device: UserConfig): Outcome<Address4> => {
+    if (Address4.isValid(device.ipAddress) !== true) {
+      return {
+        error: `IGNORING '${device.ipAddress}' as it is not a valid ip address.
+        \n\n${JSON.stringify(device, undefined, 2)}`
+      };
+    }
+    const { mac } = device;
+    if (mac && isValidMACAddress(mac) === false) {
+      return {
+        error: `IGNORING '${device.ipAddress}' as it has an invalid MAC address:
+        '${device.mac}'\n\n${JSON.stringify(device, undefined, 2)}`
+      };
+    }
+    return { value: new Address4(device.ipAddress) };
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private knownWorking(ip: Address4): any {
+    if (this.storage.accessories === null) {
+      return;
+    }
+    // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
+    for (const [_k, v] of Object.entries(this.storage.accessories)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((v as any).data.ipAddress === ip.address) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, consistent-return
+        return (v as any).data.specs;
+      }
+    }
+  }
+
   private async deviceSetup(device: UserConfig): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json');
-
-    if (Address4.isValid(device.ipAddress) !== true) {
-      this.log.error(
-        "IGNORING '%s' as it is not a valid ip address.",
-        device.ipAddress
-      );
-      this.log.error(JSON.stringify(device, undefined, 2));
-      return;
-    }
-    const ip = new Address4(device.ipAddress);
-    const { mac } = device;
-    if (device.mac && isValidMACAddress(device.mac) === false) {
-      this.log.error(
-        "IGNORING '%s' (from '%s') as it has a badly formated MAC address",
-        device.mac,
-        device.ipAddress
-      );
-      this.log.error(JSON.stringify(device, undefined, 2));
+    const outcome = this.deviceSetupPreFlight(device);
+    if (outcome.error) {
+      this.log.error(outcome.error as string);
       return;
     }
 
-    if ((await VieraTV.livenessProbe(ip)) === false) {
-      this.log.error("IGNORING '%s' as it is not reachable.", ip.address);
+    const ip = outcome.value as Address4;
+    const cached = this.knownWorking(ip);
+    const reachable = await VieraTV.livenessProbe(ip);
+
+    if (!(reachable || cached)) {
       this.log.error(
+        "IGNORING '%s' as it is not reachable, and we can't relay on cached data",
+        ip.address,
+        'as it seems that it was never ever seen and setup before.',
         'Please make sure that your TV is powered ON and connected to the network.'
       );
       return;
     }
-    const tv = new VieraTV(ip, mac);
+
+    const tv = new VieraTV(ip, device.mac);
     const specs = await tv.getSpecs();
 
-    if (specs === undefined) {
-      this.log.error(
-        "IGNORING '%s' as an unexpected error occurred - was unable to fetch specs from the TV.",
-        ip.address
-      );
-      return;
+    if (!specs) {
+      this.log.warn(`WARNING: unable to fetch specs from TV at '${ip.address}`);
+      if (cached) {
+        if (cached.requiresEncryption === true) {
+          this.log.error(
+            "IGNORING '%s' as we do not support offline initialization, from cache,",
+            ip.address,
+            'for models that require encryption.'
+          );
+          return;
+        }
+      }
     }
-    tv.specs = specs;
+    tv.specs = specs ?? cached;
     if (tv.specs.requiresEncryption === true) {
       if (!(device.appId && device.encKey)) {
         this.log.error(
@@ -120,7 +150,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
       const result = await tv.requestSessionId();
       if (result.error) {
         this.log.error(
-          "IGNORING '%s' ('%s') as no working credentials were supplied.",
+          "IGNORING '%s' ('%s') as no working credentials were supplied.\n\n",
           ip.address,
           tv.specs.modelName,
           result.error
@@ -141,11 +171,7 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
       this.storage.accessories === null ||
       this.storage.accessories[`${tv.specs.serialNumber}`] === undefined
     ) {
-      this.log.info(
-        'Initializing',
-        tv.specs.friendlyName,
-        'for the first time. [I]'
-      );
+      this.log.info(`Initializing '${tv.specs.friendlyName}' first time ever.`);
       const status = await tv.isTurnedOn();
       if (status !== true) {
         this.log.error(
