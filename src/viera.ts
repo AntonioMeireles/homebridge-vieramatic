@@ -631,18 +631,20 @@ export class VieraTV implements VieraTV {
               tv = new VieraTV(address);
               const specs = await tv.getSpecs();
               tv.specs = specs;
-              if (specs !== undefined) {
-                if (specs.requiresEncryption === true) {
-                  if (urlObject.searchParams.get('challenge')) {
-                    tv.session.challenge = Buffer.from(
-                      urlObject.searchParams.get('challenge') as string,
-                      'base64'
-                    );
-                    const result = await tv.authorizePinCode(pin as string);
-                    if (result.error) {
-                      [returnCode, body] = [500, 'Wrong Pin code...'];
-                    } else {
-                      body = `
+              if (
+                specs !== undefined &&
+                specs.requiresEncryption === true &&
+                urlObject.searchParams.get('challenge')
+              ) {
+                tv.session.challenge = Buffer.from(
+                  urlObject.searchParams.get('challenge') as string,
+                  'base64'
+                );
+                const result = await tv.authorizePinCode(pin as string);
+                if (result.error) {
+                  [returnCode, body] = [500, 'Wrong Pin code...'];
+                } else {
+                  body = `
                       Paired with your TV sucessfully!.
                       <br />
                         <b>Encryption Key</b>: <b>${tv.auth.key}</b>
@@ -650,8 +652,6 @@ export class VieraTV implements VieraTV {
                         <b>AppId</b>: <b>${tv.auth.appId}</b>
                       <br />
                     `;
-                    }
-                  }
                 }
               }
             }

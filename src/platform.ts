@@ -123,15 +123,13 @@ export class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (!specs) {
       this.log.warn(`WARNING: unable to fetch specs from TV at '${ip.address}`);
-      if (cached) {
-        if (cached.requiresEncryption === true) {
-          this.log.error(
-            "IGNORING '%s' as we do not support offline initialization, from cache,",
-            ip.address,
-            'for models that require encryption.'
-          );
-          return;
-        }
+      if (cached && cached.requiresEncryption === true) {
+        this.log.error(
+          "IGNORING '%s' as we do not support offline initialization, from cache,",
+          ip.address,
+          'for models that require encryption.'
+        );
+        return;
       }
     }
     tv.specs = specs ?? cached;

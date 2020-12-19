@@ -572,19 +572,19 @@ export class VieramaticPlatformAccessory {
       .updateValue(newState);
     if (newState === true) {
       const cmd = await this.accessory.context.device.getMute();
-      if (!cmd.error && cmd.value !== undefined) {
-        if (
-          cmd.value !==
+      if (
+        !cmd.error &&
+        cmd.value !== undefined &&
+        cmd.value !==
           speakerService.getCharacteristic(this.Characteristic.Mute).value
-        ) {
-          speakerService
-            .getCharacteristic(this.Characteristic.Mute)
-            .updateValue(cmd.value);
-          if (customSpeakerService) {
-            customSpeakerService
-              .getCharacteristic(this.Characteristic.On)
-              .updateValue(!cmd.value);
-          }
+      ) {
+        speakerService
+          .getCharacteristic(this.Characteristic.Mute)
+          .updateValue(cmd.value);
+        if (customSpeakerService) {
+          customSpeakerService
+            .getCharacteristic(this.Characteristic.On)
+            .updateValue(!cmd.value);
         }
       }
     } else {
