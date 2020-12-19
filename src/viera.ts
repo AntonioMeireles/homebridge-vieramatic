@@ -341,7 +341,7 @@ export class VieraTV implements VieraTV {
         }
       )
       .catch((error) => {
-        this.log.error('getSpecs:', error);
+        this.log.debug('getSpecs:', error);
         return (undefined as unknown) as VieraSpecs;
       });
   }
