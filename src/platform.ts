@@ -1,4 +1,3 @@
-import { isValidMACAddress } from '@mi-sec/mac-address';
 import {
   API,
   Characteristic,
@@ -8,6 +7,8 @@ import {
   PlatformConfig,
   Service
 } from 'homebridge';
+
+import { isValidMACAddress } from '@mi-sec/mac-address';
 import { Address4 } from 'ip-address';
 
 /* eslint-disable-next-line import/no-cycle */

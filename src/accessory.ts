@@ -1,4 +1,3 @@
-import wakeOnLan from '@mi-sec/wol';
 import {
   Characteristic,
   CharacteristicGetCallback,
@@ -8,6 +7,8 @@ import {
   PlatformAccessory,
   Service
 } from 'homebridge';
+
+import wakeOnLan from '@mi-sec/wol';
 
 /* eslint-disable-next-line import/no-cycle */
 import { VieramaticPlatform } from './platform';

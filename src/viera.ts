@@ -1,15 +1,16 @@
 /* eslint-disable no-multi-assign */
 
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
+import http from 'http';
+import net from 'net';
+import { URL } from 'url';
+
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { decodeXML } from 'entities';
 import parser from 'fast-xml-parser';
-import http from 'http';
 import { Address4 } from 'ip-address';
-import net from 'net';
 import UPnPsub from 'node-upnp-subscription';
 import * as readlineSync from 'readline-sync';
-import { URL } from 'url';
 
 // helpers and default settings
 const API_ENDPOINT = 55000;

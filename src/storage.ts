@@ -1,6 +1,7 @@
-import * as fs from 'fs-extra';
 import { API } from 'homebridge';
 import path from 'path';
+
+import * as fs from 'fs-extra';
 
 export class Storage {
   public accessories;
