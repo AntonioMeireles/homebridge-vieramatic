@@ -12,7 +12,7 @@ import wakeOnLan from '@mi-sec/wol';
 
 /* eslint-disable-next-line import/no-cycle */
 import { VieramaticPlatform } from './platform';
-import { Outcome, VieraApps, VieraTV } from './viera';
+import { Outcome, VieraApps } from './viera';
 
 // helpers ...
 const displayName = (string: string): string => {
@@ -52,7 +52,7 @@ export class VieramaticPlatformAccessory {
 
   constructor(
     private readonly platform: VieramaticPlatform,
-    private readonly accessory: PlatformAccessory<Record<string, VieraTV>>,
+    private readonly accessory: PlatformAccessory,
     private readonly userConfig: UserConfig,
     private readonly tvApps: VieraApps
   ) {
