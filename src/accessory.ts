@@ -25,6 +25,7 @@ export interface UserConfig {
   encKey?: string
   appId?: string
   customVolumeSlider?: boolean
+  disabledAppSupport?: boolean
   hdmiInputs: Array<{
     name: string
     id: string

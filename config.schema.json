@@ -66,11 +66,18 @@
               }
             }
           },
+          "disabledAppSupport": {
+            "title": "Allow the plugin to still work if the TV does not allow smart app management through HomeKit",
+            "description": "Only enable if you have a very old TV set (circa 2012)",
+            "type": "boolean",
+            "default": false,
+            "required": false
+          },
           "customVolumeSlider": {
             "title": "Volume control service",
             "description": "Whether to enable a fan as an additional TV volume control artifact to HomeKit",
             "type": "boolean",
-            "default": "false"
+            "default": false
           }
         }
       }
@@ -118,7 +125,8 @@
             }
           ]
         },
-        "tvs[].customVolumeSlider"
+        "tvs[].customVolumeSlider",
+        "tvs[].disabledAppSupport"
       ]
     }
   ]

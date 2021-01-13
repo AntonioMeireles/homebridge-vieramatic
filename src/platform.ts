@@ -183,13 +183,17 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         )
         return
       }
-      const cmd = await tv.getApps<VieraApps>()
-      if (cmd.error != null) {
-        this.log.error('unable to fetch Apps list from the TV', cmd)
-        return
-      }
-      if (cmd.value != null) {
-        apps = cmd.value
+      if (device.disabledAppSupport == null || !device.disabledAppSupport) {
+        const cmd = await tv.getApps<VieraApps>()
+
+        if (cmd.error != null) {
+          this.log.error('unable to fetch Apps list from the TV', cmd)
+          return
+        }
+
+        if (cmd.value != null) {
+          apps = cmd.value
+        }
       }
     }
 

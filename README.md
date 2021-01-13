@@ -121,8 +121,10 @@
 
 6. disable the custom volume slider (**optional**)
 
-   By default each TV will appear on HomeKit with an additional volume slider (of Fan type) in order
-   to provide a visual way to control the volume (in addition to the hardware volume controls)
+   By default each TV will appear on HomeKit with an additional volume slider (of _Fan_ type) in order
+   to provide a visual way to control the volume (in addition to the hardware
+   volume controls)
+
    In order to disable this feature, for each defined TV, just add
 
    ```JSON
@@ -135,9 +137,9 @@
 
 ### TV naming
 
-If you'd prefer for Vieramatic to automatically detect and consume the name on your TV, then you can remove the "tvName" field from your config.
+If you'd prefer for Vieramatic to automatically detect and consume the name on your TV, then you can remove the `tvName` field from your config.
 
-Your config.json file will look like this:
+Your `config.json` file will look like this:
 
 > ```JSON
 > "tvs": [
@@ -184,6 +186,18 @@ plugin could do.
 > ```
 >
 > so that the the plugin could turn the TV ON.
+
+### Disabling TV app support in very old TV sets
+
+Early Panasonic SmartTVs APis either didn't expose TV apps using the current API
+or simply lacked that functionality at all. So, in order to support those sets a
+new options was added in `2.0.16` that allows the plugin's support for TV's apps
+to be disabled. For each affected TV just add to its' section (in
+`config.json`), or (preferable) turn that option ON via homebridge's config UI.
+
+```JSON
+   "disabledAppSupport": true,
+```
 
 ### input switching - how to get Siri to do it
 
