@@ -4,7 +4,7 @@ src
 # ------------- Defaults ------------- #
 
 # eslint
-.eslintrc
+.eslintrc.js
 
 # typescript
 tsconfig.json

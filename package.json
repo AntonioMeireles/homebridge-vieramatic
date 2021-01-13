@@ -1,15 +1,53 @@
 {
-  "name": "homebridge-vieramatic",
-  "displayName": "Panasonic™ Viera™ TVs support",
-  "version": "2.0.15",
-  "description": "Homebridge plugin for Panasonic™ Viera™ TVs (with full support for 2018 and later models)",
-  "main": "dist/index.js",
-  "scripts": {
-    "lint": "eslint src/**.ts",
-    "watch": "npm run build && npm link && nodemon",
-    "build": "rimraf ./dist && tsc",
-    "prepublishOnly": "npm run lint && npm run build"
+  "author": "António Meireles <antonio.meireles@reformi.st> (https://reformi.st)",
+  "bin": {
+    "viera-pair": "dist/pair.js"
   },
+  "bugs": {
+    "url": "https://github.com/AntonioMeireles/homebridge-vieramatic/issues"
+  },
+  "dependencies": {
+    "@mi-sec/mac-address": "^1.0.15",
+    "@mi-sec/wol": "^1.0.12",
+    "axios": "^0.21.1",
+    "entities": "^2.1.0",
+    "fast-xml-parser": "^3.17.6",
+    "fs-extra": "^9.0.1",
+    "ip-address": "^7.1.0",
+    "node-upnp-subscription": "^1.0.6",
+    "readline-sync": "^1.4.10"
+  },
+  "description": "Homebridge plugin for Panasonic™ Viera™ TVs (with full support for 2018 and later models)",
+  "devDependencies": {
+    "@types/entities": "^1.1.1",
+    "@types/fs-extra": "^9.0.6",
+    "@types/node": "^14.14.20",
+    "@types/readline-sync": "^1.4.3",
+    "@typescript-eslint/eslint-plugin": "^4.13.0",
+    "@typescript-eslint/parser": "^4.13.0",
+    "eslint": "^7.17.0",
+    "eslint-config-prettier": "^7.1.0",
+    "eslint-config-standard-with-typescript": "^19.0.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-json": "^2.1.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.1.0",
+    "homebridge": "^1.1.7",
+    "nodemon": "^2.0.7",
+    "prettier": "^2.2.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
+  },
+  "displayName": "Panasonic™ Viera™ TVs support",
+  "engines": {
+    "homebridge": ">0.4.53",
+    "node": ">=10.17.0"
+  },
+  "homepage": "https://github.com/AntonioMeireles/homebridge-vieramatic#README",
   "keywords": [
     "homekit",
     "homebridge",
@@ -22,57 +60,18 @@
     "tv",
     "automation"
   ],
-  "author": "António Meireles <antonio.meireles@reformi.st> (https://reformi.st)",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "name": "homebridge-vieramatic",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic.git"
   },
-  "bugs": {
-    "url": "https://github.com/AntonioMeireles/homebridge-vieramatic/issues"
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "lint": "eslint src/**.ts",
+    "prepublishOnly": "npm run lint && npm run build",
+    "watch": "npm run build && npm link && nodemon"
   },
-  "homepage": "https://github.com/AntonioMeireles/homebridge-vieramatic#README",
-  "bin": {
-    "viera-pair": "dist/pair.js"
-  },
-  "engines": {
-    "node": ">=10.17.0",
-    "homebridge": ">0.4.53"
-  },
-  "license": "Apache-2.0",
-  "devDependencies": {
-    "@types/entities": "^1.1.1",
-    "@types/fs-extra": "^9.0.6",
-    "@types/node": "^14.14.20",
-    "@types/readline-sync": "^1.4.3",
-    "@typescript-eslint/eslint-plugin": "^4.12.0",
-    "@typescript-eslint/parser": "^4.12.0",
-    "eslint": "^7.17.0",
-    "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-config-airbnb-typescript": "^12.0.0",
-    "eslint-config-airbnb-typescript-prettier": "^4.1.0",
-    "eslint-config-prettier": "^7.1.0",
-    "eslint-plugin-eslint-comments": "^3.2.0",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-json": "^2.1.2",
-    "eslint-plugin-prettier": "^3.3.1",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-unicorn": "^25.0.1",
-    "homebridge": "^1.1.7",
-    "nodemon": "^2.0.7",
-    "prettier": "^2.2.1",
-    "rimraf": "^3.0.2",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.1.3"
-  },
-  "dependencies": {
-    "@mi-sec/mac-address": "^1.0.15",
-    "@mi-sec/wol": "^1.0.12",
-    "axios": "^0.21.1",
-    "entities": "^2.1.0",
-    "fast-xml-parser": "^3.17.6",
-    "fs-extra": "^9.0.1",
-    "ip-address": "^7.1.0",
-    "node-upnp-subscription": "^1.0.6",
-    "readline-sync": "^1.4.10"
-  }
+  "version": "2.0.15"
 }

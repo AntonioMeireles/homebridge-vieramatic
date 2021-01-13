@@ -1,43 +1,42 @@
-import { API } from 'homebridge';
-import path from 'path';
+import { API } from 'homebridge'
+import path from 'path'
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs-extra'
 
-export class Storage {
-  public accessories;
+class Storage {
+  public accessories
 
-  public filePath: string;
+  public filePath: string
 
   constructor(api: API) {
-    this.accessories = {};
-    this.filePath = path.join(
-      api.user.cachedAccessoryPath(),
-      'vieramatic.json'
-    );
+    this.accessories = {}
+    this.filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
   }
 
   public init(): void {
     const data = fs.readJsonSync(this.filePath, {
       throws: false
-    });
+    })
     if (data !== undefined) {
-      this.accessories = data;
+      this.accessories = data
     }
   }
 
   public get(id: string): unknown {
-    if (!this.accessories) {
-      this.accessories = {};
+    if (this.accessories == null) {
+      this.accessories = {}
     }
 
-    if (!this.accessories[id]) {
-      this.accessories[id] = {};
+    if (this.accessories[id] == null) {
+      this.accessories[id] = {}
     }
 
-    return this.accessories[id];
+    return this.accessories[id]
   }
 
   public save(): void {
-    fs.writeJSONSync(this.filePath, this.accessories);
+    fs.writeJSONSync(this.filePath, this.accessories)
   }
 }
+
+export default Storage
