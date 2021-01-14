@@ -227,6 +227,23 @@ export class VieramaticPlatformAccessory {
 
     this.userConfig.hdmiInputs ||= []
 
+    // ignore HDMI configs
+    this.userConfig.hdmiInputs = this.userConfig.hdmiInputs.filter((input) => {
+      const required = ['id', 'name']
+
+      for (const req of required)
+        if (!Object.prototype.hasOwnProperty.call(input, req)) {
+          this.log.warn(
+            'ignoring hdmi input "%s" as it has a missing required field ("%s" is required)',
+            input,
+            req
+          )
+          return false
+        }
+
+      return true
+    })
+
     if (this.storage.data == null) {
       this.storage.data = {
         inputs: {
