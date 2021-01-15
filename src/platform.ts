@@ -12,6 +12,7 @@ import { isValidMACAddress } from '@mi-sec/mac-address'
 import { Address4 } from 'ip-address'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
+import { isEmpty } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { Outcome, VieraApps, VieraTV } from './viera'
@@ -125,7 +126,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const tv = new VieraTV(ip, this.log, device.mac)
     const specs = await tv.getSpecs()
 
-    if (specs === {}) {
+    if (isEmpty(specs)) {
       this.log.warn(`WARNING: unable to fetch specs from TV at '${ip.address}`)
       if (cached != null && cached.requiresEncryption === true) {
         this.log.error(
@@ -136,7 +137,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         return
       }
     }
-    tv.specs = specs !== {} ? specs : cached
+    tv.specs = !isEmpty(specs) ? specs : cached
     if (tv.specs.requiresEncryption) {
       if (!(device.appId != null && device.encKey != null)) {
         this.log.error(

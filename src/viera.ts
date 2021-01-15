@@ -11,12 +11,8 @@ import { Address4 } from 'ip-address'
 import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
+import { isEmpty, html } from './helpers'
 import VieramaticPlatform from './platform'
-
-// vscode decorator trickery
-const lit = (s: TemplateStringsArray, ...args: string[]): string =>
-  s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
-const html = lit
 
 // helpers and default settings
 const API_ENDPOINT = 55000
@@ -684,7 +680,7 @@ export class VieraTV implements VieraTV {
             tv = new VieraTV(address, ctx.log)
             const specs = await tv.getSpecs()
             tv.specs = specs
-            if (specs === {}) {
+            if (isEmpty(specs)) {
               returnCode = 500
               body = html`
                 An unexpected error occurred:
@@ -792,7 +788,7 @@ export class VieraTV implements VieraTV {
     const tv = new VieraTV(ip, console)
     const specs = await tv.getSpecs()
 
-    if (specs === {}) {
+    if (isEmpty(specs)) {
       throw new Error(
         'An unexpected error occurred - Unable to fetch specs from the TV.'
       )
