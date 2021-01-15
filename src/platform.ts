@@ -56,7 +56,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     })
 
     this.storage.init()
-    VieraTV.webSetup().catch((error) => this.log.error(error))
+    VieraTV.webSetup(this).catch((error) => this.log.error(error))
     const devices = this.config.tvs as UserConfig[]
 
     devices.forEach(async (device: UserConfig) => {

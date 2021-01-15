@@ -10,6 +10,8 @@ import { Address4 } from 'ip-address'
 import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
+import VieramaticPlatform from './platform'
+
 // vscode decorator trickery
 const lit = (s: TemplateStringsArray, ...args: string[]): string =>
   s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
@@ -605,7 +607,7 @@ export class VieraTV implements VieraTV {
     console.log('--x--')
   }
 
-  public static async webSetup(): Promise<void> {
+  public static async webSetup(ctx: VieramaticPlatform): Promise<void> {
     const server = http.createServer(async (request, response) => {
       let ip: string | null
       let tv: VieraTV
@@ -613,8 +615,7 @@ export class VieraTV implements VieraTV {
         request.url ?? '',
         `http://${request.headers.host as string}`
       )
-
-      console.log(urlObject)
+      ctx.log.debug((urlObject as unknown) as string)
       let returnCode = 200
       let body = 'nothing to see here - move on'
 
@@ -622,7 +623,7 @@ export class VieraTV implements VieraTV {
         if (urlObject.searchParams.get('tv') != null) {
           const ip = urlObject.searchParams.get('tv')
           const pin = urlObject.searchParams.get('pin')
-          console.log(urlObject)
+          ctx.log.debug((urlObject as unknown) as string)
 
           if (Address4.isValid(ip as string)) {
             const address = new Address4(ip as string)
@@ -758,8 +759,10 @@ export class VieraTV implements VieraTV {
 
     server.on('clientError', (error, socket) => {
       socket.end('HTTP/1.1 400 Bad Request\r\n\r\n')
-      console.log(error)
+      ctx.log.error(error)
     })
+
+    ctx.log.info('launching encryption helper endpoint on :8973')
     server.listen(8973)
   }
 
