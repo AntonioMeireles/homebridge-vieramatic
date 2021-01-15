@@ -43,7 +43,6 @@ module.exports = {
         "checksVoidReturn": false
       }
     ],
-    "eslint-comments/disable-enable-pair": "off",
     "import/order": [
       "error",
       {
