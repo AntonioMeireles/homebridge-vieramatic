@@ -122,10 +122,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       return
     }
 
-    const tv = new VieraTV(ip, device.mac)
+    const tv = new VieraTV(ip, this.log, device.mac)
     const specs = await tv.getSpecs()
 
-    if (specs == null) {
+    if (specs === {}) {
       this.log.warn(`WARNING: unable to fetch specs from TV at '${ip.address}`)
       if (cached != null && cached.requiresEncryption === true) {
         this.log.error(
@@ -136,7 +136,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         return
       }
     }
-    tv.specs = specs ?? cached
+    tv.specs = specs !== {} ? specs : cached
     if (tv.specs.requiresEncryption) {
       if (!(device.appId != null && device.encKey != null)) {
         this.log.error(

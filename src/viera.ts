@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { Logger } from 'homebridge'
 import http from 'http'
 import net from 'net'
 import { URL } from 'url'
@@ -22,14 +23,16 @@ const API_ENDPOINT = 55000
 const curl: AxiosInstance = axios.create({ timeout: 3500 })
 const AudioChannel = '<InstanceID>0</InstanceID><Channel>Master</Channel>'
 
-interface VieraSpecs {
-  friendlyName: string
-  modelName: string
-  modelNumber: string
-  manufacturer: string
-  serialNumber: string
-  requiresEncryption: boolean
-}
+type VieraSpecs =
+  | {
+      friendlyName: string
+      modelName: string
+      modelNumber: string
+      manufacturer: string
+      serialNumber: string
+      requiresEncryption: boolean
+    }
+  | Record<string, never>
 
 interface VieraApp {
   name: string
@@ -44,19 +47,24 @@ enum AlwaysInPlainText {
   X_DisplayPinCode = 'X_DisplayPinCode',
   X_RequestAuth = 'X_RequestAuth'
 }
-interface VieraAuthSession {
-  iv: Buffer
-  key: Buffer
-  hmacKey: Buffer
-  challenge: Buffer
-  seqNum: number
-  id: number
-}
 
-interface VieraAuth {
-  appId: string
-  key: string
-}
+type VieraAuthSession =
+  | {
+      iv: Buffer
+      key: Buffer
+      hmacKey: Buffer
+      challenge: Buffer
+      seqNum: number
+      id: number
+    }
+  | Record<string, never>
+
+type VieraAuth =
+  | Record<string, never>
+  | {
+      appId: string
+      key: string
+    }
 
 export interface Outcome<T> {
   error?: Error
@@ -64,7 +72,6 @@ export interface Outcome<T> {
 }
 
 const getKey = (key: string, xml: string): Outcome<string> => {
-  /* slint-disable no-restricted-syntax, no-continue, no-prototype-builtins */
   const fn = (object, k: string): string => {
     let objects: string[] = []
     for (const i in object) {
@@ -97,13 +104,13 @@ const getKey = (key: string, xml: string): Outcome<string> => {
 export class VieraTV implements VieraTV {
   readonly address: string
 
-  readonly mac: string
+  readonly mac: string | undefined
 
   readonly port = API_ENDPOINT
 
   readonly baseURL: string
 
-  readonly log: Console
+  readonly log: Logger | Console
 
   auth: VieraAuth
 
@@ -111,19 +118,16 @@ export class VieraTV implements VieraTV {
 
   specs: VieraSpecs
 
-  constructor(
-    ip: Address4,
-    mac = (undefined as unknown) as string,
-    log: Console = console,
-    auth = ({} as unknown) as VieraAuth
-  ) {
+  constructor(ip: Address4, log: Logger | Console, mac?: string) {
     this.address = ip.address
     this.baseURL = `http://${this.address}:${this.port}`
+
     this.log = log
-    this.auth = auth
-    this.session = ({} as unknown) as VieraAuthSession
-    this.specs = (undefined as unknown) as VieraSpecs
     this.mac = mac
+
+    this.auth = {}
+    this.session = {}
+    this.specs = {}
   }
 
   public static async livenessProbe(
@@ -220,20 +224,22 @@ export class VieraTV implements VieraTV {
     }</X_ApplicationId> <X_EncInfo>${encinfo as string}</X_EncInfo>`
 
     const callback = (data: string): Outcome<T> => {
+      const error = new Error(
+        'abnormal result from TV - session ID is not (!) an integer'
+      )
       this.session.seqNum = 1
       const number = getKey('X_SessionId', data)
 
       if (number.error != null) {
-        return number as T
+        this.log.error(number.error.message)
+        return { error }
       }
 
       if (Number.isInteger(number.value)) {
         this.session.id = Number.parseInt(number.value as string, 10)
         return {}
       }
-      const error = new Error(
-        'abnormal result from TV - session ID is not (!) an integer'
-      )
+
       return { error }
     }
 
@@ -355,7 +361,7 @@ export class VieraTV implements VieraTV {
       )
       .catch((error) => {
         this.log.debug('getSpecs:', error)
-        return (undefined as unknown) as VieraSpecs
+        return {}
       })
   }
 
@@ -500,7 +506,7 @@ export class VieraTV implements VieraTV {
     )
   }
 
-  private async authorizePinCode<T>(pin: string): Promise<Outcome<T>> {
+  private async authorizePinCode(pin: string): Promise<Outcome<VieraAuth>> {
     const [iv, key, hmacKey] = [
       this.session.challenge,
       Buffer.alloc(16),
@@ -556,13 +562,13 @@ export class VieraTV implements VieraTV {
     }
     const data = `<X_PinCode>${pin}</X_PinCode>`
     const outcome = this.encryptPayload(data, key, iv, hmacKey)
-    if (outcome.error != null) return outcome as T
+    if (outcome.error != null) return { error: outcome.error }
 
     const parameters = `<X_AuthInfo>${outcome.value as string}</X_AuthInfo>`
 
-    const callback = (r: string): Outcome<T> => {
+    const callback = (r: string): Outcome<VieraAuth> => {
       const raw = getKey('X_AuthResult', r)
-      if (raw.error != null) return raw as T
+      if (raw.error != null) return { error: raw.error }
 
       const authResultDecrypted = this.decryptPayload(
         raw.value as string,
@@ -571,16 +577,21 @@ export class VieraTV implements VieraTV {
       )
 
       const appId = getKey('X_ApplicationId', authResultDecrypted)
-      if (appId.error != null) return appId as T
+      if (appId.error != null) return { error: appId.error }
 
       const keyy = getKey('X_Keyword', authResultDecrypted)
-      if (keyy.error != null) return keyy as T
-      ;[this.auth.key, this.auth.appId] = [keyy.value, appId.value] as string[]
+      if (keyy.error != null) return { error: keyy.error }
 
-      // TODO: Proper error handling
-      return {}
+      const value = ({
+        appId: appId.value,
+        key: keyy.value
+      } as unknown) as VieraAuth
+
+      return {
+        value
+      }
     }
-    return this.sendRequest<T>('command', 'X_RequestAuth', parameters, callback)
+    return this.sendRequest('command', 'X_RequestAuth', parameters, callback)
   }
 
   private renderSampleConfig(): void {
@@ -588,8 +599,8 @@ export class VieraTV implements VieraTV {
       platform: 'PanasonicVieraTV',
       tvs: [
         {
-          encKey: this.auth?.key != null ? this.auth.key : undefined,
-          appId: this.auth?.appId != null ? this.auth.appId : undefined,
+          encKey: this.auth?.key ?? undefined,
+          appId: this.auth?.appId ?? undefined,
           hdmiInputs: []
         }
       ]
@@ -628,7 +639,7 @@ export class VieraTV implements VieraTV {
           if (Address4.isValid(ip as string)) {
             const address = new Address4(ip as string)
             if (await VieraTV.livenessProbe(address)) {
-              tv = new VieraTV(address)
+              tv = new VieraTV(address, ctx.log)
               const specs = await tv.getSpecs()
               tv.specs = specs
               if (
@@ -643,14 +654,18 @@ export class VieraTV implements VieraTV {
                 if (result.error != null) {
                   ;[returnCode, body] = [500, 'Wrong Pin code...']
                 } else {
-                  body = html`
-                    Paired with your TV sucessfully!.
-                    <br />
-                    <b>Encryption Key</b>: <b>${tv.auth.key}</b>
-                    <br />
-                    <b>AppId</b>: <b>${tv.auth.appId}</b>
-                    <br />
-                  `
+                  if (result.value != null) {
+                    tv.auth = result.value
+
+                    body = html`
+                      Paired with your TV sucessfully!.
+                      <br />
+                      <b>Encryption Key</b>: <b>${tv.auth.key}</b>
+                      <br />
+                      <b>AppId</b>: <b>${tv.auth.appId}</b>
+                      <br />
+                    `
+                  }
                 }
               }
             }
@@ -666,10 +681,10 @@ export class VieraTV implements VieraTV {
           if (!(await VieraTV.livenessProbe(address))) {
             body = html`the supplied TV ip address '${ip}' is unreachable...`
           } else {
-            tv = new VieraTV(address)
+            tv = new VieraTV(address, ctx.log)
             const specs = await tv.getSpecs()
             tv.specs = specs
-            if (specs === undefined) {
+            if (specs === {}) {
               returnCode = 500
               body = html`
                 An unexpected error occurred:
@@ -768,50 +783,41 @@ export class VieraTV implements VieraTV {
 
   public static async setup(target: string): Promise<void> {
     if (!Address4.isValid(target)) {
-      console.error('Please introduce a valid ip address!')
-      process.exitCode = 1
-      return
+      throw new Error('Please introduce a valid ip address!')
     }
     const ip = new Address4(target)
     if (!(await this.livenessProbe(ip))) {
-      console.error('The IP you provided is unreachable.')
-      process.exitCode = 1
-      return
+      throw new Error('The IP you provided is unreachable.')
     }
-    const tv = new VieraTV(ip)
+    const tv = new VieraTV(ip, console)
     const specs = await tv.getSpecs()
 
-    if (specs === undefined) {
-      console.error(
+    if (specs === {}) {
+      throw new Error(
         'An unexpected error occurred - Unable to fetch specs from the TV.'
       )
-      process.exitCode = 1
-      return
     }
     tv.specs = specs
     if (tv.specs.requiresEncryption) {
       if (!(await tv.isTurnedOn())) {
-        console.error(
+        throw new Error(
           'Unable to proceed further as the TV seems to be in standby; Please turn it ON!'
         )
-        process.exitCode = 1
-        return
       }
       const request = await tv.requestPinCode()
       if (request.error != null) {
-        console.error(
-          '\nAn unexpected error occurred while attempting to request a pin code from the TV.',
-          '\nPlease make sure that the TV is powered ON (and NOT in standby).'
+        throw new Error(
+          `\nAn unexpected error occurred while attempting to request a pin code from the TV.
+           \nPlease make sure that the TV is powered ON (and NOT in standby).`
         )
-        process.exitCode = 1
-        return
       }
       const pin = readlineSync.question('Enter the displayed pin code: ')
       const outcome = await tv.authorizePinCode(pin)
       if (outcome.error != null) {
-        console.log('Wrong pin code...')
-        process.exitCode = 1
-        return
+        throw new Error('Wrong pin code...')
+      }
+      if (outcome.value != null) {
+        tv.auth = outcome.value
       }
     }
     tv.renderSampleConfig()
