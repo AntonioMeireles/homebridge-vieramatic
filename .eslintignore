@@ -5,3 +5,4 @@
 #   The file does not match your project config: config.schema.json.
 #   The extension for the file (.json) is non-standard. You should add "parserOptions.extraFileExtensions" to your config.
 /*.*
+!.eslintrc.js

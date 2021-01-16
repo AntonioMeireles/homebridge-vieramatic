@@ -25,7 +25,8 @@
     "preserveConstEnums": true
   },
   "include": [
-    "src/"
+    "src/",
+    ".eslintrc.js"
   ],
   "exclude": [
     "**/*.spec.ts"
