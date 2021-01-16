@@ -11,7 +11,7 @@ import { Address4 } from 'ip-address'
 import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
-import { isEmpty, html } from './helpers'
+import { NotExpected, Outcome, html, isEmpty } from './helpers'
 import VieramaticPlatform from './platform'
 
 // helpers and default settings
@@ -61,11 +61,6 @@ type VieraAuth =
       appId: string
       key: string
     }
-
-export interface Outcome<T> {
-  error?: Error
-  value?: T
-}
 
 const getKey = (key: string, xml: string): Outcome<string> => {
   const fn = (object, k: string): string => {
@@ -210,14 +205,12 @@ export class VieraTV implements VieraTV {
 
     const outcome = this.encryptPayload(appId)
 
-    if (outcome.error != null) {
-      return outcome as T
+    if (NotExpected(outcome)) {
+      return outcome
     }
 
     const encinfo = outcome.value
-    const parameters = `<X_ApplicationId>${
-      this.auth.appId
-    }</X_ApplicationId> <X_EncInfo>${encinfo as string}</X_EncInfo>`
+    const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`
 
     const callback = (data: string): Outcome<T> => {
       const error = new Error(
@@ -226,14 +219,14 @@ export class VieraTV implements VieraTV {
       this.session.seqNum = 1
       const number = getKey('X_SessionId', data)
 
-      if (number.error != null) {
+      if (NotExpected(number)) {
         this.log.error(number.error.message)
         return { error }
       }
 
       if (Number.isInteger(number.value)) {
-        this.session.id = Number.parseInt(number.value as string, 10)
-        return {}
+        this.session.id = Number.parseInt(number.value, 10)
+        return { value: (null as unknown) as T }
       }
 
       return { error }
@@ -338,11 +331,11 @@ export class VieraTV implements VieraTV {
               device.friendlyName.length > 0
                 ? device.friendlyName
                 : device.modelName,
+            manufacturer: device.manufacturer,
             modelName: device.modelName,
             modelNumber: device.modelNumber,
-            manufacturer: device.manufacturer,
-            serialNumber: device.UDN.slice(5),
-            requiresEncryption: await this.needsCrypto()
+            requiresEncryption: await this.needsCrypto(),
+            serialNumber: device.UDN.slice(5)
           }
 
           this.log.info(
@@ -374,14 +367,13 @@ export class VieraTV implements VieraTV {
       )}</X_SequenceNumber>` +
       `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`
     const outcome = this.encryptPayload(encCommand)
-    if (outcome.error != null) return (outcome as unknown) as Outcome<string[]>
+
+    if (NotExpected(outcome)) return outcome
 
     return {
       value: [
         'X_EncryptedCommand',
-        `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${
-          outcome.value as string
-        }</X_EncInfo>`
+        `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${outcome.value}</X_EncInfo>`
       ]
     }
   }
@@ -395,18 +387,18 @@ export class VieraTV implements VieraTV {
     const method: AxiosRequestConfig['method'] = 'POST'
     const responseType: AxiosRequestConfig['responseType'] = 'text'
     const headers = {
-      Host: `${this.address}:${this.port}`,
-      'Content-Type': 'text/xml; charset="utf-8"',
-      SOAPACTION: `"urn:${urn}#${action}"`,
+      Accept: 'text/xml',
       'Cache-Control': 'no-cache',
+      'Content-Type': 'text/xml; charset="utf-8"',
+      Host: `${this.address}:${this.port}`,
       Pragma: 'no-cache',
-      Accept: 'text/xml'
+      SOAPACTION: `"urn:${urn}#${action}"`
     }
     const data =
       '<?xml version="1.0" encoding="utf-8"?> ' +
       ' <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"> ' +
       `<s:Body> <u:${action} xmlns:u="urn:${urn}"> ${parameters} </u:${action}> </s:Body> </s:Envelope>`
-    const payload: AxiosRequestConfig = { method, headers, data, responseType }
+    const payload: AxiosRequestConfig = { data, headers, method, responseType }
     return payload
   }
 
@@ -436,8 +428,8 @@ export class VieraTV implements VieraTV {
         urn,
         realParameters
       )
-      if (outcome.error != null) return outcome as T
-      ;[action, parameters] = outcome.value as string[]
+      if (NotExpected(outcome)) return outcome
+      ;[action, parameters] = outcome.value
     } else {
       ;[action, parameters] = [realAction, realParameters]
     }
@@ -451,9 +443,9 @@ export class VieraTV implements VieraTV {
           action === 'X_EncryptedCommand'
         ) {
           const extracted = getKey('X_EncResult', r.data)
-          if (extracted.error != null) return extracted
+          if (NotExpected(extracted)) return extracted
 
-          const clean = this.decryptPayload(extracted.value as string)
+          const clean = this.decryptPayload(extracted.value)
           output = {
             value: (clean as unknown) as T
           }
@@ -469,15 +461,13 @@ export class VieraTV implements VieraTV {
         }
       })
 
-    if (payload.error != null) {
-      return payload as T
-    }
+    if (NotExpected(payload)) return payload
 
     if (callback != null) {
       return callback(payload.value)
     }
 
-    return payload as T
+    return payload
   }
 
   private async requestPinCode<T>(): Promise<Outcome<T>> {
@@ -492,7 +482,7 @@ export class VieraTV implements VieraTV {
         }
       }
       this.session.challenge = Buffer.from(match[1], 'base64')
-      return {}
+      return { value: (null as unknown) as T }
     }
     return this.sendRequest<T>(
       'command',
@@ -558,35 +548,32 @@ export class VieraTV implements VieraTV {
     }
     const data = `<X_PinCode>${pin}</X_PinCode>`
     const outcome = this.encryptPayload(data, key, iv, hmacKey)
-    if (outcome.error != null) return { error: outcome.error }
 
-    const parameters = `<X_AuthInfo>${outcome.value as string}</X_AuthInfo>`
+    if (NotExpected(outcome)) return outcome
+
+    const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`
 
     const callback = (r: string): Outcome<VieraAuth> => {
       const raw = getKey('X_AuthResult', r)
-      if (raw.error != null) return { error: raw.error }
+      if (NotExpected(raw)) return raw
 
-      const authResultDecrypted = this.decryptPayload(
-        raw.value as string,
-        key,
-        iv
-      )
+      const authResultDecrypted = this.decryptPayload(raw.value, key, iv)
 
       const appId = getKey('X_ApplicationId', authResultDecrypted)
-      if (appId.error != null) return { error: appId.error }
+      if (NotExpected(appId)) return appId
 
       const keyy = getKey('X_Keyword', authResultDecrypted)
-      if (keyy.error != null) return { error: keyy.error }
 
-      const value = ({
-        appId: appId.value,
-        key: keyy.value
-      } as unknown) as VieraAuth
+      if (NotExpected(keyy)) return keyy
 
       return {
-        value
+        value: {
+          appId: appId.value,
+          key: keyy.value
+        }
       }
     }
+
     return this.sendRequest('command', 'X_RequestAuth', parameters, callback)
   }
 
@@ -595,8 +582,8 @@ export class VieraTV implements VieraTV {
       platform: 'PanasonicVieraTV',
       tvs: [
         {
-          encKey: this.auth?.key ?? undefined,
           appId: this.auth?.appId ?? undefined,
+          encKey: this.auth?.key ?? undefined,
           hdmiInputs: []
         }
       ]
@@ -647,7 +634,7 @@ export class VieraTV implements VieraTV {
                   'base64'
                 )
                 const result = await tv.authorizePinCode(pin as string)
-                if (result.error != null) {
+                if (NotExpected(result)) {
                   ;[returnCode, body] = [500, 'Wrong Pin code...']
                 } else {
                   if (result.value != null) {
@@ -706,7 +693,7 @@ export class VieraTV implements VieraTV {
               `
             } else {
               const newRequest = await tv.requestPinCode()
-              if (newRequest.error != null) {
+              if (NotExpected(newRequest)) {
                 returnCode = 500
                 body = html`
                   Found a <b>${specs.modelNumber}</b>, on ip address ${ip},
@@ -801,7 +788,7 @@ export class VieraTV implements VieraTV {
         )
       }
       const request = await tv.requestPinCode()
-      if (request.error != null) {
+      if (NotExpected(request)) {
         throw new Error(
           `\nAn unexpected error occurred while attempting to request a pin code from the TV.
            \nPlease make sure that the TV is powered ON (and NOT in standby).`
@@ -809,12 +796,11 @@ export class VieraTV implements VieraTV {
       }
       const pin = readlineSync.question('Enter the displayed pin code: ')
       const outcome = await tv.authorizePinCode(pin)
-      if (outcome.error != null) {
+
+      if (NotExpected(outcome)) {
         throw new Error('Wrong pin code...')
       }
-      if (outcome.value != null) {
-        tv.auth = outcome.value
-      }
+      tv.auth = outcome.value
     }
     tv.renderSampleConfig()
   }
@@ -910,16 +896,16 @@ export class VieraTV implements VieraTV {
   public async getApps<T>(): Promise<Outcome<T>> {
     const callback = (data: string): Outcome<T> => {
       const raw = getKey('X_AppList', data)
-      if (raw.error != null) {
+      if (NotExpected(raw)) {
         this.log.error('X_AppList returned originally', data)
-        return { error: raw.error }
+        return raw
       }
-      const decoded = decodeXML(raw.value as string)
+      const decoded = decodeXML(raw.value)
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
       let i
       const apps: VieraApps = []
       while ((i = re.exec(decoded)) != null) {
-        apps.push({ name: i.groups.appName, id: i.groups.id })
+        apps.push({ id: i.groups.id, name: i.groups.appName })
       }
       if (apps.length === 0) {
         return { error: new Error('The TV is in standby!') }

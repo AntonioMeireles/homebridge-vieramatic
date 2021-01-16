@@ -6,4 +6,18 @@ const lit = (s: TemplateStringsArray, ...args: string[]): string =>
   s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
 const html = lit
 
-export { isEmpty, html }
+// error handling
+interface ExpectedOutcome<T> {
+  value: T
+}
+
+interface BadOutcome {
+  error: Error
+}
+
+type Outcome<T> = ExpectedOutcome<T> | BadOutcome
+
+const NotExpected = (obj: unknown): obj is BadOutcome =>
+  (obj as BadOutcome).error != null
+
+export { isEmpty, html, Outcome, NotExpected }

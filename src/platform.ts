@@ -12,10 +12,10 @@ import { isValidMACAddress } from '@mi-sec/mac-address'
 import { Address4 } from 'ip-address'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { isEmpty } from './helpers'
+import { NotExpected, Outcome, isEmpty } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
-import { Outcome, VieraApps, VieraTV } from './viera'
+import { VieraApps, VieraTV } from './viera'
 
 class VieramaticPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service
@@ -104,12 +104,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   private async deviceSetup(device: UserConfig): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json')
     const outcome = this.deviceSetupPreFlight(device)
-    if (outcome.error != null) {
+    if (NotExpected(outcome)) {
       this.log.error(outcome.error.message)
       return
     }
 
-    const ip = outcome.value as Address4
+    const ip = outcome.value
     const cached = this.knownWorking(ip)
     const reachable = await VieraTV.livenessProbe(ip)
 
@@ -151,7 +151,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       ;[tv.auth.appId, tv.auth.key] = [device.appId, device.encKey]
       ;[tv.session.key, tv.session.hmacKey] = tv.deriveSessionKey(tv.auth.key)
       const result = await tv.requestSessionId()
-      if (result.error != null) {
+      if (NotExpected(result)) {
         this.log.error(
           "IGNORING '%s' ('%s') as no working credentials were supplied.\n\n",
           ip.address,
@@ -187,14 +187,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       if (device.disabledAppSupport == null || !device.disabledAppSupport) {
         const cmd = await tv.getApps<VieraApps>()
 
-        if (cmd.error != null) {
+        if (NotExpected(cmd)) {
           this.log.error('unable to fetch Apps list from the TV', cmd)
           return
         }
 
-        if (cmd.value != null) {
-          apps = cmd.value
-        }
+        apps = cmd.value
       }
     }
 

@@ -10,8 +10,9 @@ import {
 
 import wakeOnLan from '@mi-sec/wol'
 
+import { NotExpected, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
-import { Outcome, VieraApps, VieraTV } from './viera'
+import { VieraApps, VieraTV } from './viera'
 
 // helpers ...
 const displayName = (string: string): string => {
@@ -50,6 +51,8 @@ export class VieramaticPlatformAccessory {
 
   private readonly storage
 
+  private readonly device: VieraTV
+
   constructor(
     private readonly platform: VieramaticPlatform,
     private readonly accessory: PlatformAccessory,
@@ -83,9 +86,9 @@ export class VieramaticPlatformAccessory {
       }
     }
 
-    const device: VieraTV = this.accessory.context.device
+    this.device = this.accessory.context.device
     this.storage = new Proxy(
-      this.platform.storage.get(device.specs.serialNumber),
+      this.platform.storage.get(this.device.specs.serialNumber),
       handler
     )
 
@@ -94,32 +97,32 @@ export class VieramaticPlatformAccessory {
       .getService(this.Service.AccessoryInformation)!
       .setCharacteristic(
         this.Characteristic.Manufacturer,
-        device.specs.manufacturer
+        this.device.specs.manufacturer
       )
       .setCharacteristic(
         this.Characteristic.Model,
-        `${device.specs.modelName} ${device.specs.modelNumber}`
+        `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
       )
       .setCharacteristic(
         this.Characteristic.SerialNumber,
-        device.specs.serialNumber
+        this.device.specs.serialNumber
       )
 
     this.accessory.on('identify', () => {
-      this.log.info(device.specs.friendlyName, 'Identify!!!')
+      this.log.info(this.device.specs.friendlyName, 'Identify!!!')
     })
 
     this.service = this.accessory.addService(this.Service.Television)
 
     this.service.setCharacteristic(
       this.Characteristic.Name,
-      device.specs.friendlyName
+      this.device.specs.friendlyName
     )
 
     this.service
       .setCharacteristic(
         this.Characteristic.ConfiguredName,
-        device.specs.friendlyName
+        this.device.specs.friendlyName
       )
       .setCharacteristic(
         this.Characteristic.SleepDiscoveryMode,
@@ -134,8 +137,8 @@ export class VieramaticPlatformAccessory {
           value: CharacteristicValue,
           callback: CharacteristicSetCallback
         ) => {
-          const outcome = await device.sendCommand('MENU')
-          if (outcome.error != null) {
+          const outcome = await this.device.sendCommand('MENU')
+          if (NotExpected(outcome)) {
             this.log.error(
               'unexpected error in PowerModeSelection.set',
               outcome.error
@@ -158,7 +161,7 @@ export class VieramaticPlatformAccessory {
 
     const speakerService = this.accessory.addService(
       this.Service.TelevisionSpeaker,
-      `${device.specs.friendlyName} Volume`,
+      `${this.device.specs.friendlyName} Volume`,
       'volumeService'
     )
 
@@ -185,7 +188,7 @@ export class VieramaticPlatformAccessory {
     if (this.userConfig.customVolumeSlider === true) {
       const customSpeakerService = this.accessory.addService(
         this.Service.Fan,
-        `${device.specs.friendlyName} Volume`,
+        `${this.device.specs.friendlyName} Volume`,
         'VolumeAsFanService'
       )
       this.service.addLinkedService(customSpeakerService)
@@ -201,16 +204,21 @@ export class VieramaticPlatformAccessory {
         })
         .on(
           'set',
-          (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
+          async (
+            value: CharacteristicValue,
+            callback: CharacteristicSetCallback
+          ) => {
             this.log.debug('(customSpeakerService/On.set)', value)
             switch (
               this.service.getCharacteristic(this.Characteristic.Active).value
             ) {
               case this.Characteristic.Active.INACTIVE:
+                await this.device.setMute(false)
                 return callback(undefined, false)
+              case this.Characteristic.Active.ACTIVE:
               default:
-                // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-                return callback(undefined, !value)
+                await this.device.setMute(!(value as boolean))
+                return callback(undefined, !(value as boolean))
             }
           }
         )
@@ -247,11 +255,11 @@ export class VieramaticPlatformAccessory {
     if (this.storage.data == null) {
       this.storage.data = {
         inputs: {
-          hdmi: this.userConfig.hdmiInputs,
-          applications: { ...this.tvApps }
+          applications: { ...this.tvApps },
+          hdmi: this.userConfig.hdmiInputs
         },
         ipAddress: this.userConfig.ipAddress,
-        specs: { ...device.specs }
+        specs: { ...this.device.specs }
       }
       // add default TUNER (live TV)... visible by default
       this.storage.data.inputs.TUNER = { hidden: 0 }
@@ -266,7 +274,7 @@ export class VieramaticPlatformAccessory {
         }
       )
     } else {
-      this.log.debug('Restoring', device.specs.friendlyName)
+      this.log.debug('Restoring', this.device.specs.friendlyName)
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
         const fn = function isThere(element): boolean {
@@ -303,7 +311,7 @@ export class VieramaticPlatformAccessory {
       })
       this.storage.data.inputs.hdmi = [...shallow]
       this.storage.data.ipAddress = this.userConfig.ipAddress
-      this.storage.data.specs = { ...device.specs }
+      this.storage.data.specs = { ...this.device.specs }
 
       // FIXME: check also for added/removed apps (just in case)
     }
@@ -337,21 +345,21 @@ export class VieramaticPlatformAccessory {
       switch (false) {
         case !(value < 100):
           this.log.debug('(setInput) switching to HDMI INPUT ', value)
-          return this.accessory.context.device.sendHDMICommand(value)
+          return await this.device.sendHDMICommand((value as number).toString())
         case !(value > 999):
           real = (value as number) - 1000
           app = this.storage.data.inputs.applications[real]
           this.log.debug('(setInput) switching to App', app.name)
-          return this.accessory.context.device.sendAppCommand(app.id)
+          return await this.device.sendAppCommand(app.id)
         case !(value === 500):
         default:
           this.log.debug('(setInput) switching to internal TV tunner')
-          return this.accessory.context.device.sendCommand('AD_CHANGE')
+          return await this.device.sendCommand('AD_CHANGE')
       }
     }
 
     const cmd = await fn()
-    if (cmd.error != null) {
+    if (NotExpected(cmd)) {
       this.log.error('setInput', value, cmd.error)
     }
     callback(undefined, value)
@@ -452,21 +460,21 @@ export class VieramaticPlatformAccessory {
   ): Promise<void> {
     const message =
       nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
-    const currentState = await this.accessory.context.device.isTurnedOn()
+    const currentState = await this.device.isTurnedOn()
     this.log.debug('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState) {
       this.log.debug('TV is already %s: Ignoring!', message)
     } else if (
       nextState === this.Characteristic.Active.ACTIVE &&
-      this.accessory.context.device.mac != null
+      this.device.mac != null
     ) {
       this.log.debug('sending WOL packets to awake TV')
-      await wakeOnLan(this.accessory.context.device.mac, { packets: 10 })
+      await wakeOnLan(this.device.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
       this.log.debug('Turned TV', message)
     } else {
-      const cmd = await this.accessory.context.device.sendCommand('POWER')
-      if (cmd.error != null) {
+      const cmd = await this.device.sendCommand('POWER')
+      if (NotExpected(cmd)) {
         this.log.error(
           '(setPowerStatus)/-> %s  - unable to power cycle TV - probably unpowered',
           message
@@ -481,7 +489,7 @@ export class VieramaticPlatformAccessory {
   }
 
   async getPowerStatus(callback?: CharacteristicGetCallback): Promise<void> {
-    const currentState = await this.accessory.context.device.isTurnedOn()
+    const currentState = await this.device.isTurnedOn()
 
     await this.updateTVstatus(currentState)
 
@@ -491,13 +499,12 @@ export class VieramaticPlatformAccessory {
   }
 
   async getMute(callback: CharacteristicGetCallback): Promise<void> {
-    const state = await this.accessory.context.device.isTurnedOn()
+    const state = await this.device.isTurnedOn()
     let mute: boolean
 
-    if (state === true) {
-      const cmd = await this.accessory.context.device.getMute()
-
-      mute = (cmd.error == null ? cmd.value : true) as boolean
+    if (state) {
+      const cmd = await this.device.getMute()
+      mute = !NotExpected(cmd) ? cmd.value : true
     } else {
       mute = true
     }
@@ -510,8 +517,8 @@ export class VieramaticPlatformAccessory {
     callback: CharacteristicSetCallback
   ): Promise<void> {
     this.log.debug('(setMute) is', state)
-    const cmd = await this.accessory.context.device.setMute(state as boolean)
-    if (cmd.error != null) {
+    const cmd = await this.device.setMute(state as boolean)
+    if (NotExpected(cmd)) {
       this.log.error(
         '(setMute)/(%s) unable to change mute state on TV...',
         state
@@ -528,8 +535,8 @@ export class VieramaticPlatformAccessory {
     callback: CharacteristicSetCallback
   ): Promise<void> {
     this.log.debug('(setVolume)', value)
-    const cmd = await this.accessory.context.device.setVolume(value)
-    if (cmd.error != null) {
+    const cmd = await this.device.setVolume((value as number).toString())
+    if (NotExpected(cmd)) {
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
       value = 0
     }
@@ -537,9 +544,9 @@ export class VieramaticPlatformAccessory {
   }
 
   async getVolume(callback: CharacteristicSetCallback): Promise<void> {
-    const cmd = await this.accessory.context.device.getVolume()
+    const cmd = await this.device.getVolume()
     let volume: number
-    if (cmd.error != null) {
+    if (NotExpected(cmd)) {
       this.log.error('(getVolume) unable to get volume from TV...')
       volume = 0
     } else {
@@ -556,9 +563,9 @@ export class VieramaticPlatformAccessory {
     this.log.debug('setVolumeSelector', key)
     const action =
       key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
-    const cmd = await this.accessory.context.device.sendCommand(action)
+    const cmd = await this.device.sendCommand(action)
 
-    if (cmd.error != null) {
+    if (NotExpected(cmd)) {
       this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
     }
 
@@ -587,10 +594,9 @@ export class VieramaticPlatformAccessory {
       .getCharacteristic(this.Characteristic.Active)
       .updateValue(newState)
     if (newState === true) {
-      const cmd = await this.accessory.context.device.getMute()
+      const cmd = await this.device.getMute()
       if (
-        cmd.error == null &&
-        cmd.value !== undefined &&
+        !NotExpected(cmd) &&
         cmd.value !==
           speakerService.getCharacteristic(this.Characteristic.Mute).value
       ) {
@@ -600,7 +606,7 @@ export class VieramaticPlatformAccessory {
         if (customSpeakerService != null) {
           customSpeakerService
             .getCharacteristic(this.Characteristic.On)
-            .updateValue((cmd.value as boolean) ? 0 : 1)
+            .updateValue(cmd.value ? 0 : 1)
         }
       }
     } else {
@@ -678,9 +684,9 @@ export class VieramaticPlatformAccessory {
         break
     }
     this.log.debug('remote control:', action)
-    const cmd = await this.accessory.context.device.sendCommand(action)
+    const cmd = await this.device.sendCommand(action)
 
-    if (cmd.error != null) {
+    if (NotExpected(cmd)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       this.log.error('(remoteControl)/(%s) %s', action!, cmd.error)
     }
