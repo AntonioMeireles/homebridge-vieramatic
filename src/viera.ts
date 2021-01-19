@@ -203,7 +203,12 @@ class VieraTV implements VieraTV {
   async requestSessionId<T>(): Promise<Outcome<T>> {
     const appId = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId>`
 
-    const outcome = this.encryptPayload(appId)
+    const outcome = this.encryptPayload(
+      appId,
+      this.session.key,
+      this.session.iv,
+      this.session.hmacKey
+    )
 
     if (Abnormal(outcome)) {
       return outcome
@@ -256,11 +261,7 @@ class VieraTV implements VieraTV {
     return [Buffer.from(keyVals), Buffer.concat([iv, iv])]
   }
 
-  private decryptPayload(
-    payload: string,
-    key = this.session.key,
-    iv = this.session.iv
-  ): string {
+  private decryptPayload(payload: string, key: Buffer, iv: Buffer): string {
     const decipher = crypto
       .createDecipheriv('aes-128-cbc', key, iv)
       .setAutoPadding(false)
@@ -282,9 +283,9 @@ class VieraTV implements VieraTV {
 
   private encryptPayload(
     original: string,
-    key = this.session.key,
-    iv = this.session.iv,
-    hmacKey = this.session.hmacKey
+    key: Buffer,
+    iv: Buffer,
+    hmacKey: Buffer
   ): Outcome<string> {
     const pad = (unpadded: Buffer): Buffer => {
       const blockSize = 16
@@ -366,7 +367,12 @@ class VieraTV implements VieraTV {
         -8
       )}</X_SequenceNumber>` +
       `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`
-    const outcome = this.encryptPayload(encCommand)
+    const outcome = this.encryptPayload(
+      encCommand,
+      this.session.key,
+      this.session.iv,
+      this.session.hmacKey
+    )
 
     if (Abnormal(outcome)) return outcome
 
@@ -445,7 +451,11 @@ class VieraTV implements VieraTV {
           const extracted = getKey('X_EncResult', r.data)
           if (Abnormal(extracted)) return extracted
 
-          const clean = this.decryptPayload(extracted.value)
+          const clean = this.decryptPayload(
+            extracted.value,
+            this.session.key,
+            this.session.iv
+          )
           output = {
             value: (clean as unknown) as T
           }
