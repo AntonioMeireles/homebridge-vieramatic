@@ -66,21 +66,21 @@ export class VieramaticPlatformAccessory {
     this.log.debug(JSON.stringify(this.userConfig, undefined, 2))
 
     const handler = {
-      get(target, key): unknown {
-        if (key === 'isProxy') {
+      get: (obj, prop): unknown => {
+        if (prop === 'isProxy') {
           return true
         }
-        const property = target[key]
+        const property = obj[prop]
         if (typeof property === 'undefined') {
           return
         }
         if (property.isProxy == null && typeof property === 'object') {
-          target[key] = new Proxy(property, handler)
+          obj[prop] = new Proxy(property, handler)
         }
-        return target[key]
+        return obj[prop]
       },
-      set: (target, key, value): boolean => {
-        target[key] = value
+      set: (obj, prop, value): boolean => {
+        obj[prop] = value
         this.platform.storage.save()
         return true
       }
