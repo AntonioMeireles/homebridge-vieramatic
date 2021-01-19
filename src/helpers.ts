@@ -7,17 +7,17 @@ const lit = (s: TemplateStringsArray, ...args: string[]): string =>
 const html = lit
 
 // error handling
-interface ExpectedOutcome<T> {
+interface Success<T> {
   value: T
 }
 
-interface BadOutcome {
+interface Failure {
   error: Error
 }
 
-type Outcome<T> = ExpectedOutcome<T> | BadOutcome
+type Outcome<T> = Success<T> | Failure
 
-const NotExpected = (obj: unknown): obj is BadOutcome =>
-  (obj as BadOutcome).error != null
+const Abnormal = (result: unknown): result is Failure =>
+  (result as Failure).error != null
 
-export { isEmpty, html, Outcome, NotExpected }
+export { isEmpty, html, Outcome, Abnormal }

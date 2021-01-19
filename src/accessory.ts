@@ -10,7 +10,7 @@ import {
 
 import wakeOnLan from '@mi-sec/wol'
 
-import { NotExpected, Outcome } from './helpers'
+import { Abnormal, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApps, VieraTV } from './viera'
 
@@ -138,7 +138,7 @@ export class VieramaticPlatformAccessory {
           callback: CharacteristicSetCallback
         ) => {
           const outcome = await this.device.sendCommand('MENU')
-          if (NotExpected(outcome)) {
+          if (Abnormal(outcome)) {
             this.log.error(
               'unexpected error in PowerModeSelection.set',
               outcome.error
@@ -359,7 +359,7 @@ export class VieramaticPlatformAccessory {
     }
 
     const cmd = await fn()
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       this.log.error('setInput', value, cmd.error)
     }
     callback(undefined, value)
@@ -474,7 +474,7 @@ export class VieramaticPlatformAccessory {
       this.log.debug('Turned TV', message)
     } else {
       const cmd = await this.device.sendCommand('POWER')
-      if (NotExpected(cmd)) {
+      if (Abnormal(cmd)) {
         this.log.error(
           '(setPowerStatus)/-> %s  - unable to power cycle TV - probably unpowered',
           message
@@ -504,7 +504,7 @@ export class VieramaticPlatformAccessory {
 
     if (state) {
       const cmd = await this.device.getMute()
-      mute = !NotExpected(cmd) ? cmd.value : true
+      mute = !Abnormal(cmd) ? cmd.value : true
     } else {
       mute = true
     }
@@ -518,7 +518,7 @@ export class VieramaticPlatformAccessory {
   ): Promise<void> {
     this.log.debug('(setMute) is', state)
     const cmd = await this.device.setMute(state as boolean)
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       this.log.error(
         '(setMute)/(%s) unable to change mute state on TV...',
         state
@@ -536,7 +536,7 @@ export class VieramaticPlatformAccessory {
   ): Promise<void> {
     this.log.debug('(setVolume)', value)
     const cmd = await this.device.setVolume((value as number).toString())
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
       value = 0
     }
@@ -546,7 +546,7 @@ export class VieramaticPlatformAccessory {
   async getVolume(callback: CharacteristicSetCallback): Promise<void> {
     const cmd = await this.device.getVolume()
     let volume: number
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       this.log.error('(getVolume) unable to get volume from TV...')
       volume = 0
     } else {
@@ -565,7 +565,7 @@ export class VieramaticPlatformAccessory {
       key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
     const cmd = await this.device.sendCommand(action)
 
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
     }
 
@@ -596,7 +596,7 @@ export class VieramaticPlatformAccessory {
     if (newState === true) {
       const cmd = await this.device.getMute()
       if (
-        !NotExpected(cmd) &&
+        !Abnormal(cmd) &&
         cmd.value !==
           speakerService.getCharacteristic(this.Characteristic.Mute).value
       ) {
@@ -686,7 +686,7 @@ export class VieramaticPlatformAccessory {
     this.log.debug('remote control:', action)
     const cmd = await this.device.sendCommand(action)
 
-    if (NotExpected(cmd)) {
+    if (Abnormal(cmd)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       this.log.error('(remoteControl)/(%s) %s', action!, cmd.error)
     }

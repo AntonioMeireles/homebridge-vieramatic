@@ -11,7 +11,7 @@ import { Address4 } from 'ip-address'
 import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
-import { NotExpected, Outcome, html, isEmpty } from './helpers'
+import { Abnormal, Outcome, html, isEmpty } from './helpers'
 import VieramaticPlatform from './platform'
 
 // helpers and default settings
@@ -205,7 +205,7 @@ export class VieraTV implements VieraTV {
 
     const outcome = this.encryptPayload(appId)
 
-    if (NotExpected(outcome)) {
+    if (Abnormal(outcome)) {
       return outcome
     }
 
@@ -219,7 +219,7 @@ export class VieraTV implements VieraTV {
       this.session.seqNum = 1
       const number = getKey('X_SessionId', data)
 
-      if (NotExpected(number)) {
+      if (Abnormal(number)) {
         this.log.error(number.error.message)
         return { error }
       }
@@ -368,7 +368,7 @@ export class VieraTV implements VieraTV {
       `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`
     const outcome = this.encryptPayload(encCommand)
 
-    if (NotExpected(outcome)) return outcome
+    if (Abnormal(outcome)) return outcome
 
     return {
       value: [
@@ -428,7 +428,7 @@ export class VieraTV implements VieraTV {
         urn,
         realParameters
       )
-      if (NotExpected(outcome)) return outcome
+      if (Abnormal(outcome)) return outcome
       ;[action, parameters] = outcome.value
     } else {
       ;[action, parameters] = [realAction, realParameters]
@@ -443,7 +443,7 @@ export class VieraTV implements VieraTV {
           action === 'X_EncryptedCommand'
         ) {
           const extracted = getKey('X_EncResult', r.data)
-          if (NotExpected(extracted)) return extracted
+          if (Abnormal(extracted)) return extracted
 
           const clean = this.decryptPayload(extracted.value)
           output = {
@@ -461,7 +461,7 @@ export class VieraTV implements VieraTV {
         }
       })
 
-    if (NotExpected(payload)) return payload
+    if (Abnormal(payload)) return payload
 
     if (callback != null) {
       return callback(payload.value)
@@ -549,22 +549,22 @@ export class VieraTV implements VieraTV {
     const data = `<X_PinCode>${pin}</X_PinCode>`
     const outcome = this.encryptPayload(data, key, iv, hmacKey)
 
-    if (NotExpected(outcome)) return outcome
+    if (Abnormal(outcome)) return outcome
 
     const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`
 
     const callback = (r: string): Outcome<VieraAuth> => {
       const raw = getKey('X_AuthResult', r)
-      if (NotExpected(raw)) return raw
+      if (Abnormal(raw)) return raw
 
       const authResultDecrypted = this.decryptPayload(raw.value, key, iv)
 
       const appId = getKey('X_ApplicationId', authResultDecrypted)
-      if (NotExpected(appId)) return appId
+      if (Abnormal(appId)) return appId
 
       const keyy = getKey('X_Keyword', authResultDecrypted)
 
-      if (NotExpected(keyy)) return keyy
+      if (Abnormal(keyy)) return keyy
 
       return {
         value: {
@@ -634,7 +634,7 @@ export class VieraTV implements VieraTV {
                   'base64'
                 )
                 const result = await tv.authorizePinCode(pin as string)
-                if (NotExpected(result)) {
+                if (Abnormal(result)) {
                   ;[returnCode, body] = [500, 'Wrong Pin code...']
                 } else {
                   if (result.value != null) {
@@ -693,7 +693,7 @@ export class VieraTV implements VieraTV {
               `
             } else {
               const newRequest = await tv.requestPinCode()
-              if (NotExpected(newRequest)) {
+              if (Abnormal(newRequest)) {
                 returnCode = 500
                 body = html`
                   Found a <b>${specs.modelNumber}</b>, on ip address ${ip},
@@ -788,7 +788,7 @@ export class VieraTV implements VieraTV {
         )
       }
       const request = await tv.requestPinCode()
-      if (NotExpected(request)) {
+      if (Abnormal(request)) {
         throw new Error(
           `\nAn unexpected error occurred while attempting to request a pin code from the TV.
            \nPlease make sure that the TV is powered ON (and NOT in standby).`
@@ -797,7 +797,7 @@ export class VieraTV implements VieraTV {
       const pin = readlineSync.question('Enter the displayed pin code: ')
       const outcome = await tv.authorizePinCode(pin)
 
-      if (NotExpected(outcome)) {
+      if (Abnormal(outcome)) {
         throw new Error('Wrong pin code...')
       }
       tv.auth = outcome.value
@@ -896,7 +896,7 @@ export class VieraTV implements VieraTV {
   public async getApps<T>(): Promise<Outcome<T>> {
     const callback = (data: string): Outcome<T> => {
       const raw = getKey('X_AppList', data)
-      if (NotExpected(raw)) {
+      if (Abnormal(raw)) {
         this.log.error('X_AppList returned originally', data)
         return raw
       }

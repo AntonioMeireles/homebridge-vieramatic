@@ -12,7 +12,7 @@ import { isValidMACAddress } from '@mi-sec/mac-address'
 import { Address4 } from 'ip-address'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { NotExpected, Outcome, isEmpty } from './helpers'
+import { Abnormal, Outcome, isEmpty } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { VieraApps, VieraTV } from './viera'
@@ -104,7 +104,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   private async deviceSetup(device: UserConfig): Promise<void> {
     this.log.info('handling', device.ipAddress, 'from config.json')
     const outcome = this.deviceSetupPreFlight(device)
-    if (NotExpected(outcome)) {
+    if (Abnormal(outcome)) {
       this.log.error(outcome.error.message)
       return
     }
@@ -151,7 +151,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       ;[tv.auth.appId, tv.auth.key] = [device.appId, device.encKey]
       ;[tv.session.key, tv.session.hmacKey] = tv.deriveSessionKey(tv.auth.key)
       const result = await tv.requestSessionId()
-      if (NotExpected(result)) {
+      if (Abnormal(result)) {
         this.log.error(
           "IGNORING '%s' ('%s') as no working credentials were supplied.\n\n",
           ip.address,
@@ -187,7 +187,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       if (device.disabledAppSupport == null || !device.disabledAppSupport) {
         const cmd = await tv.getApps<VieraApps>()
 
-        if (NotExpected(cmd)) {
+        if (Abnormal(cmd)) {
           this.log.error('unable to fetch Apps list from the TV', cmd)
           return
         }
