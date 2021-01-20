@@ -94,21 +94,22 @@ class VieramaticPlatformAccessory {
       handler
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.accessory
-      .getService(this.Service.AccessoryInformation)!
-      .setCharacteristic(
-        this.Characteristic.Manufacturer,
-        this.device.specs.manufacturer
-      )
-      .setCharacteristic(
-        this.Characteristic.Model,
-        `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
-      )
-      .setCharacteristic(
-        this.Characteristic.SerialNumber,
-        this.device.specs.serialNumber
-      )
+    const svc = this.accessory.getService(this.Service.AccessoryInformation)
+    if (svc != null) {
+      svc
+        .setCharacteristic(
+          this.Characteristic.Manufacturer,
+          this.device.specs.manufacturer
+        )
+        .setCharacteristic(
+          this.Characteristic.Model,
+          `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
+        )
+        .setCharacteristic(
+          this.Characteristic.SerialNumber,
+          this.device.specs.serialNumber
+        )
+    }
 
     this.accessory.on('identify', () => {
       this.log.info(this.device.specs.friendlyName, 'Identify!!!')
@@ -526,8 +527,7 @@ class VieramaticPlatformAccessory {
         state
       )
     } else {
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      state = !state
+      state = !(state as boolean)
     }
     callback(undefined, state)
   }
@@ -689,8 +689,7 @@ class VieramaticPlatformAccessory {
     const cmd = await this.device.sendCommand(action)
 
     if (Abnormal(cmd)) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      this.log.error('(remoteControl)/(%s) %s', action!, cmd.error)
+      this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
     }
 
     callback(undefined, keyId)
