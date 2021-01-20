@@ -19,7 +19,13 @@ const displayName = (string: string): string => {
   return string.toLowerCase().replace(/\s+/gu, '')
 }
 
-export interface UserConfig {
+interface HdmiInput {
+  name: string
+  id: string
+  hidden?: 0 | 1
+}
+
+interface UserConfig {
   friendlyName?: string
   ipAddress: string
   mac?: string
@@ -27,20 +33,16 @@ export interface UserConfig {
   appId?: string
   customVolumeSlider?: boolean
   disabledAppSupport?: boolean
-  hdmiInputs: Array<{
-    name: string
-    id: string
-    hidden?: 0 | 1
-  }>
+  hdmiInputs: HdmiInput[]
 }
 
 type InputType = 'HDMI' | 'APPLICATION' | 'TUNER'
 
-export async function sleep(ms: number): Promise<unknown> {
+async function sleep(ms: number): Promise<unknown> {
   return await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export class VieramaticPlatformAccessory {
+class VieramaticPlatformAccessory {
   private readonly service: Service
 
   private readonly Service: typeof Service
@@ -694,3 +696,5 @@ export class VieramaticPlatformAccessory {
     callback(undefined, keyId)
   }
 }
+
+export { sleep, UserConfig, VieramaticPlatformAccessory }

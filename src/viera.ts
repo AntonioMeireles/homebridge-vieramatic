@@ -34,7 +34,7 @@ interface VieraApp {
   name: string
   id: string
 }
-export type VieraApps = VieraApp[]
+type VieraApps = VieraApp[]
 
 type RequestType = 'command' | 'render'
 
@@ -92,7 +92,7 @@ const getKey = (key: string, xml: string): Outcome<string> => {
   return { value: result }
 }
 
-export class VieraTV implements VieraTV {
+class VieraTV implements VieraTV {
   readonly address: string
 
   readonly mac: string | undefined
@@ -915,3 +915,5 @@ export class VieraTV implements VieraTV {
     return this.sendRequest<T>('command', 'X_GetAppList', undefined, callback)
   }
 }
+
+export { VieraApps, VieraTV }

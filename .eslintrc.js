@@ -29,6 +29,8 @@ module.exports = {
       { checksVoidReturn: false }
     ],
     'eslint-comments/no-unused-disable': 'error',
+    'import/exports-last': 'error',
+    'import/group-exports': 'error',
     'import/order': [
       'error',
       {
