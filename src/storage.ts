@@ -6,7 +6,7 @@ import * as fs from 'fs-extra'
 class Storage {
   public accessories
 
-  public filePath: string
+  private readonly filePath: string
 
   constructor(api: API) {
     this.accessories = {}
@@ -17,19 +17,13 @@ class Storage {
     const data = fs.readJsonSync(this.filePath, {
       throws: false
     })
-    if (data !== undefined) {
-      this.accessories = data
-    }
+    if (data !== undefined) this.accessories = data
   }
 
   public get(id: string): unknown {
-    if (this.accessories == null) {
-      this.accessories = {}
-    }
+    if (this.accessories == null) this.accessories = {}
 
-    if (this.accessories[id] == null) {
-      this.accessories[id] = {}
-    }
+    if (this.accessories[id] == null) this.accessories[id] = {}
 
     return this.accessories[id]
   }
