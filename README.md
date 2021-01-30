@@ -199,6 +199,76 @@ to be disabled. For each affected TV just add to its' section (in
    "disabledAppSupport": true,
 ```
 
+### How to power on TV on (very old) unsupported TV sets
+
+On some TVs, WoL (wakeup from lan) functionality is not even available, but a
+similar effect can can be achieved by using taking advantage of plain [CEC
+hdmi](https://en.wikipedia.org/wiki/Consumer_Electronics_Control).
+
+#### Requirements
+
+- Your homebridge device will need to be connected to your TV via HDMI.
+- You will need to available a script executor for Homebridge (Script2 is used in
+  this guide). Install it per `npm install -g homebridge-script2`
+- You will need to have available in your homebridge host `cec-client`.
+
+  > on a Raspberry Pi running Raspbian `cec-client` is provided by having
+  > installed the `cec-utils` package
+
+- You will need to activate CEC-HDMI on your TV (the system that automatically
+  turns the TV on or off if an hdmi device is turned on or off).
+
+  You can disable on your homebridge device the system that changes your tv
+  input to that of the homebridge device if you want, google is your friend.
+
+#### scrip snippets
+
+> adapt absolute paths accordingly to your local setup and mod `name` from
+> default (`"TV ON/OFF"`) bellow to whatever suits you best.
+
+- **`homebridge.conf`**
+
+  ```json
+  {
+     "accessory": "Script2",
+     "name": "TV ON/OFF",
+     "on": "/var/homebridge/TV-ON-OFF/on.sh",
+     "off": "/var/homebridge/TV-ON-OFF/off.sh",
+     "state": "/var/homebridge/TV-ON-OFF/state.sh",
+     "on_value": "ON",
+     "unique_serial": "1234568"
+  },
+  ```
+
+- **`/var/homebridge/TV-ON-OFF/on.sh`**
+
+  ```bash
+  #!/bin/sh
+  echo 'on 0' | cec-client -s -d 1 && echo "ON"
+  ```
+
+- **`/var/homebridge/TV-ON-OFF/off.sh`**
+
+```bash
+#!/bin/bash
+echo 'standby 0' | cec-client -s -d 1 && echo "OFF"
+```
+
+**`/var/homebridge/TV-ON-OFF/state.sh`**
+
+- ```bash
+  #!/bin/bash
+  state=$(echo 'pow <DEVICE #>' | cec-client -s -d 1)
+  if [[ $state == *" on"* ]]; then
+     echo "ON"
+  else
+     echo "OFF"
+  fi
+  ```
+
+  restart homebridge and You should now have TV ON/OFF capabilities exposed to
+  your HomeKit setup.
+
 ### input switching - how to get Siri to do it
 
 As far as the author knows, currently, the HomeKit TV integration spec from Apple sadly does
