@@ -10,13 +10,12 @@ import {
 
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, Outcome } from './helpers'
+import { Abnormal, sleep, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
 // helpers ...
-const displayName = (string: string): string =>
-  string.toLowerCase().replace(/\s/gu, '')
+const displayName = (n: string): string => n.toLowerCase().replace(/\s/gu, '')
 
 interface OnDisk {
   data: {
@@ -47,10 +46,6 @@ interface UserConfig {
 }
 
 type InputType = 'HDMI' | 'APPLICATION' | 'TUNER'
-
-async function sleep(ms: number): Promise<unknown> {
-  return await new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 class VieramaticPlatformAccessory {
   private readonly service: Service
@@ -287,9 +282,9 @@ class VieramaticPlatformAccessory {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
-        const fn = function isThere(element): boolean {
-          return element.id === input.id && element.name === input.name
-        }
+        const fn = (element): boolean =>
+          element.id === input.id && element.name === input.name
+
         const found = this.storage.data.inputs.hdmi.findIndex((x) => fn(x))
         if (found === -1) {
           this.log.info(
@@ -305,9 +300,8 @@ class VieramaticPlatformAccessory {
       // check for user removed inputs
       const shallow: unknown[] = []
       this.storage.data.inputs.hdmi.forEach((input) => {
-        const fn = function isThere(element): boolean {
-          return element.id === input.id
-        }
+        const fn = (element): boolean => element.id === input.id
+
         const found = userConfig.hdmiInputs.findIndex((x) => fn(x))
         found === -1
           ? this.log.info(
@@ -376,9 +370,8 @@ class VieramaticPlatformAccessory {
     configuredName: string,
     identifier: number
   ): void {
-    const fn = function isThere(element): boolean {
-      return element.id === identifier.toString()
-    }
+    const fn = (element): boolean => element.id === identifier.toString()
+
     const visibility = (): string => {
       let idx: number
       let hidden: string

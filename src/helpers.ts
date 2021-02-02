@@ -1,5 +1,8 @@
 import util from 'util'
 
+const sleep = async (ms: number): Promise<unknown> =>
+  await new Promise((resolve) => setTimeout(resolve, ms))
+
 const isEmpty = (obj: Record<string, unknown>): boolean =>
   Object.keys(obj).length === 0 && obj.constructor === Object
 
@@ -23,4 +26,4 @@ type Outcome<T> = Success<T> | Failure
 const Abnormal = (result: unknown): result is Failure =>
   (result as Failure).error != null
 
-export { isEmpty, html, Outcome, printf, Abnormal }
+export { sleep, isEmpty, html, Outcome, printf, Abnormal }
