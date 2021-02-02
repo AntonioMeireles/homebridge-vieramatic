@@ -216,10 +216,13 @@ hdmi](https://en.wikipedia.org/wiki/Consumer_Electronics_Control).
   > installed the `cec-utils` package
 
 - You will need to activate CEC-HDMI on your TV (the system that automatically
-  turns the TV on or off if an hdmi device is turned on or off).
+  turns the TV on or off if an hdmi device is turned on or off). You will also
+  need to ensure that, on boot, the homebridge host does not turn
+  on the TV, or change its' HDMI source input (to it).
 
-  You can disable on your homebridge device the system that changes your tv
-  input to that of the homebridge device if you want, google is your friend.
+  On a rPI (per [here](https://raspberrypi.stackexchange.com/questions/6682/stopping-rasppi-raspbmc-from-auto-changing-source-on-tv))
+  you'll achieve that goal by adding the `hdmi_ignore_cec_init=1` config option
+  to your `/boot/config.txt`.
 
 #### scrip snippets
 
