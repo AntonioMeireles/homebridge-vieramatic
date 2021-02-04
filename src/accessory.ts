@@ -14,9 +14,6 @@ import { Abnormal, sleep, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
-// helpers ...
-const displayName = (n: string): string => n.toLowerCase().replace(/\s/gu, '')
-
 interface OnDisk {
   data: {
     inputs: {
@@ -113,9 +110,9 @@ class VieramaticPlatformAccessory {
           this.device.specs.serialNumber
         )
 
-    this.accessory.on('identify', () => {
+    this.accessory.on('identify', () =>
       this.log.info(this.device.specs.friendlyName, 'Identify!!!')
-    })
+    )
 
     this.service = this.accessory.addService(this.Service.Television)
 
@@ -234,9 +231,7 @@ class VieramaticPlatformAccessory {
         .on('set', this.setVolume.bind(this))
     }
 
-    setInterval(async () => {
-      await this.getPowerStatus()
-    }, 5000)
+    setInterval(async () => await this.getPowerStatus(), 5000)
 
     this.userConfig.hdmiInputs ||= []
 
@@ -269,14 +264,13 @@ class VieramaticPlatformAccessory {
       // add default TUNER (live TV)... visible by default
       this.storage.data.inputs.TUNER = { hidden: 0 }
       // by default all hdmiInputs will be visible
-      this.storage.data.inputs.hdmi.forEach((element: HdmiInput) => {
-        element.hidden = 0
-      })
+      this.storage.data.inputs.hdmi.forEach(
+        (element: HdmiInput) => (element.hidden = 0)
+      )
       // by default all apps will be hidden
       Object.entries(this.storage.data.inputs.applications).forEach(
-        (_element, index) => {
-          this.storage.data.inputs.applications[index].hidden = 1
-        }
+        (_element, index) =>
+          (this.storage.data.inputs.applications[index].hidden = 1)
       )
     } else {
       this.log.debug('Restoring', this.device.specs.friendlyName)
@@ -395,7 +389,7 @@ class VieramaticPlatformAccessory {
 
     const source = this.accessory.addService(
       this.Service.InputSource,
-      displayName(configuredName),
+      configuredName.toLowerCase().replace(/\s/gu, ''),
       identifier
     )
     const visibilityState = (
