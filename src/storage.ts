@@ -3,24 +3,24 @@ import path from 'path'
 
 import * as fs from 'fs-extra'
 
+import { OnDisk } from './accessory'
+
 class Storage {
-  public accessories
+  public accessories: Record<string, OnDisk> = {}
 
   private readonly filePath: string
 
   constructor(api: API) {
-    this.accessories = {}
     this.filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
   }
 
   public init(): void {
-    const data = fs.readJsonSync(this.filePath, {
-      throws: false
-    })
+    const data = fs.readJsonSync(this.filePath, { throws: false })
+
     if (data !== undefined) this.accessories = data
   }
 
-  public get(id: string): unknown {
+  public get(id: string): OnDisk {
     if (this.accessories == null) this.accessories = {}
 
     if (this.accessories[id] == null) this.accessories[id] = {}

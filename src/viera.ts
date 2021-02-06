@@ -888,7 +888,8 @@ class VieraTV implements VieraTV {
 
       let i
       while ((i = re.exec(decoded)) != null)
-        apps.push({ id: i.groups.id, name: i.groups.appName })
+        i.groups !== undefined &&
+          apps.push({ id: i.groups.id, name: i.groups.appName })
 
       return apps.length === 0
         ? { error: Error('The TV is in standby!') }

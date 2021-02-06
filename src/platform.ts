@@ -11,7 +11,7 @@ import {
 import { isValidMACAddress } from '@mi-sec/mac-address'
 import { Address4 } from 'ip-address'
 
-import { OnDisk, UserConfig, VieramaticPlatformAccessory } from './accessory'
+import { UserConfig, VieramaticPlatformAccessory } from './accessory'
 import { Abnormal, Outcome, isEmpty, printf } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
@@ -98,7 +98,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   private knownWorking(ip: Address4): VieraSpecs {
     if (this.storage.accessories === null) return {}
 
-    for (const [_, v] of Object.entries(this.storage.accessories as OnDisk))
+    for (const [_, v] of Object.entries(this.storage.accessories))
       if (v.data.ipAddress === ip.address) return v.data.specs
 
     return {}

@@ -14,16 +14,18 @@ import { Abnormal, sleep, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
-interface OnDisk {
-  data: {
-    inputs: {
-      applications: VieraApps
-      hdmi: HdmiInput[]
+type OnDisk =
+  | {
+      data: {
+        inputs: {
+          applications: VieraApps
+          hdmi: HdmiInput[]
+        }
+        ipAddress: string
+        specs: VieraSpecs
+      }
     }
-    ipAddress: string
-    specs: VieraSpecs
-  }
-}
+  | Record<string, never>
 
 interface HdmiInput {
   name: string
@@ -276,10 +278,12 @@ class VieramaticPlatformAccessory {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
-        const fn = (element): boolean =>
+        const fn = (element: HdmiInput): boolean =>
           element.id === input.id && element.name === input.name
 
-        const found = this.storage.data.inputs.hdmi.findIndex((x) => fn(x))
+        const found = this.storage.data.inputs.hdmi.findIndex((x: HdmiInput) =>
+          fn(x)
+        )
         if (found === -1) {
           this.log.info(
             "adding HDMI input '%s' - '%s' as it was appended to config.json",
@@ -293,8 +297,8 @@ class VieramaticPlatformAccessory {
       })
       // check for user removed inputs
       const shallow: unknown[] = []
-      this.storage.data.inputs.hdmi.forEach((input) => {
-        const fn = (element): boolean => element.id === input.id
+      this.storage.data.inputs.hdmi.forEach((input: HdmiInput) => {
+        const fn = (element: HdmiInput): boolean => element.id === input.id
 
         const found = userConfig.hdmiInputs.findIndex((x) => fn(x))
         found === -1
@@ -315,7 +319,7 @@ class VieramaticPlatformAccessory {
     // TV Tuner
     this.configureInputSource('TUNER', 'TV Tuner', 500)
     // HDMI inputs ...
-    this.storage.data.inputs.hdmi.forEach((input) => {
+    this.storage.data.inputs.hdmi.forEach((input: HdmiInput) => {
       const sig = Number.parseInt(input.id, 10)
       this.configureInputSource('HDMI', input.name, sig)
     })
@@ -364,7 +368,8 @@ class VieramaticPlatformAccessory {
     configuredName: string,
     identifier: number
   ): void {
-    const fn = (element): boolean => element.id === identifier.toString()
+    const fn = (element: HdmiInput): boolean =>
+      element.id === identifier.toString()
 
     const visibility = (): string => {
       let idx: number
@@ -373,7 +378,7 @@ class VieramaticPlatformAccessory {
 
       switch (type) {
         case 'HDMI':
-          idx = inputs.hdmi.findIndex((x) => fn(x))
+          idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
           hidden = inputs.hdmi[idx].hidden
           break
         case 'APPLICATION':
@@ -404,7 +409,7 @@ class VieramaticPlatformAccessory {
       switch (false) {
         case !(id < 100):
           // hdmi input
-          idx = inputs.hdmi.findIndex((x) => fn(x))
+          idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
           inputs.hdmi[idx].hidden = state
           break
         case !(id > 999):
