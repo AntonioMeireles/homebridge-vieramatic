@@ -1,8 +1,3 @@
 **/package.json
 **/package-lock.json
-# bellow (!) gets away with in vscode ...
-#   Parsing error: "parserOptions.project" has been set for @typescript-eslint/parser.
-#   The file does not match your project config: config.schema.json.
-#   The extension for the file (.json) is non-standard. You should add "parserOptions.extraFileExtensions" to your config.
-/*.*
 !.eslintrc.js
