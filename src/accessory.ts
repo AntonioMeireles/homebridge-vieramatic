@@ -20,7 +20,7 @@ interface OnDisk {
       applications: VieraApps
       hdmi: HdmiInput[]
     }
-    ipAdress: string
+    ipAddress: string
     specs: VieraSpecs
   }
 }
