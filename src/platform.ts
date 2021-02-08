@@ -146,7 +146,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         return { error: Error(msg) }
       }
     }
-    tv.specs = specs ?? cached
+    tv.specs = isEmpty(specs) ? cached : specs
     if (tv.specs.requiresEncryption) {
       if (!(device.appId != null && device.encKey != null)) {
         const msg = printf(
