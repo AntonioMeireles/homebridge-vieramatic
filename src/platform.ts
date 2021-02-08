@@ -65,6 +65,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         this.log.error(outcome.error.message)
         return
       }
+
       this.api.publishExternalAccessories(PLUGIN_NAME, [
         outcome.value.accessory
       ])
@@ -132,8 +133,9 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (isEmpty(specs)) {
       this.log.warn(
-        "WARNING: unable to fetch specs from TV at '%s'",
-        ip.address
+        "WARNING: unable to fetch specs from TV at '%s'. Using the previously cached ones: \n\n%s",
+        ip.address,
+        cached
       )
       if (cached?.requiresEncryption) {
         const msg = printf(
