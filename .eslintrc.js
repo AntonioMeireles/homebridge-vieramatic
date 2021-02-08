@@ -33,7 +33,6 @@ module.exports = {
       { checksVoidReturn: false }
     ],
     '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
-    curly: ['error', 'multi', 'consistent'],
     'eslint-comments/no-unused-disable': 'error',
     'import/exports-last': 'error',
     'import/group-exports': 'error',

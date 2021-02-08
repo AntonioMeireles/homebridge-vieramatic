@@ -8,6 +8,7 @@ import {
   Service
 } from 'homebridge'
 
+// @ts-expect-error noImplicityAny...
 import { isValidMACAddress } from '@mi-sec/mac-address'
 import { Address4 } from 'ip-address'
 

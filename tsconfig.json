@@ -16,7 +16,6 @@
     "removeComments": true,
     "strict": true,
     "esModuleInterop": true,
-    "noImplicitAny": false, //XXX
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,

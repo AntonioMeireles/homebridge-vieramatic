@@ -17,12 +17,10 @@ class Storage {
   public init(): void {
     const data = fs.readJsonSync(this.filePath, { throws: false })
 
-    if (data !== undefined) this.accessories = data
+    this.accessories = data ?? {}
   }
 
   public get(id: string): OnDisk {
-    if (this.accessories == null) this.accessories = {}
-
     if (this.accessories[id] == null) this.accessories[id] = {}
 
     return this.accessories[id]

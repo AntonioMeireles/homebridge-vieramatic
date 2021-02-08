@@ -8,11 +8,14 @@ import {
   Service
 } from 'homebridge'
 
+// @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
 import { Abnormal, sleep, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
+
+type InputVisibility = 0 | 1
 
 type OnDisk =
   | {
@@ -20,6 +23,7 @@ type OnDisk =
         inputs: {
           applications: VieraApps
           hdmi: HdmiInput[]
+          TUNER: { hidden: InputVisibility }
         }
         ipAddress: string
         specs: VieraSpecs
@@ -30,7 +34,7 @@ type OnDisk =
 interface HdmiInput {
   name: string
   id: string
-  hidden?: 0 | 1
+  hidden?: InputVisibility
 }
 
 interface UserConfig {
@@ -55,7 +59,7 @@ class VieramaticPlatformAccessory {
 
   private readonly log: Logger
 
-  private readonly storage
+  private readonly storage: OnDisk
 
   private readonly device: VieraTV
 
@@ -72,7 +76,8 @@ class VieramaticPlatformAccessory {
     this.log.debug(JSON.stringify(this.userConfig, undefined, 2))
 
     const handler = {
-      get: (obj, prop): unknown => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      get: (obj: any, prop: PropertyKey): unknown => {
         if (prop === 'isProxy') return true
 
         const property = obj[prop]
@@ -83,7 +88,8 @@ class VieramaticPlatformAccessory {
 
         return obj[prop]
       },
-      set: (obj, prop, value): boolean => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      set: (obj: any, prop: PropertyKey, value: any): boolean => {
         obj[prop] = value
         this.platform.storage.save()
         return true
@@ -91,7 +97,7 @@ class VieramaticPlatformAccessory {
     }
 
     this.device = this.accessory.context.device
-    this.storage = new Proxy(
+    this.storage = new Proxy<OnDisk>(
       this.platform.storage.get(this.device.specs.serialNumber),
       handler
     )
@@ -113,7 +119,7 @@ class VieramaticPlatformAccessory {
         )
 
     this.accessory.on('identify', () =>
-      this.log.info(this.device.specs.friendlyName, 'Identify!!!')
+      this.log.info(this.device.specs.friendlyName, 'Identified!')
     )
 
     this.service = this.accessory.addService(this.Service.Television)
@@ -204,7 +210,7 @@ class VieramaticPlatformAccessory {
             this.Characteristic.Active
           )
           this.log.debug('(customSpeakerService/On.get)', value)
-          return callback(undefined, value)
+          callback(undefined, value)
         })
         .on(
           'set',
@@ -213,17 +219,13 @@ class VieramaticPlatformAccessory {
             callback: CharacteristicSetCallback
           ) => {
             this.log.debug('(customSpeakerService/On.set)', value)
-            switch (
-              this.service.getCharacteristic(this.Characteristic.Active).value
-            ) {
-              case this.Characteristic.Active.INACTIVE:
-                await this.device.setMute(false)
-                return callback(undefined, false)
-              case this.Characteristic.Active.ACTIVE:
-              default:
-                await this.device.setMute(!(value as boolean))
-                return callback(undefined, !(value as boolean))
-            }
+            const state =
+              this.service.getCharacteristic(this.Characteristic.Active)
+                .value === this.Characteristic.Active.INACTIVE
+                ? false
+                : !(value as boolean)
+            await this.device.setMute(state)
+            callback(undefined, state)
           }
         )
 
@@ -258,22 +260,13 @@ class VieramaticPlatformAccessory {
       this.storage.data = {
         inputs: {
           applications: { ...this.tvApps },
-          hdmi: this.userConfig.hdmiInputs
+          hdmi: this.userConfig.hdmiInputs,
+          // add default TUNER (live TV)... visible by default
+          TUNER: { hidden: 0 }
         },
         ipAddress: this.userConfig.ipAddress,
         specs: { ...this.device.specs }
       }
-      // add default TUNER (live TV)... visible by default
-      this.storage.data.inputs.TUNER = { hidden: 0 }
-      // by default all hdmiInputs will be visible
-      this.storage.data.inputs.hdmi.forEach(
-        (element: HdmiInput) => (element.hidden = 0)
-      )
-      // by default all apps will be hidden
-      Object.entries(this.storage.data.inputs.applications).forEach(
-        (_element, index) =>
-          (this.storage.data.inputs.applications[index].hidden = 1)
-      )
     } else {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // check for new user added inputs
@@ -290,13 +283,11 @@ class VieramaticPlatformAccessory {
             input.id,
             input.name
           )
-
-          input.hidden = 0
           this.storage.data.inputs.hdmi.push(input)
         }
       })
       // check for user removed inputs
-      const shallow: unknown[] = []
+      const shallow: HdmiInput[] = []
       this.storage.data.inputs.hdmi.forEach((input: HdmiInput) => {
         const fn = (element: HdmiInput): boolean => element.id === input.id
 
@@ -324,13 +315,11 @@ class VieramaticPlatformAccessory {
       this.configureInputSource('HDMI', input.name, sig)
     })
     // Apps
-    Object.entries(this.storage.data.inputs.applications as VieraApps).forEach(
-      (line) => {
-        const [id, app] = line
-        const sig = 1000 + Number.parseInt(id, 10)
-        this.configureInputSource('APPLICATION', app.name, sig)
-      }
-    )
+    Object.entries(this.storage.data.inputs.applications).forEach((line) => {
+      const [id, app] = line
+      const sig = 1000 + Number.parseInt(id, 10)
+      this.configureInputSource('APPLICATION', app.name, sig)
+    })
   }
 
   private async setInput(
@@ -373,23 +362,25 @@ class VieramaticPlatformAccessory {
 
     const visibility = (): string => {
       let idx: number
-      let hidden: string
+      let hidden: number
       const { inputs } = this.storage.data
 
       switch (type) {
         case 'HDMI':
           idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
-          hidden = inputs.hdmi[idx].hidden
+          // by default all hdmiInputs will be visible
+          hidden = inputs.hdmi[idx].hidden ?? 0
           break
         case 'APPLICATION':
           idx = identifier - 1000
-          hidden = inputs.applications[idx].hidden
+          // by default all apps will be hidden
+          hidden = inputs.applications[idx].hidden ?? 1
           break
         case 'TUNER':
         default:
           hidden = inputs.TUNER.hidden
       }
-      return hidden
+      return hidden.toFixed()
     }
 
     const source = this.accessory.addService(
@@ -410,22 +401,22 @@ class VieramaticPlatformAccessory {
         case !(id < 100):
           // hdmi input
           idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
-          inputs.hdmi[idx].hidden = state
+          inputs.hdmi[idx].hidden = state as InputVisibility
           break
         case !(id > 999):
           // APP
           idx = (id as number) - 1000
-          inputs.applications[idx].hidden = state
+          inputs.applications[idx].hidden = state as InputVisibility
           break
         case !(id === 500):
         default:
-          inputs.TUNER.hidden = state
+          inputs.TUNER.hidden = state as InputVisibility
           break
       }
       source
         .getCharacteristic(this.Characteristic.CurrentVisibilityState)
         .updateValue(state)
-      return callback()
+      callback()
     }
     const hidden = visibility()
 
@@ -679,4 +670,10 @@ class VieramaticPlatformAccessory {
   }
 }
 
-export { sleep, OnDisk, UserConfig, VieramaticPlatformAccessory }
+export {
+  sleep,
+  OnDisk,
+  InputVisibility,
+  UserConfig,
+  VieramaticPlatformAccessory
+}
