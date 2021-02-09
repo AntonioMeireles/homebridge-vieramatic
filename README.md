@@ -224,7 +224,7 @@ hdmi](https://en.wikipedia.org/wiki/Consumer_Electronics_Control).
   you'll achieve that goal by adding the `hdmi_ignore_cec_init=1` config option
   to your `/boot/config.txt`.
 
-#### scrip snippets
+#### script snippets
 
 > adapt absolute paths accordingly to your local setup and mod `name` from
 > default (`"TV ON/OFF"`) bellow to whatever suits you best.
