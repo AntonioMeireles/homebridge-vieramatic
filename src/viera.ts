@@ -13,7 +13,7 @@ import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, Outcome, html, isEmpty } from './helpers'
+import { Abnormal, Outcome, html, isEmpty, printf } from './helpers'
 import VieramaticPlatform from './platform'
 
 // helpers and default settings
@@ -346,11 +346,26 @@ class VieraTV implements VieraTV {
       })
   }
 
-  private renderEncryptedRequest(
+  private async renderEncryptedRequest(
     action: string,
     urn: string,
     parameters: string
-  ): Outcome<string[]> {
+  ): Promise<Outcome<string[]>> {
+    // #65
+    // this is an arbitarly low value until we really spot what's really going on
+    if (this.session.seqNum > 255) {
+      this.log.info(
+        '255 sessions reached - resetting session counter to avoid overflows...'
+      )
+      const result = await this.requestSessionId()
+      if (Abnormal(result)) {
+        const msg = printf(
+          'Unable to refresh session. please fill an issue in https://github.com/AntonioMeireles/homebridge-vieramatic...\n\n',
+          result.error.message
+        )
+        return { error: Error(msg) }
+      }
+    }
     this.session.seqNum += 1
     const encCommand =
       `<X_SessionId>${this.session.id}</X_SessionId>` +
@@ -420,7 +435,7 @@ class VieraTV implements VieraTV {
       requestType === 'command' &&
       !(realAction in AlwaysInPlainText)
     ) {
-      const outcome = this.renderEncryptedRequest(
+      const outcome = await this.renderEncryptedRequest(
         realAction,
         urn,
         realParameters
