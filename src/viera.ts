@@ -42,9 +42,9 @@ type VieraApps = VieraApp[]
 type RequestType = 'command' | 'render'
 
 enum AlwaysInPlainText {
-  X_GetEncryptSessionId = 'X_GetEncryptSessionId',
-  X_DisplayPinCode = 'X_DisplayPinCode',
-  X_RequestAuth = 'X_RequestAuth'
+  X_GetEncryptSessionId,
+  X_DisplayPinCode,
+  X_RequestAuth
 }
 
 type VieraAuthSession =
