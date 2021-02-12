@@ -351,11 +351,13 @@ class VieraTV implements VieraTV {
     urn: string,
     parameters: string
   ): Promise<Outcome<string[]>> {
-    // #65
-    // this is an arbitarly low value until we really spot what's really going on
-    if (this.session.seqNum > 255) {
+    // this is an arbitarly low value until we spot what's really going on
+    // underneath on #65
+    const MAX_SESSIONS = 255
+    if (this.session.seqNum > MAX_SESSIONS) {
       this.log.info(
-        '255 sessions reached - resetting session counter to avoid overflows...'
+        '%s sessions reached. session counter reset to avoid overflows...',
+        MAX_SESSIONS
       )
       const result = await this.requestSessionId()
       if (Abnormal(result)) {
