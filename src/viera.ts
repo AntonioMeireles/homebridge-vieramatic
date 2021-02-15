@@ -351,6 +351,12 @@ class VieraTV implements VieraTV {
     urn: string,
     parameters: string
   ): Promise<Outcome<string[]>> {
+    this.log.debug(
+      '(renderEncryptedRequest) action: [%s] urn:[%s], parameters: [%s]',
+      action,
+      urn,
+      parameters
+    )
     // this is an arbitarly low value until we spot what's really going on
     // underneath on #65
     const MAX_SESSIONS = 255
