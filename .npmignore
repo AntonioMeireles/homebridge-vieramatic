@@ -1,3 +1,7 @@
+.github/
+.eslintignore
+.prettierrc
+
 # Ignore source code
 src
 
