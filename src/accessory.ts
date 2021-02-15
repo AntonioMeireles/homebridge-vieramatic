@@ -505,12 +505,11 @@ class VieramaticPlatformAccessory {
     this.log.debug('(setMute) is', state)
     const cmd = await this.device.setMute(state as boolean)
 
-    Abnormal(cmd)
-      ? this.log.error(
-          '(setMute)/(%s) unable to change mute state on TV...',
-          state
-        )
-      : (state = !(state as boolean))
+    if (Abnormal(cmd))
+      this.log.error(
+        '(setMute)/(%s) unable to change mute state on TV...',
+        state
+      )
 
     callback()
   }
