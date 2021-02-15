@@ -144,7 +144,7 @@ class VieramaticPlatformAccessory {
       .on(
         'set',
         async (
-          value: CharacteristicValue,
+          _value: CharacteristicValue,
           callback: CharacteristicSetCallback
         ) => {
           const outcome = await this.device.sendCommand('MENU')
@@ -154,7 +154,7 @@ class VieramaticPlatformAccessory {
               outcome.error
             )
 
-          callback(undefined, value)
+          callback()
         }
       )
 
@@ -225,7 +225,7 @@ class VieramaticPlatformAccessory {
                 ? false
                 : !(value as boolean)
             await this.device.setMute(state)
-            callback(undefined, state)
+            callback()
           }
         )
 
@@ -349,7 +349,7 @@ class VieramaticPlatformAccessory {
     const cmd = await fn()
     if (Abnormal(cmd)) this.log.error('setInput', value, cmd.error)
 
-    callback(undefined, value)
+    callback()
   }
 
   private configureInputSource(
@@ -512,7 +512,7 @@ class VieramaticPlatformAccessory {
         )
       : (state = !(state as boolean))
 
-    callback(undefined, state)
+    callback()
   }
 
   async setVolume(
@@ -525,10 +525,10 @@ class VieramaticPlatformAccessory {
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
       value = 0
     }
-    callback(undefined, value)
+    callback()
   }
 
-  async getVolume(callback: CharacteristicSetCallback): Promise<void> {
+  async getVolume(callback: CharacteristicGetCallback): Promise<void> {
     const cmd = await this.device.getVolume()
     let volume = 0
 
@@ -666,7 +666,7 @@ class VieramaticPlatformAccessory {
     if (Abnormal(cmd))
       this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
 
-    callback(undefined, keyId)
+    callback()
   }
 }
 
