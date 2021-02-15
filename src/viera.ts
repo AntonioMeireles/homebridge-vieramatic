@@ -13,7 +13,7 @@ import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, Outcome, html, isEmpty, printf } from './helpers'
+import { Abnormal, Outcome, html, isEmpty } from './helpers'
 import VieramaticPlatform from './platform'
 
 // helpers and default settings
@@ -357,23 +357,24 @@ class VieraTV implements VieraTV {
       urn,
       parameters
     )
-    // this is an arbitarly low value until we spot what's really going on
-    // underneath on #65
-    const MAX_SESSIONS = 255
-    if (this.session.seqNum > MAX_SESSIONS) {
-      this.log.info(
-        '%s sessions reached. session counter reset to avoid overflows...',
-        MAX_SESSIONS
-      )
-      const result = await this.requestSessionId()
-      if (Abnormal(result)) {
-        const msg = printf(
-          'Unable to refresh session. please fill an issue in https://github.com/AntonioMeireles/homebridge-vieramatic...\n\n',
-          result.error.message
-        )
-        return { error: Error(msg) }
-      }
-    }
+    // // this is an arbitarly low value until we spot what's really going on
+    // // underneath on #65
+    // const MAX_SESSIONS = 255
+    // if (this.session.seqNum > MAX_SESSIONS) {
+    //   this.log.info(
+    //     '%s sessions reached. session counter reset to avoid overflows...',
+    //     MAX_SESSIONS
+    //   )
+    //   const result = await this.requestSessionId()
+    //   if (Abnormal(result)) {
+    //     const msg = printf(
+    //       'Unable to refresh session.',
+    //       'Please fill an issue in https://github.com/AntonioMeireles/homebridge-vieramatic...\n\n',
+    //       result.error.message
+    //     )
+    //     return { error: Error(msg) }
+    //   }
+    // }
     this.session.seqNum += 1
     const encCommand =
       `<X_SessionId>${this.session.id}</X_SessionId>` +
