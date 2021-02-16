@@ -413,9 +413,10 @@ class VieramaticPlatformAccessory {
           inputs.TUNER.hidden = state as InputVisibility
           break
       }
-      source
-        .getCharacteristic(this.Characteristic.CurrentVisibilityState)
-        .updateValue(state)
+      source.updateCharacteristic(
+        this.Characteristic.CurrentVisibilityState,
+        state
+      )
       callback(null)
     }
     const hidden = visibility()
@@ -565,12 +566,8 @@ class VieramaticPlatformAccessory {
     if (this.userConfig.customVolumeSlider === true)
       customSpeakerService = this.accessory.getService(this.Service.Fan)
 
-    speakerService
-      .getCharacteristic(this.Characteristic.Active)
-      .updateValue(newState)
-    tvService
-      .getCharacteristic(this.Characteristic.Active)
-      .updateValue(newState)
+    speakerService.updateCharacteristic(this.Characteristic.Active, newState)
+    tvService.updateCharacteristic(this.Characteristic.Active, newState)
     if (newState === true) {
       const cmd = await this.device.getMute()
       if (
@@ -578,23 +575,18 @@ class VieramaticPlatformAccessory {
         cmd.value !==
           speakerService.getCharacteristic(this.Characteristic.Mute).value
       ) {
-        speakerService
-          .getCharacteristic(this.Characteristic.Mute)
-          .updateValue(cmd.value)
+        speakerService.updateCharacteristic(this.Characteristic.Mute, cmd.value)
         if (customSpeakerService != null)
-          customSpeakerService
-            .getCharacteristic(this.Characteristic.On)
-            .updateValue(cmd.value ? 0 : 1)
+          customSpeakerService.updateCharacteristic(
+            this.Characteristic.On,
+            cmd.value ? 0 : 1
+          )
       }
     } else {
-      speakerService
-        .getCharacteristic(this.Characteristic.Mute)
-        .updateValue(true)
+      speakerService.updateCharacteristic(this.Characteristic.Mute, true)
 
       if (customSpeakerService != null)
-        customSpeakerService
-          .getCharacteristic(this.Characteristic.On)
-          .updateValue(false)
+        customSpeakerService.updateCharacteristic(this.Characteristic.On, false)
     }
   }
 
