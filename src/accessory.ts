@@ -154,7 +154,7 @@ class VieramaticPlatformAccessory {
               outcome.error
             )
 
-          callback()
+          callback(null)
         }
       )
 
@@ -210,7 +210,7 @@ class VieramaticPlatformAccessory {
             this.Characteristic.Active
           )
           this.log.debug('(customSpeakerService/On.get)', value)
-          callback(undefined, value)
+          callback(null, value)
         })
         .on(
           'set',
@@ -225,7 +225,7 @@ class VieramaticPlatformAccessory {
                 ? false
                 : !(value as boolean)
             await this.device.setMute(state)
-            callback()
+            callback(null)
           }
         )
 
@@ -349,7 +349,7 @@ class VieramaticPlatformAccessory {
     const cmd = await fn()
     if (Abnormal(cmd)) this.log.error('setInput', value, cmd.error)
 
-    callback()
+    callback(null)
   }
 
   private configureInputSource(
@@ -416,7 +416,7 @@ class VieramaticPlatformAccessory {
       source
         .getCharacteristic(this.Characteristic.CurrentVisibilityState)
         .updateValue(state)
-      callback()
+      callback(null)
     }
     const hidden = visibility()
 
@@ -472,7 +472,7 @@ class VieramaticPlatformAccessory {
       }
     }
 
-    callback()
+    callback(null)
   }
 
   async getPowerStatus(callback?: CharacteristicGetCallback): Promise<void> {
@@ -480,7 +480,7 @@ class VieramaticPlatformAccessory {
 
     await this.updateTVstatus(currentState)
 
-    if (callback != null) callback(undefined, currentState)
+    if (callback != null) callback(null, currentState)
   }
 
   async getMute(callback: CharacteristicGetCallback): Promise<void> {
@@ -495,7 +495,7 @@ class VieramaticPlatformAccessory {
     }
 
     this.log.debug('(getMute) is', mute)
-    callback(undefined, mute)
+    callback(null, mute)
   }
 
   async setMute(
@@ -511,7 +511,7 @@ class VieramaticPlatformAccessory {
         state
       )
 
-    callback()
+    callback(null)
   }
 
   async setVolume(
@@ -524,7 +524,7 @@ class VieramaticPlatformAccessory {
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
       value = 0
     }
-    callback()
+    callback(null)
   }
 
   async getVolume(callback: CharacteristicGetCallback): Promise<void> {
@@ -535,7 +535,7 @@ class VieramaticPlatformAccessory {
       ? this.log.error('(getVolume) unable to get volume from TV...')
       : (volume = Number(cmd.value))
 
-    callback(undefined, volume)
+    callback(null, volume)
   }
 
   async setVolumeSelector(
@@ -550,7 +550,7 @@ class VieramaticPlatformAccessory {
     if (Abnormal(cmd))
       this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
 
-    callback()
+    callback(null)
   }
 
   async updateTVstatus(newState: CharacteristicValue): Promise<void> {
@@ -665,7 +665,7 @@ class VieramaticPlatformAccessory {
     if (Abnormal(cmd))
       this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
 
-    callback()
+    callback(null)
   }
 }
 
