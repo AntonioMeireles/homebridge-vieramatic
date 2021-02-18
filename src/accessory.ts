@@ -382,64 +382,76 @@ class VieramaticPlatformAccessory {
       }
       return hidden.toFixed()
     }
+    // catch gracefully user cfg errors (#67)
+    try {
+      const source = this.accessory.addService(
+        this.Service.InputSource,
+        configuredName.toLowerCase().replace(/\s/gu, ''),
+        identifier
+      )
+      const visibilityState = (
+        state: CharacteristicValue,
+        callback: CharacteristicSetCallback
+      ): void => {
+        let idx: number
+        const id =
+          source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
+        const { inputs } = this.storage.data
 
-    const source = this.accessory.addService(
-      this.Service.InputSource,
-      configuredName.toLowerCase().replace(/\s/gu, ''),
-      identifier
-    )
-    const visibilityState = (
-      state: CharacteristicValue,
-      callback: CharacteristicSetCallback
-    ): void => {
-      let idx: number
-      const id =
-        source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
-      const { inputs } = this.storage.data
+        switch (false) {
+          case !(id < 100):
+            // hdmi input
+            idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
+            inputs.hdmi[idx].hidden = state as InputVisibility
+            break
+          case !(id > 999):
+            // APP
+            idx = (id as number) - 1000
+            inputs.applications[idx].hidden = state as InputVisibility
+            break
+          case !(id === 500):
+          default:
+            inputs.TUNER.hidden = state as InputVisibility
+            break
+        }
+        source.updateCharacteristic(
+          this.Characteristic.CurrentVisibilityState,
+          state
+        )
 
-      switch (false) {
-        case !(id < 100):
-          // hdmi input
-          idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
-          inputs.hdmi[idx].hidden = state as InputVisibility
-          break
-        case !(id > 999):
-          // APP
-          idx = (id as number) - 1000
-          inputs.applications[idx].hidden = state as InputVisibility
-          break
-        case !(id === 500):
-        default:
-          inputs.TUNER.hidden = state as InputVisibility
-          break
+        callback(null)
       }
-      source.updateCharacteristic(
-        this.Characteristic.CurrentVisibilityState,
-        state
+      const hidden = visibility()
+
+      source
+        .setCharacteristic(
+          this.Characteristic.InputSourceType,
+          this.Characteristic.InputSourceType[type]
+        )
+        .setCharacteristic(this.Characteristic.CurrentVisibilityState, hidden)
+        .setCharacteristic(this.Characteristic.TargetVisibilityState, hidden)
+        .setCharacteristic(this.Characteristic.Identifier, identifier)
+        .setCharacteristic(this.Characteristic.ConfiguredName, configuredName)
+        .setCharacteristic(
+          this.Characteristic.IsConfigured,
+          this.Characteristic.IsConfigured.CONFIGURED
+        )
+      source
+        .getCharacteristic(this.Characteristic.TargetVisibilityState)
+        .on('set', visibilityState)
+
+      const svc = this.accessory.getService(this.Service.Television)
+      if (svc != null) svc.addLinkedService(source)
+    } catch (error) {
+      this.log.error(
+        "An error ocurred while trying to add an '%s' accessory ('%s':'%s') to your TV - ignoring it.",
+        type,
+        identifier,
+        configuredName,
+        "If you do believe that your homebridge's 'config.json' is in order and has absolutelly no",
+        'duplicated entries then please fill a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues'
       )
-      callback(null)
     }
-    const hidden = visibility()
-
-    source
-      .setCharacteristic(
-        this.Characteristic.InputSourceType,
-        this.Characteristic.InputSourceType[type]
-      )
-      .setCharacteristic(this.Characteristic.CurrentVisibilityState, hidden)
-      .setCharacteristic(this.Characteristic.TargetVisibilityState, hidden)
-      .setCharacteristic(this.Characteristic.Identifier, identifier)
-      .setCharacteristic(this.Characteristic.ConfiguredName, configuredName)
-      .setCharacteristic(
-        this.Characteristic.IsConfigured,
-        this.Characteristic.IsConfigured.CONFIGURED
-      )
-    source
-      .getCharacteristic(this.Characteristic.TargetVisibilityState)
-      .on('set', visibilityState)
-
-    const svc = this.accessory.getService(this.Service.Television)
-    if (svc != null) svc.addLinkedService(source)
   }
 
   async setPowerStatus(
