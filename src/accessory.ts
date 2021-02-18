@@ -1,7 +1,5 @@
 import {
   Characteristic,
-  CharacteristicGetCallback,
-  CharacteristicSetCallback,
   CharacteristicValue,
   Logger,
   PlatformAccessory,
@@ -141,33 +139,25 @@ class VieramaticPlatformAccessory {
 
     this.service
       .addCharacteristic(this.Characteristic.PowerModeSelection)
-      .on(
-        'set',
-        async (
-          _value: CharacteristicValue,
-          callback: CharacteristicSetCallback
-        ) => {
-          const outcome = await this.device.sendCommand('MENU')
-          if (Abnormal(outcome))
-            this.log.error(
-              'unexpected error in PowerModeSelection.set',
-              outcome.error
-            )
-
-          callback(null)
-        }
-      )
+      .onSet(async () => {
+        const outcome = await this.device.sendCommand('MENU')
+        if (Abnormal(outcome))
+          this.log.error(
+            'unexpected error in PowerModeSelection.set',
+            outcome.error
+          )
+      })
 
     this.service
       .getCharacteristic(this.Characteristic.Active)
-      .on('set', this.setPowerStatus.bind(this))
-      .on('get', this.getPowerStatus.bind(this))
+      .onSet(this.setPowerStatus.bind(this))
+      .onGet(this.getPowerStatus.bind(this))
     this.service
       .getCharacteristic(this.Characteristic.RemoteKey)
-      .on('set', this.remoteControl.bind(this))
+      .onSet(this.remoteControl.bind(this))
     this.service
       .getCharacteristic(this.Characteristic.ActiveIdentifier)
-      .on('set', this.setInput.bind(this))
+      .onSet(this.setInput.bind(this))
 
     const speakerService = this.accessory.addService(
       this.Service.TelevisionSpeaker,
@@ -185,15 +175,15 @@ class VieramaticPlatformAccessory {
 
     speakerService
       .getCharacteristic(this.Characteristic.Mute)
-      .on('get', this.getMute.bind(this))
-      .on('set', this.setMute.bind(this))
+      .onGet(this.getMute.bind(this))
+      .onSet(this.setMute.bind(this))
     speakerService
       .getCharacteristic(this.Characteristic.Volume)
-      .on('get', this.getVolume.bind(this))
-      .on('set', this.setVolume.bind(this))
+      .onGet(this.getVolume.bind(this))
+      .onSet(this.setVolume.bind(this))
     speakerService
       .getCharacteristic(this.Characteristic.VolumeSelector)
-      .on('set', this.setVolumeSelector.bind(this))
+      .onSet(this.setVolumeSelector.bind(this))
 
     if (this.userConfig.customVolumeSlider === true) {
       const customSpeakerService = this.accessory.addService(
@@ -205,34 +195,27 @@ class VieramaticPlatformAccessory {
 
       customSpeakerService
         .getCharacteristic(this.Characteristic.On)
-        .on('get', (callback: CharacteristicGetCallback) => {
+        .onGet(() => {
           const { value } = this.service.getCharacteristic(
             this.Characteristic.Active
           )
           this.log.debug('(customSpeakerService/On.get)', value)
-          callback(null, value)
+          return value
         })
-        .on(
-          'set',
-          async (
-            value: CharacteristicValue,
-            callback: CharacteristicSetCallback
-          ) => {
-            this.log.debug('(customSpeakerService/On.set)', value)
-            const state =
-              this.service.getCharacteristic(this.Characteristic.Active)
-                .value === this.Characteristic.Active.INACTIVE
-                ? false
-                : !(value as boolean)
-            await this.device.setMute(state)
-            callback(null)
-          }
-        )
+        .onSet(async (value: CharacteristicValue) => {
+          this.log.debug('(customSpeakerService/On.set)', value)
+          const state =
+            this.service.getCharacteristic(this.Characteristic.Active).value ===
+            this.Characteristic.Active.INACTIVE
+              ? false
+              : !(value as boolean)
+          await this.device.setMute(state)
+        })
 
       customSpeakerService
         .getCharacteristic(this.Characteristic.RotationSpeed)
-        .on('get', this.getVolume.bind(this))
-        .on('set', this.setVolume.bind(this))
+        .onGet(this.getVolume.bind(this))
+        .onSet(this.setVolume.bind(this))
     }
 
     setInterval(async () => await this.getPowerStatus(), 5000)
@@ -335,10 +318,7 @@ class VieramaticPlatformAccessory {
     })
   }
 
-  private async setInput(
-    value: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  private async setInput(value: CharacteristicValue): Promise<void> {
     const fn = async (): Promise<Outcome<void>> => {
       let app: VieraApp
       let real: number
@@ -361,8 +341,6 @@ class VieramaticPlatformAccessory {
 
     const cmd = await fn()
     if (Abnormal(cmd)) this.log.error('setInput', value, cmd.error)
-
-    callback(null)
   }
 
   private configureInputSource(
@@ -401,10 +379,7 @@ class VieramaticPlatformAccessory {
       configuredName.toLowerCase().replace(/\s/gu, ''),
       identifier
     )
-    const visibilityState = (
-      state: CharacteristicValue,
-      callback: CharacteristicSetCallback
-    ): void => {
+    const visibilityState = (state: CharacteristicValue): void => {
       let idx: number
       const id =
         source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
@@ -430,8 +405,6 @@ class VieramaticPlatformAccessory {
         this.Characteristic.CurrentVisibilityState,
         state
       )
-
-      callback(null)
     }
     const hidden = visibility()
 
@@ -450,16 +423,13 @@ class VieramaticPlatformAccessory {
       )
     source
       .getCharacteristic(this.Characteristic.TargetVisibilityState)
-      .on('set', visibilityState)
+      .onSet(visibilityState)
 
     const svc = this.accessory.getService(this.Service.Television)
     if (svc != null) svc.addLinkedService(source)
   }
 
-  async setPowerStatus(
-    nextState: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  async setPowerStatus(nextState: CharacteristicValue): Promise<void> {
     const message =
       nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
     const currentState = await this.device.isTurnedOn()
@@ -486,19 +456,17 @@ class VieramaticPlatformAccessory {
         this.log.debug('Turned TV', message)
       }
     }
-
-    callback(null)
   }
 
-  async getPowerStatus(callback?: CharacteristicGetCallback): Promise<void> {
+  async getPowerStatus(): Promise<boolean> {
     const currentState = await this.device.isTurnedOn()
 
     await this.updateTVstatus(currentState)
 
-    if (callback != null) callback(null, currentState)
+    return currentState
   }
 
-  async getMute(callback: CharacteristicGetCallback): Promise<void> {
+  async getMute(): Promise<boolean> {
     const state = await this.device.isTurnedOn()
     let mute: boolean
 
@@ -510,13 +478,10 @@ class VieramaticPlatformAccessory {
     }
 
     this.log.debug('(getMute) is', mute)
-    callback(null, mute)
+    return mute
   }
 
-  async setMute(
-    state: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  async setMute(state: CharacteristicValue): Promise<void> {
     this.log.debug('(setMute) is', state)
     const cmd = await this.device.setMute(state as boolean)
 
@@ -525,24 +490,16 @@ class VieramaticPlatformAccessory {
         '(setMute)/(%s) unable to change mute state on TV...',
         state
       )
-
-    callback(null)
   }
 
-  async setVolume(
-    value: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  async setVolume(value: CharacteristicValue): Promise<void> {
     this.log.debug('(setVolume)', value)
     const cmd = await this.device.setVolume((value as number).toString())
-    if (Abnormal(cmd)) {
+    if (Abnormal(cmd))
       this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
-      value = 0
-    }
-    callback(null)
   }
 
-  async getVolume(callback: CharacteristicGetCallback): Promise<void> {
+  async getVolume(): Promise<number> {
     const cmd = await this.device.getVolume()
     let volume = 0
 
@@ -550,13 +507,10 @@ class VieramaticPlatformAccessory {
       ? this.log.error('(getVolume) unable to get volume from TV...')
       : (volume = Number(cmd.value))
 
-    callback(null, volume)
+    return volume
   }
 
-  async setVolumeSelector(
-    key: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  async setVolumeSelector(key: CharacteristicValue): Promise<void> {
     this.log.debug('setVolumeSelector', key)
     const action =
       key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
@@ -564,8 +518,6 @@ class VieramaticPlatformAccessory {
 
     if (Abnormal(cmd))
       this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
-
-    callback(null)
   }
 
   async updateTVstatus(newState: CharacteristicValue): Promise<void> {
@@ -602,12 +554,16 @@ class VieramaticPlatformAccessory {
       if (customSpeakerService != null)
         customSpeakerService.updateCharacteristic(this.Characteristic.On, false)
     }
+    const volume = await this.getVolume()
+    speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
+    if (customSpeakerService != null)
+      customSpeakerService.updateCharacteristic(
+        this.Characteristic.RotationSpeed,
+        volume
+      )
   }
 
-  async remoteControl(
-    keyId: CharacteristicValue,
-    callback: CharacteristicSetCallback
-  ): Promise<void> {
+  async remoteControl(keyId: CharacteristicValue): Promise<void> {
     let action: string
     //  https://github.com/KhaosT/HAP-NodeJS/blob/master/src/lib/gen/HomeKit-TV.ts#L235
     switch (keyId) {
@@ -670,8 +626,6 @@ class VieramaticPlatformAccessory {
 
     if (Abnormal(cmd))
       this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
-
-    callback(null)
   }
 }
 

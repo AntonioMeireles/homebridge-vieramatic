@@ -336,7 +336,9 @@ class VieraTV implements VieraTV {
             specs.modelName,
             specs.modelNumber,
             this.address,
-            specs.requiresEncryption ? '(requires crypto for comunication)' : ''
+            specs.requiresEncryption
+              ? '(requires crypto for communication)'
+              : ''
           )
           return specs
         }
