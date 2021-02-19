@@ -41,11 +41,12 @@ type VieraApps = VieraApp[]
 
 type RequestType = 'command' | 'render'
 
-enum AlwaysInPlainText {
-  X_GetEncryptSessionId,
-  X_DisplayPinCode,
-  X_RequestAuth
-}
+const AlwaysInPlainText = [
+  'X_GetEncryptSessionId',
+  'X_DisplayPinCode',
+  'X_RequestAuth'
+]
+const AlwaysEncrypted = ['X_GetEncryptSessionId', 'X_EncryptedCommand']
 
 type VieraAuthSession =
   | {
@@ -357,24 +358,6 @@ class VieraTV implements VieraTV {
       urn,
       parameters
     )
-    // // this is an arbitarly low value until we spot what's really going on
-    // // underneath on #65
-    // const MAX_SESSIONS = 255
-    // if (this.session.seqNum > MAX_SESSIONS) {
-    //   this.log.info(
-    //     '%s sessions reached. session counter reset to avoid overflows...',
-    //     MAX_SESSIONS
-    //   )
-    //   const result = await this.requestSessionId()
-    //   if (Abnormal(result)) {
-    //     const msg = printf(
-    //       'Unable to refresh session.',
-    //       'Please fill an issue in https://github.com/AntonioMeireles/homebridge-vieramatic...\n\n',
-    //       result.error.message
-    //     )
-    //     return { error: Error(msg) }
-    //   }
-    // }
     this.session.seqNum += 1
     const encCommand =
       `<X_SessionId>${this.session.id}</X_SessionId>` +
@@ -404,7 +387,6 @@ class VieraTV implements VieraTV {
     urn: string,
     parameters: string
   ): AxiosRequestConfig {
-    // let [data, method, responseType]: string[] = []
     const method: AxiosRequestConfig['method'] = 'POST'
     const responseType: AxiosRequestConfig['responseType'] = 'text'
     const headers = {
@@ -419,8 +401,8 @@ class VieraTV implements VieraTV {
       '<?xml version="1.0" encoding="utf-8"?> ' +
       ' <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"> ' +
       `<s:Body> <u:${action} xmlns:u="urn:${urn}"> ${parameters} </u:${action}> </s:Body> </s:Envelope>`
-    const payload: AxiosRequestConfig = { data, headers, method, responseType }
-    return payload
+
+    return { data, headers, method, responseType }
   }
 
   public async sendRequest<T>(
@@ -430,65 +412,60 @@ class VieraTV implements VieraTV {
     _callback?: (...args: string[]) => Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = []
+    const reqIs4Command = requestType === 'command'
 
-    if (requestType === 'command') {
-      urL = '/nrc/control_0'
-      urn = 'panasonic-com:service:p00NetworkControl:1'
-    } else {
-      urL = '/dmr/control_0'
-      urn = 'schemas-upnp-org:service:RenderingControl:1'
+    urL = reqIs4Command ? '/nrc/control_0' : '/dmr/control_0'
+    urn = reqIs4Command
+      ? 'panasonic-com:service:p00NetworkControl:1'
+      : 'schemas-upnp-org:service:RenderingControl:1'
+
+    const doIt = async (): Promise<Outcome<T>> => {
+      const reencode =
+        this.specs.requiresEncryption &&
+        reqIs4Command &&
+        !AlwaysInPlainText.includes(realAction)
+
+      if (reencode) {
+        const outcome = await this.renderEncryptedRequest(
+          realAction,
+          urn,
+          realParameters
+        )
+
+        if (Abnormal(outcome)) return outcome
+
+        action = outcome.value[0]
+        parameters = outcome.value[1]
+      } else {
+        action = realAction
+        parameters = realParameters
+      }
+
+      const request = this.renderRequest(action, urn, parameters)
+
+      return await curl(this.baseURL + urL, request)
+        .then((r) => {
+          let value: T
+          if (AlwaysEncrypted.includes(action)) {
+            const extracted = getKey('X_EncResult', r.data)
+
+            if (Abnormal(extracted)) return extracted
+
+            value = (this.decryptPayload(
+              extracted.value,
+              this.session.key,
+              this.session.iv
+            ) as unknown) as T
+          } else value = r.data
+
+          return { value }
+        })
+        .catch((error: Error) => {
+          return { error }
+        })
     }
 
-    if (
-      this.specs.requiresEncryption &&
-      requestType === 'command' &&
-      !(realAction in AlwaysInPlainText)
-    ) {
-      const outcome = await this.renderEncryptedRequest(
-        realAction,
-        urn,
-        realParameters
-      )
-
-      if (Abnormal(outcome)) return outcome
-
-      action = outcome.value[0]
-      parameters = outcome.value[1]
-    } else {
-      action = realAction
-      parameters = realParameters
-    }
-
-    const postRequest = this.renderRequest(action, urn, parameters)
-    const payload = await curl(`${this.baseURL}${urL}`, postRequest)
-      .then((r) => {
-        let output: Outcome<T>
-        if (
-          action === 'X_GetEncryptSessionId' ||
-          action === 'X_EncryptedCommand'
-        ) {
-          const extracted = getKey('X_EncResult', r.data)
-          if (Abnormal(extracted)) return extracted
-
-          const clean = this.decryptPayload(
-            extracted.value,
-            this.session.key,
-            this.session.iv
-          )
-          output = { value: (clean as unknown) as T }
-        } else {
-          output = { value: r.data }
-        }
-
-        return output
-      })
-      .catch((error: Error) => {
-        return {
-          error,
-          value: undefined
-        }
-      })
-
+    const payload = await doIt()
     if (Abnormal(payload)) return payload
 
     return _callback != null
