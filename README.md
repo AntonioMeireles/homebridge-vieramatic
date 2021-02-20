@@ -25,9 +25,12 @@
 
 - iOS 12.3 or later
 - Homebridge **v1.3.0** or _later_ (since **`homebridge-vieramatic@3.0.0`**)
-  > before upgrading to **Homebridge v1.3.0** check plz its
+
+  > before upgrading to **Homebridge v1.3.0** check please its
   > [ChangeLog](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#v130-2021-02-20)
-  > specially the **[breaking changes](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#breaking-changes)** section in order to see if anything there applies to your particular setup.
+  > specially the **[breaking
+  > changes](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#breaking-changes)**
+  > section in order to see if anything there applies to your particular setup.
 
 ## TV setup
 
