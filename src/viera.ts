@@ -193,7 +193,7 @@ class VieraTV implements VieraTV {
       .catch(() => false)
   }
 
-  async requestSessionId<T>(): Promise<Outcome<T>> {
+  async requestSessionId(): Promise<Outcome<void>> {
     const appId = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId>`
 
     const outcome = this.encryptPayload(
@@ -208,7 +208,7 @@ class VieraTV implements VieraTV {
     const encinfo = outcome.value
     const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`
 
-    const callback = (data: string): Outcome<T> => {
+    const callback = (data: string): Outcome<void> => {
       const error = Error(
         'abnormal result from TV - session ID is not (!) an integer'
       )
@@ -222,7 +222,7 @@ class VieraTV implements VieraTV {
 
       if (Number.isInteger(number.value)) {
         this.session.id = Number.parseInt(number.value, 10)
-        return { value: (null as unknown) as T }
+        return { value: undefined }
       }
 
       return { error }
@@ -475,9 +475,9 @@ class VieraTV implements VieraTV {
       : payload
   }
 
-  private async requestPinCode<T>(): Promise<Outcome<T>> {
+  private async requestPinCode(): Promise<Outcome<void>> {
     const parameters = '<X_DeviceName>MyRemote</X_DeviceName>'
-    const callback = (data: string): Outcome<T> => {
+    const callback = (data: string): Outcome<void> => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
       if (match === null)
         return {
@@ -485,7 +485,7 @@ class VieraTV implements VieraTV {
         }
 
       this.session.challenge = Buffer.from(match[1], 'base64')
-      return { value: (null as unknown) as T }
+      return { value: undefined }
     }
     return this.sendRequest('command', 'X_DisplayPinCode', parameters, callback)
   }
@@ -882,8 +882,8 @@ class VieraTV implements VieraTV {
   /**
    * Returns the list of apps on the TV
    */
-  public async getApps<T>(): Promise<Outcome<T>> {
-    const callback = (data: string): Outcome<T> => {
+  public async getApps(): Promise<Outcome<VieraApps>> {
+    const callback = (data: string): Outcome<VieraApps> => {
       const raw = getKey('X_AppList', data)
       if (Abnormal(raw)) {
         this.log.error('X_AppList returned originally', data)
@@ -901,7 +901,7 @@ class VieraTV implements VieraTV {
 
       return apps.length === 0
         ? { error: Error('The TV is in standby!') }
-        : { value: (apps as unknown) as T }
+        : { value: apps }
     }
     return this.sendRequest('command', 'X_GetAppList', undefined, callback)
   }

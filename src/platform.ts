@@ -199,7 +199,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         return { error: Error(msg) }
       }
       if (device.disabledAppSupport == null || !device.disabledAppSupport) {
-        const cmd = await tv.getApps<VieraApps>()
+        const cmd = await tv.getApps()
 
         if (Abnormal(cmd)) {
           const msg = printf(
