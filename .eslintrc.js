@@ -16,8 +16,7 @@ module.exports = {
     'standard-with-typescript',
 
     'plugin:prettier/recommended',
-    'prettier/@typescript-eslint',
-    'prettier/standard'
+    'prettier'
   ],
   ignorePatterns: ['dist'],
   parser: '@typescript-eslint/parser',
