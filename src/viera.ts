@@ -5,8 +5,8 @@ import net from 'net'
 import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
-import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
+import he from 'he'
 import { Address4 } from 'ip-address'
 // @ts-expect-error noImplicityAny...
 import UPnPsub from 'node-upnp-subscription'
@@ -891,11 +891,10 @@ class VieraTV implements VieraTV {
       }
 
       const apps: VieraApps = []
-      const decoded = decodeXML(raw.value)
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
 
       let i
-      while ((i = re.exec(decoded)) != null)
+      while ((i = re.exec(he.decode(raw.value))) != null)
         i.groups !== undefined &&
           apps.push({ id: i.groups.id, name: i.groups.appName })
 
