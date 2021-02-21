@@ -17,9 +17,13 @@ import { Abnormal, Outcome, html, isEmpty } from './helpers'
 import VieramaticPlatform from './platform'
 
 // helpers and default settings
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const xml = (data: any): string =>
+  // eslint-disable-next-line new-cap
+  new parser.j2xParser({ ignoreAttributes: false }).parse(data)
 const API_ENDPOINT = 55000
 const curl: AxiosInstance = axios.create({ timeout: 3500 })
-const AudioChannel = '<InstanceID>0</InstanceID><Channel>Master</Channel>'
+const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
 
 type VieraSpecs =
   | {
@@ -194,7 +198,7 @@ class VieraTV implements VieraTV {
   }
 
   async requestSessionId(): Promise<Outcome<void>> {
-    const appId = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId>`
+    const appId = xml({ X_ApplicationId: this.auth.appId })
 
     const outcome = this.encryptPayload(
       appId,
@@ -205,8 +209,10 @@ class VieraTV implements VieraTV {
 
     if (Abnormal(outcome)) return outcome
 
-    const encinfo = outcome.value
-    const parameters = `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${encinfo}</X_EncInfo>`
+    const parameters = xml({
+      X_ApplicationId: this.auth.appId,
+      X_EncInfo: outcome.value
+    })
 
     const callback = (data: string): Outcome<void> => {
       const error = Error(
@@ -361,12 +367,14 @@ class VieraTV implements VieraTV {
       parameters
     )
     this.session.seqNum += 1
-    const encCommand =
-      `<X_SessionId>${this.session.id}</X_SessionId>` +
-      `<X_SequenceNumber>${`00000000${this.session.seqNum}`.slice(
-        -8
-      )}</X_SequenceNumber>` +
-      `<X_OriginalCommand> <u:${action} xmlns:u="urn:${urn}">${parameters}</u:${action}> </X_OriginalCommand>`
+    const X_SN = ('00000000' + this.session.seqNum.toString(10)).slice(-8)
+    const encCommand = xml({
+      X_OriginalCommand: {
+        [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` }
+      },
+      X_SequenceNumber: X_SN,
+      X_SessionId: this.session.id
+    })
     const outcome = this.encryptPayload(
       encCommand,
       this.session.key,
@@ -379,7 +387,7 @@ class VieraTV implements VieraTV {
     return {
       value: [
         'X_EncryptedCommand',
-        `<X_ApplicationId>${this.auth.appId}</X_ApplicationId> <X_EncInfo>${outcome.value}</X_EncInfo>`
+        xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
       ]
     }
   }
@@ -399,10 +407,16 @@ class VieraTV implements VieraTV {
       Pragma: 'no-cache',
       SOAPACTION: `"urn:${urn}#${action}"`
     }
-    const data =
-      '<?xml version="1.0" encoding="utf-8"?> ' +
-      ' <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"> ' +
-      `<s:Body> <u:${action} xmlns:u="urn:${urn}"> ${parameters} </u:${action}> </s:Body> </s:Envelope>`
+    const body = xml({
+      's:Envelope': {
+        '@_s:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/',
+        '@_xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/',
+        's:Body': {
+          [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` }
+        }
+      }
+    })
+    const data = '<?xml version="1.0" encoding="utf-8"?>' + body
 
     return { data, headers, method, responseType }
   }
@@ -476,7 +490,7 @@ class VieraTV implements VieraTV {
   }
 
   private async requestPinCode(): Promise<Outcome<void>> {
-    const parameters = '<X_DeviceName>MyRemote</X_DeviceName>'
+    const parameters = xml({ X_DeviceName: 'MyRemote' })
     const callback = (data: string): Outcome<void> => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
       if (match === null)
@@ -544,12 +558,12 @@ class VieraTV implements VieraTV {
       hmacKey[j + 2] = hmacKeyMaskVals[j + 2] ^ iv[j & 0xf]
       hmacKey[j + 3] = hmacKeyMaskVals[j + 3] ^ iv[(j + 1) & 0xf]
     }
-    const data = `<X_PinCode>${pin}</X_PinCode>`
+    const data = xml({ X_PinCode: pin })
     const outcome = this.encryptPayload(data, key, iv, hmacKey)
 
     if (Abnormal(outcome)) return outcome
 
-    const parameters = `<X_AuthInfo>${outcome.value}</X_AuthInfo>`
+    const parameters = xml({ X_AuthInfo: outcome.value })
 
     const callback = (r: string): Outcome<VieraAuth> => {
       const raw = getKey('X_AuthResult', r)
@@ -809,7 +823,7 @@ class VieraTV implements VieraTV {
    * Sends a command to the TV
    */
   public async sendCommand<T>(cmd: string): Promise<Outcome<T>> {
-    const parameters = `<X_KeyEvent>NRC_${cmd.toUpperCase()}-ONOFF</X_KeyEvent>`
+    const parameters = xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` })
 
     return await this.sendRequest('command', 'X_SendKey', parameters)
   }
@@ -818,7 +832,7 @@ class VieraTV implements VieraTV {
    * Send a change HDMI input to the TV
    */
   public async sendHDMICommand<T>(hdmiInput: string): Promise<Outcome<T>> {
-    const parameters = `<X_KeyEvent>NRC_HDMI${hdmiInput}-ONOFF</X_KeyEvent>`
+    const parameters = xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` })
 
     return await this.sendRequest('command', 'X_SendKey', parameters)
   }
@@ -829,7 +843,7 @@ class VieraTV implements VieraTV {
   public async sendAppCommand<T>(appId: string): Promise<Outcome<T>> {
     const cmd =
       appId.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`
-    const parameters = `<X_AppType>vc_app</X_AppType><X_LaunchKeyword>${cmd}</X_LaunchKeyword>`
+    const parameters = xml({ X_AppType: 'vc_app', X_LaunchKeyword: cmd })
 
     return await this.sendRequest('command', 'X_LaunchApp', parameters)
   }
@@ -851,7 +865,7 @@ class VieraTV implements VieraTV {
    * Set Volume
    */
   public async setVolume<T>(volume: string): Promise<Outcome<T>> {
-    const parameters = `${AudioChannel}<DesiredVolume>${volume}</DesiredVolume>`
+    const parameters = AudioChannel + xml({ DesiredVolume: volume })
 
     return await this.sendRequest('render', 'SetVolume', parameters)
   }
@@ -874,7 +888,7 @@ class VieraTV implements VieraTV {
    */
   public async setMute<T>(enable: boolean): Promise<Outcome<T>> {
     const mute = enable ? '1' : '0'
-    const parameters = `${AudioChannel}<DesiredMute>${mute}</DesiredMute>`
+    const parameters = AudioChannel + xml({ DesiredMute: mute })
 
     return await this.sendRequest('render', 'SetMute', parameters)
   }
