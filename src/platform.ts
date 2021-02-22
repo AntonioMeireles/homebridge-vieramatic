@@ -21,8 +21,7 @@ import { VieraApps, VieraSpecs, VieraTV } from './viera'
 class VieramaticPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service
 
-  public readonly Characteristic: typeof Characteristic = this.api.hap
-    .Characteristic
+  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic
 
   public readonly accessories: PlatformAccessory[] = []
 
@@ -50,9 +49,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
   async discoverDevices(): Promise<void> {
     this.accessories.map((cachedAccessory) =>
-      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
-        cachedAccessory
-      ])
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cachedAccessory])
     )
 
     this.storage.init()
@@ -66,9 +63,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         return
       }
 
-      this.api.publishExternalAccessories(PLUGIN_NAME, [
-        outcome.value.accessory
-      ])
+      this.api.publishExternalAccessories(PLUGIN_NAME, [outcome.value.accessory])
 
       this.log.info('successfully loaded', outcome.value.accessory.displayName)
     })
@@ -106,9 +101,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     return {}
   }
 
-  private async deviceSetup(
-    device: UserConfig
-  ): Promise<Outcome<VieramaticPlatformAccessory>> {
+  private async deviceSetup(device: UserConfig): Promise<Outcome<VieramaticPlatformAccessory>> {
     this.log.info("handling '%s' from config.json", device.ipAddress)
     const outcome = this.deviceSetupPreFlight(device)
 
@@ -202,10 +195,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         const cmd = await tv.getApps()
 
         if (Abnormal(cmd)) {
-          const msg = printf(
-            'unable to fetch Apps list from the TV:\n\n',
-            cmd.error.message
-          )
+          const msg = printf('unable to fetch Apps list from the TV:\n\n', cmd.error.message)
           return { error: Error(msg) }
         }
 

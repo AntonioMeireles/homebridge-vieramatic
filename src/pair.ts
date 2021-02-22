@@ -9,9 +9,7 @@ const oops = (e: Error): void => {
 try {
   const ip = process.argv.slice(2)
   if (ip.length !== 1)
-    throw Error(
-      'Please specify your Panasonic TV IP address as the (only) argument'
-    )
+    throw Error('Please specify your Panasonic TV IP address as the (only) argument')
 
   VieraTV.setup(ip[0])
     .then(() => process.exit(0))

@@ -20,27 +20,17 @@ module.exports = {
   ],
   ignorePatterns: ['dist'],
   parser: '@typescript-eslint/parser',
-  parserOptions: {
-    ecmaVersion: 2018,
-    project: './tsconfig.json',
-    sourceType: 'module'
-  },
+  parserOptions: { ecmaVersion: 2018, project: './tsconfig.json', sourceType: 'module' },
   plugins: ['prettier', '@typescript-eslint', 'import', 'json', 'promise'],
   rules: {
-    '@typescript-eslint/no-misused-promises': [
-      'error',
-      { checksVoidReturn: false }
-    ],
+    '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
     '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
     'eslint-comments/no-unused-disable': 'error',
     'import/exports-last': 'error',
     'import/group-exports': 'error',
     'import/order': [
       'error',
-      {
-        alphabetize: { caseInsensitive: true, order: 'asc' },
-        'newlines-between': 'always'
-      }
+      { alphabetize: { caseInsensitive: true, order: 'asc' }, 'newlines-between': 'always' }
     ],
     'import/prefer-default-export': 'error',
     'json/*': ['error', 'allowComments'],

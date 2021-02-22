@@ -1,10 +1,4 @@
-import {
-  Characteristic,
-  CharacteristicValue,
-  Logger,
-  PlatformAccessory,
-  Service
-} from 'homebridge'
+import { Characteristic, CharacteristicValue, Logger, PlatformAccessory, Service } from 'homebridge'
 
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
@@ -103,18 +97,12 @@ class VieramaticPlatformAccessory {
     const svc = this.accessory.getService(this.Service.AccessoryInformation)
     if (svc != null)
       svc
-        .setCharacteristic(
-          this.Characteristic.Manufacturer,
-          this.device.specs.manufacturer
-        )
+        .setCharacteristic(this.Characteristic.Manufacturer, this.device.specs.manufacturer)
         .setCharacteristic(
           this.Characteristic.Model,
           `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
         )
-        .setCharacteristic(
-          this.Characteristic.SerialNumber,
-          this.device.specs.serialNumber
-        )
+        .setCharacteristic(this.Characteristic.SerialNumber, this.device.specs.serialNumber)
 
     this.accessory.on('identify', () =>
       this.log.info(this.device.specs.friendlyName, 'Identified!')
@@ -122,31 +110,20 @@ class VieramaticPlatformAccessory {
 
     this.service = this.accessory.addService(this.Service.Television)
 
-    this.service.setCharacteristic(
-      this.Characteristic.Name,
-      this.device.specs.friendlyName
-    )
+    this.service.setCharacteristic(this.Characteristic.Name, this.device.specs.friendlyName)
 
     this.service
-      .setCharacteristic(
-        this.Characteristic.ConfiguredName,
-        this.device.specs.friendlyName
-      )
+      .setCharacteristic(this.Characteristic.ConfiguredName, this.device.specs.friendlyName)
       .setCharacteristic(
         this.Characteristic.SleepDiscoveryMode,
         this.Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE
       )
 
-    this.service
-      .addCharacteristic(this.Characteristic.PowerModeSelection)
-      .onSet(async () => {
-        const outcome = await this.device.sendCommand('MENU')
-        if (Abnormal(outcome))
-          this.log.error(
-            'unexpected error in PowerModeSelection.set',
-            outcome.error
-          )
-      })
+    this.service.addCharacteristic(this.Characteristic.PowerModeSelection).onSet(async () => {
+      const outcome = await this.device.sendCommand('MENU')
+      if (Abnormal(outcome))
+        this.log.error('unexpected error in PowerModeSelection.set', outcome.error)
+    })
 
     this.service
       .getCharacteristic(this.Characteristic.Active)
@@ -196,9 +173,7 @@ class VieramaticPlatformAccessory {
       customSpeakerService
         .getCharacteristic(this.Characteristic.On)
         .onGet(() => {
-          const { value } = this.service.getCharacteristic(
-            this.Characteristic.Active
-          )
+          const { value } = this.service.getCharacteristic(this.Characteristic.Active)
           this.log.debug('(customSpeakerService/On.get)', value)
           return value
         })
@@ -257,9 +232,7 @@ class VieramaticPlatformAccessory {
         const fn = (element: HdmiInput): boolean =>
           element.id === input.id && element.name === input.name
 
-        const found = this.storage.data.inputs.hdmi.findIndex((x: HdmiInput) =>
-          fn(x)
-        )
+        const found = this.storage.data.inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
         if (found === -1) {
           this.log.info(
             "adding HDMI input '%s' - '%s' as it was appended to config.json",
@@ -343,13 +316,8 @@ class VieramaticPlatformAccessory {
     if (Abnormal(cmd)) this.log.error('setInput', value, cmd.error)
   }
 
-  private configureInputSource(
-    type: InputType,
-    configuredName: string,
-    identifier: number
-  ): void {
-    const fn = (element: HdmiInput): boolean =>
-      element.id === identifier.toString()
+  private configureInputSource(type: InputType, configuredName: string, identifier: number): void {
+    const fn = (element: HdmiInput): boolean => element.id === identifier.toString()
 
     const visibility = (): string => {
       let idx: number
@@ -381,8 +349,7 @@ class VieramaticPlatformAccessory {
     )
     const visibilityState = (state: CharacteristicValue): void => {
       let idx: number
-      const id =
-        source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
+      const id = source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
       const { inputs } = this.storage.data
 
       switch (false) {
@@ -401,10 +368,7 @@ class VieramaticPlatformAccessory {
           inputs.TUNER.hidden = state as InputVisibility
           break
       }
-      source.updateCharacteristic(
-        this.Characteristic.CurrentVisibilityState,
-        state
-      )
+      source.updateCharacteristic(this.Characteristic.CurrentVisibilityState, state)
     }
     const hidden = visibility()
 
@@ -421,25 +385,19 @@ class VieramaticPlatformAccessory {
         this.Characteristic.IsConfigured,
         this.Characteristic.IsConfigured.CONFIGURED
       )
-    source
-      .getCharacteristic(this.Characteristic.TargetVisibilityState)
-      .onSet(visibilityState)
+    source.getCharacteristic(this.Characteristic.TargetVisibilityState).onSet(visibilityState)
 
     const svc = this.accessory.getService(this.Service.Television)
     if (svc != null) svc.addLinkedService(source)
   }
 
   async setPowerStatus(nextState: CharacteristicValue): Promise<void> {
-    const message =
-      nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
+    const message = nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
     const currentState = await this.device.isTurnedOn()
     this.log.debug('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState) {
       this.log.debug('TV is already %s: Ignoring!', message)
-    } else if (
-      nextState === this.Characteristic.Active.ACTIVE &&
-      this.device.mac != null
-    ) {
+    } else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac != null) {
       this.log.debug('sending WOL packets to awake TV')
       await wakeOnLan(this.device.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
@@ -485,18 +443,13 @@ class VieramaticPlatformAccessory {
     this.log.debug('(setMute) is', state)
     const cmd = await this.device.setMute(state as boolean)
 
-    if (Abnormal(cmd))
-      this.log.error(
-        '(setMute)/(%s) unable to change mute state on TV...',
-        state
-      )
+    if (Abnormal(cmd)) this.log.error('(setMute)/(%s) unable to change mute state on TV...', state)
   }
 
   async setVolume(value: CharacteristicValue): Promise<void> {
     this.log.debug('(setVolume)', value)
     const cmd = await this.device.setVolume((value as number).toString())
-    if (Abnormal(cmd))
-      this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
+    if (Abnormal(cmd)) this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
   }
 
   async getVolume(): Promise<number> {
@@ -512,20 +465,16 @@ class VieramaticPlatformAccessory {
 
   async setVolumeSelector(key: CharacteristicValue): Promise<void> {
     this.log.debug('setVolumeSelector', key)
-    const action =
-      key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
+    const action = key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
     const cmd = await this.device.sendCommand(action)
 
-    if (Abnormal(cmd))
-      this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
+    if (Abnormal(cmd)) this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
   }
 
   async updateTVstatus(newState: CharacteristicValue): Promise<void> {
     let customSpeakerService: Service | undefined
     const tvService = this.accessory.getService(this.Service.Television)
-    const speakerService = this.accessory.getService(
-      this.Service.TelevisionSpeaker
-    )
+    const speakerService = this.accessory.getService(this.Service.TelevisionSpeaker)
 
     if (tvService === undefined || speakerService === undefined) return
 
@@ -538,31 +487,21 @@ class VieramaticPlatformAccessory {
       const cmd = await this.device.getMute()
       if (
         !Abnormal(cmd) &&
-        cmd.value !==
-          speakerService.getCharacteristic(this.Characteristic.Mute).value
+        cmd.value !== speakerService.getCharacteristic(this.Characteristic.Mute).value
       ) {
         speakerService.updateCharacteristic(this.Characteristic.Mute, cmd.value)
         if (customSpeakerService != null)
-          customSpeakerService.updateCharacteristic(
-            this.Characteristic.On,
-            cmd.value ? 0 : 1
-          )
+          customSpeakerService.updateCharacteristic(this.Characteristic.On, cmd.value ? 0 : 1)
       } else {
         speakerService.updateCharacteristic(this.Characteristic.Mute, true)
         if (customSpeakerService != null)
-          customSpeakerService.updateCharacteristic(
-            this.Characteristic.On,
-            false
-          )
+          customSpeakerService.updateCharacteristic(this.Characteristic.On, false)
       }
 
       const volume = await this.getVolume()
       speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
       if (customSpeakerService != null)
-        customSpeakerService.updateCharacteristic(
-          this.Characteristic.RotationSpeed,
-          volume
-        )
+        customSpeakerService.updateCharacteristic(this.Characteristic.RotationSpeed, volume)
     }
   }
 
@@ -627,15 +566,8 @@ class VieramaticPlatformAccessory {
     this.log.debug('remote control:', action)
     const cmd = await this.device.sendCommand(action)
 
-    if (Abnormal(cmd))
-      this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
+    if (Abnormal(cmd)) this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
   }
 }
 
-export {
-  sleep,
-  OnDisk,
-  InputVisibility,
-  UserConfig,
-  VieramaticPlatformAccessory
-}
+export { sleep, OnDisk, InputVisibility, UserConfig, VieramaticPlatformAccessory }

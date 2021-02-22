@@ -23,7 +23,6 @@ interface Failure {
 
 type Outcome<T> = Success<T> | Failure
 
-const Abnormal = (result: unknown): result is Failure =>
-  (result as Failure).error != null
+const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 
 export { sleep, isEmpty, html, Outcome, printf, Abnormal }
