@@ -70,20 +70,20 @@ type VieraAuth =
       key: string
     }
 
-const getKey = (key: string, xml: string): Outcome<string> => {
+const getKey = (searchKey: string, data: string): Outcome<string> => {
+  let value: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (object: any, k: string): string => {
-    let objects: string[] = []
-    for (const i in object) {
-      if (!Object.prototype.hasOwnProperty.call(object, i)) continue
-
-      typeof object[i] === 'object'
-        ? (objects = objects.concat(fn(object[i], k)))
-        : i === k && objects.push(object[i])
-    }
-    return objects[0]
+  const fn = (object: any, key: string, results: string[] = []): string => {
+    const r = results
+    Object.keys(object).forEach((k) => {
+      const value = object[k]
+      key === k
+        ? typeof value !== 'object' && r.push(value)
+        : typeof value === 'object' && fn(value, key, r)
+    })
+    // we only care about 1st result...
+    return r[0]
   }
-  let result: string
   try {
     /*
      * FIXME: we should do some fine grained error handling here, sadly the
@@ -91,11 +91,11 @@ const getKey = (key: string, xml: string): Outcome<string> => {
      *          Error: Multiple possible root nodes found.
      *        which of all things breaks pairing (#34)
      */
-    result = fn(parser.parse(xml), key)
+    value = fn(parser.parse(data), searchKey)
   } catch (error) {
     return { error }
   }
-  return { value: result }
+  return { value }
 }
 
 class VieraTV implements VieraTV {
