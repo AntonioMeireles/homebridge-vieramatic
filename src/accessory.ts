@@ -457,7 +457,7 @@ class VieramaticPlatformAccessory {
     let volume = 0
 
     Abnormal(cmd)
-      ? this.log.error('(getVolume) unable to get volume from TV...')
+      ? this.log.debug('(getVolume) unable to get volume from TV...')
       : (volume = Number(cmd.value))
 
     return volume
