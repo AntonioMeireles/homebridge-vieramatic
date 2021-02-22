@@ -547,20 +547,23 @@ class VieramaticPlatformAccessory {
             this.Characteristic.On,
             cmd.value ? 0 : 1
           )
+      } else {
+        speakerService.updateCharacteristic(this.Characteristic.Mute, true)
+        if (customSpeakerService != null)
+          customSpeakerService.updateCharacteristic(
+            this.Characteristic.On,
+            false
+          )
       }
-    } else {
-      speakerService.updateCharacteristic(this.Characteristic.Mute, true)
 
+      const volume = await this.getVolume()
+      speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
       if (customSpeakerService != null)
-        customSpeakerService.updateCharacteristic(this.Characteristic.On, false)
+        customSpeakerService.updateCharacteristic(
+          this.Characteristic.RotationSpeed,
+          volume
+        )
     }
-    const volume = await this.getVolume()
-    speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
-    if (customSpeakerService != null)
-      customSpeakerService.updateCharacteristic(
-        this.Characteristic.RotationSpeed,
-        volume
-      )
   }
 
   async remoteControl(keyId: CharacteristicValue): Promise<void> {
