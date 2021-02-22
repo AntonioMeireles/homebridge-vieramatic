@@ -485,18 +485,11 @@ class VieramaticPlatformAccessory {
     tvService.updateCharacteristic(this.Characteristic.Active, newState)
     if (newState === true) {
       const cmd = await this.device.getMute()
-      if (
-        !Abnormal(cmd) &&
-        cmd.value !== speakerService.getCharacteristic(this.Characteristic.Mute).value
-      ) {
-        speakerService.updateCharacteristic(this.Characteristic.Mute, cmd.value)
-        if (customSpeakerService != null)
-          customSpeakerService.updateCharacteristic(this.Characteristic.On, cmd.value ? 0 : 1)
-      } else {
-        speakerService.updateCharacteristic(this.Characteristic.Mute, true)
-        if (customSpeakerService != null)
-          customSpeakerService.updateCharacteristic(this.Characteristic.On, false)
-      }
+      const muted = Abnormal(cmd) ? true : cmd.value
+
+      speakerService.updateCharacteristic(this.Characteristic.Mute, muted)
+      if (customSpeakerService != null)
+        customSpeakerService.updateCharacteristic(this.Characteristic.On, !muted)
 
       const volume = await this.getVolume()
       speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
