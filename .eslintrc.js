@@ -32,7 +32,6 @@ module.exports = {
       'error',
       { alphabetize: { caseInsensitive: true, order: 'asc' }, 'newlines-between': 'always' }
     ],
-    'import/prefer-default-export': 'error',
     'json/*': ['error', 'allowComments'],
     'sort-keys': ['error', 'asc', { caseSensitive: false, natural: true }],
     'sort-vars': ['error', { ignoreCase: true }]
