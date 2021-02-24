@@ -12,9 +12,6 @@ class Storage {
 
   constructor(api: API) {
     this.filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
-  }
-
-  public init(): void {
     const data = fs.readJsonSync(this.filePath, { throws: false })
 
     this.accessories = data ?? {}
