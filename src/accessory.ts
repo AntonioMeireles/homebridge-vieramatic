@@ -296,16 +296,16 @@ class VieramaticPlatformAccessory {
       let app: VieraApp
       let real: number
 
-      switch (false) {
-        case !(value < 100):
+      switch (true) {
+        case value < 100:
           this.log.debug('(setInput) switching to HDMI INPUT ', value)
           return await this.device.sendHDMICommand((value as number).toString())
-        case !(value > 999):
+        case value > 999:
           real = (value as number) - 1000
           app = this.storage.data.inputs.applications[real]
           this.log.debug('(setInput) switching to App', app.name)
           return await this.device.sendAppCommand(app.id)
-        case !(value === 500):
+        case value === 500:
         default:
           this.log.debug('(setInput) switching to internal TV tunner')
           return await this.device.sendCommand('AD_CHANGE')
