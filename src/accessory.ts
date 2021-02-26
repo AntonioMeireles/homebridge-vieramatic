@@ -495,7 +495,8 @@ class VieramaticPlatformAccessory {
       speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
       if (customSpeakerService != null)
         customSpeakerService.updateCharacteristic(this.Characteristic.RotationSpeed, volume)
-    }
+    } else if (customSpeakerService != null)
+      customSpeakerService.updateCharacteristic(this.Characteristic.On, newState)
   }
 
   async remoteControl(keyId: CharacteristicValue): Promise<void> {
