@@ -577,15 +577,16 @@ class VieraTV implements VieraTV {
       let ip: string | null
       let tv: VieraTV
       const urlObject = new URL(request.url ?? '', `http://${request.headers.host as string}`)
-      ctx.log.debug((urlObject as unknown) as string)
-      let returnCode = 200
-      let body = 'nothing to see here - move on'
 
-      if (urlObject.searchParams.get('pin') != null) {
-        if (urlObject.searchParams.get('tv') != null) {
-          const ip = urlObject.searchParams.get('tv')
-          const pin = urlObject.searchParams.get('pin')
-          ctx.log.debug((urlObject as unknown) as string)
+      let [returnCode, body] = [200, 'nothing to see here - move on']
+
+      ctx.log.debug(urlObject.toString())
+
+      if (urlObject.searchParams.has('pin')) {
+        if (urlObject.searchParams.has('tv')) {
+          const [ip, pin] = [urlObject.searchParams.get('tv'), urlObject.searchParams.get('pin')]
+
+          ctx.log.debug(urlObject.toString())
 
           if (Address4.isValid(ip as string)) {
             const address = new Address4(ip as string)
@@ -593,7 +594,7 @@ class VieraTV implements VieraTV {
               tv = new VieraTV(address, ctx.log)
               const specs = await tv.getSpecs()
               tv.specs = specs
-              if (specs?.requiresEncryption && urlObject.searchParams.get('challenge') != null) {
+              if (specs?.requiresEncryption && urlObject.searchParams.has('challenge')) {
                 tv.session.challenge = Buffer.from(
                   urlObject.searchParams.get('challenge') as string,
                   'base64'
@@ -603,18 +604,15 @@ class VieraTV implements VieraTV {
                   returnCode = 500
                   body = 'Wrong Pin code...'
                 } else {
-                  if (result.value != null) {
-                    tv.auth = result.value
-
-                    body = html`
-                      Paired with your TV sucessfully!.
-                      <br />
-                      <b>Encryption Key</b>: <b>${tv.auth.key}</b>
-                      <br />
-                      <b>AppId</b>: <b>${tv.auth.appId}</b>
-                      <br />
-                    `
-                  }
+                  tv.auth = result.value
+                  body = html`
+                    Paired with your TV sucessfully!.
+                    <br />
+                    <b>Encryption Key</b>: <b>${tv.auth.key}</b>
+                    <br />
+                    <b>AppId</b>: <b>${tv.auth.appId}</b>
+                    <br />
+                  `
                 }
               }
             }
@@ -702,9 +700,7 @@ class VieraTV implements VieraTV {
         `
       }
 
-      response.writeHead(returnCode, {
-        'Content-Type': 'text/html; charset=utf-8'
-      })
+      response.writeHead(returnCode, { 'Content-Type': 'text/html; charset=utf-8' })
       response.write(
         html`<!DOCTYPE html>
           <html>
