@@ -399,6 +399,7 @@ class VieraTV implements VieraTV {
     _callback?: (...args: string[]) => Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = []
+    const sessionGoneRogue = 'No such session'
     const reqIs4Command = requestType === 'command'
 
     urL = reqIs4Command ? '/nrc/control_0' : '/dmr/control_0'
@@ -441,13 +442,30 @@ class VieraTV implements VieraTV {
 
           return { value }
         })
-        .catch((error: Error) => {
-          return { error }
+        .catch((error) => {
+          return error.response != null &&
+            error.response.status === 500 &&
+            error.response.data != null &&
+            (error.response.data as string).includes(sessionGoneRogue)
+            ? { error: Error(sessionGoneRogue) }
+            : { error }
         })
     }
 
-    const payload = await doIt()
-    if (Abnormal(payload)) return payload
+    let payload = await doIt()
+    if (Abnormal(payload)) {
+      if (payload.error.message === sessionGoneRogue) {
+        this.log.warn(
+          'A session mismatch was found,',
+          'so the session counter was reset in order to move on.'
+        )
+        const reset = await this.requestSessionId()
+        if (Abnormal(reset)) return reset
+        const retry = await doIt()
+        if (Abnormal(retry)) return retry
+        payload = retry
+      } else return payload
+    }
 
     return _callback != null ? _callback((payload.value as unknown) as string) : payload
   }
