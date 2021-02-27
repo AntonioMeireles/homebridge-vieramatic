@@ -5,8 +5,8 @@ import net from 'net'
 import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
-import he from 'he'
 import { Address4 } from 'ip-address'
 // @ts-expect-error noImplicityAny...
 import UPnPsub from 'node-upnp-subscription'
@@ -846,7 +846,7 @@ class VieraTV implements VieraTV {
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
 
       let i
-      while ((i = re.exec(he.decode(raw.value))) != null)
+      while ((i = re.exec(decodeXML(raw.value))) != null)
         i.groups !== undefined && apps.push({ id: i.groups.id, name: i.groups.appName })
 
       return apps.length === 0 ? { error: Error('The TV is in standby!') } : { value: apps }
