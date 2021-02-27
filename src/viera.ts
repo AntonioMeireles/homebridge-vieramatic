@@ -10,7 +10,7 @@ import parser from 'fast-xml-parser'
 import isIP from 'is-ip'
 // @ts-expect-error noImplicityAny...
 import UPnPsub from 'node-upnp-subscription'
-import * as readlineSync from 'readline-sync'
+import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
 import { Abnormal, Outcome, html, isEmpty } from './helpers'
@@ -746,7 +746,7 @@ class VieraTV implements VieraTV {
            \nPlease make sure that the TV is powered ON (and NOT in standby).`
         )
 
-      const pin = readlineSync.question('Enter the displayed pin code: ')
+      const pin = question('Enter the displayed pin code: ')
       const outcome = await tv.authorizePinCode(pin)
 
       if (Abnormal(outcome)) throw Error('Wrong pin code...')

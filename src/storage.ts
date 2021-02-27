@@ -1,7 +1,7 @@
 import { API } from 'homebridge'
 import path from 'path'
 
-import * as fs from 'fs-extra'
+import { readJsonSync, writeJsonSync } from 'fs-extra'
 
 import { OnDisk } from './accessory'
 
@@ -12,7 +12,7 @@ class Storage {
 
   constructor(api: API) {
     this.filePath = path.join(api.user.cachedAccessoryPath(), 'vieramatic.json')
-    const data = fs.readJsonSync(this.filePath, { throws: false })
+    const data = readJsonSync(this.filePath, { throws: false })
 
     this.accessories = data ?? {}
   }
@@ -24,7 +24,7 @@ class Storage {
   }
 
   public save(): void {
-    fs.writeJSONSync(this.filePath, this.accessories)
+    writeJsonSync(this.filePath, this.accessories)
   }
 }
 
