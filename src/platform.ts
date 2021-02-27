@@ -10,7 +10,7 @@ import {
 
 // @ts-expect-error noImplicityAny...
 import { isValidMACAddress } from '@mi-sec/mac-address'
-import { Address4 } from 'ip-address'
+import isIP from 'is-ip'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
 import { Abnormal, Outcome, isEmpty, printf } from './helpers'
@@ -68,9 +68,9 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     })
   }
 
-  deviceSetupPreFlight = (device: UserConfig): Outcome<Address4> => {
+  deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
     const raw = JSON.stringify(device, undefined, 2)
-    if (!Address4.isValid(device.ipAddress)) {
+    if (!isIP(device.ipAddress)) {
       const msg = printf(
         "IGNORING '%s' as it is not a valid ip address.\n\n%s",
         device.ipAddress,
@@ -88,32 +88,33 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       )
       return { error: Error(msg) }
     }
-    return { value: new Address4(device.ipAddress) }
+    return { value: undefined }
   }
 
-  private knownWorking(ip: Address4): VieraSpecs {
+  private knownWorking(ip: string): VieraSpecs {
     if (this.storage.accessories === null) return {}
 
     for (const [_, v] of Object.entries(this.storage.accessories))
-      if (v.data.ipAddress === ip.address) return v.data.specs
+      if (v.data.ipAddress === ip) return v.data.specs
 
     return {}
   }
 
   private async deviceSetup(device: UserConfig): Promise<Outcome<VieramaticPlatformAccessory>> {
     this.log.info("handling '%s' from config.json", device.ipAddress)
+    const ip = device.ipAddress
+
     const outcome = this.deviceSetupPreFlight(device)
 
     if (Abnormal(outcome)) return outcome
 
-    const ip = outcome.value
     const cached = this.knownWorking(ip)
     const reachable = await VieraTV.livenessProbe(ip)
 
     if (!(reachable || cached != null)) {
       const msg = printf(
         "IGNORING '%s' as it is not reachable, and we can't relay on cached data",
-        ip.address,
+        ip,
         'as it seems that it was never ever seen and setup before.\n\n',
         'Please make sure that your TV is powered ON and connected to the network.'
       )
@@ -126,13 +127,13 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (isEmpty(specs)) {
       this.log.warn(
         "WARNING: unable to fetch specs from TV at '%s'. Using the previously cached ones: \n\n%s",
-        ip.address,
+        ip,
         cached
       )
       if (cached?.requiresEncryption) {
         const msg = printf(
           "IGNORING '%s' as we do not support offline initialization, ",
-          ip.address,
+          ip,
           'from cache, for models that require encryption.'
         )
         return { error: Error(msg) }
@@ -143,7 +144,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       if (!(device.appId != null && device.encKey != null)) {
         const msg = printf(
           "IGNORING '%s' as it is from a Panasonic TV that requires",
-          ip.address,
+          ip,
           "encryption '%s' and no valid credentials were supplied.",
           tv.specs.modelName
         )
@@ -159,7 +160,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       if (Abnormal(result)) {
         const msg = printf(
           "IGNORING '%s' ('%s') as no working credentials were supplied.\n\n",
-          ip.address,
+          ip,
           tv.specs.modelName,
           result.error.message
         )
@@ -178,7 +179,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     let apps: VieraApps = []
     if (
       this.storage.accessories === null ||
-      this.storage.accessories[`${tv.specs.serialNumber}`] === undefined
+      this.storage.accessories[tv.specs.serialNumber] === undefined
     ) {
       this.log.info("Initializing '%s' first time ever.", tv.specs.friendlyName)
       const status = await tv.isTurnedOn()

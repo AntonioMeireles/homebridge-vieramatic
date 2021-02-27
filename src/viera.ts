@@ -7,7 +7,7 @@ import { URL } from 'url'
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
-import { Address4 } from 'ip-address'
+import isIP from 'is-ip'
 // @ts-expect-error noImplicityAny...
 import UPnPsub from 'node-upnp-subscription'
 import * as readlineSync from 'readline-sync'
@@ -111,8 +111,8 @@ class VieraTV implements VieraTV {
 
   specs: VieraSpecs = {}
 
-  constructor(ip: Address4, log: Logger | Console, mac?: string) {
-    this.address = ip.address
+  constructor(ip: string, log: Logger | Console, mac?: string) {
+    this.address = ip
     this.baseURL = `http://${this.address}:${this.port}`
 
     this.log = log
@@ -120,7 +120,7 @@ class VieraTV implements VieraTV {
   }
 
   public static async livenessProbe(
-    tv: Address4,
+    tv: string,
     port = API_ENDPOINT,
     timeout = 2000
   ): Promise<boolean> {
@@ -136,7 +136,7 @@ class VieraTV implements VieraTV {
         .setTimeout(timeout)
         .on('error', onError)
         .on('timeout', onError)
-        .connect(port, tv.address, () => {
+        .connect(port, tv, () => {
           socket.end()
           resolve()
         })
@@ -588,8 +588,8 @@ class VieraTV implements VieraTV {
 
           ctx.log.debug(urlObject.toString())
 
-          if (Address4.isValid(ip as string)) {
-            const address = new Address4(ip as string)
+          if (isIP(ip as string)) {
+            const address = ip as string
             if (await VieraTV.livenessProbe(address)) {
               tv = new VieraTV(address, ctx.log)
               const specs = await tv.getSpecs()
@@ -619,11 +619,11 @@ class VieraTV implements VieraTV {
           }
         }
       } else if ((ip = urlObject.searchParams.get('ip')) != null) {
-        if (!Address4.isValid(ip)) {
+        if (!isIP(ip)) {
           returnCode = 500
           body = html` the supplied TV ip address ('${ip}') is NOT a valid IPv4 address... `
         } else {
-          const address = new Address4(ip)
+          const address = ip
           if (!(await VieraTV.livenessProbe(address))) {
             body = html`the supplied TV ip address '${ip}' is unreachable...`
           } else {
@@ -721,10 +721,8 @@ class VieraTV implements VieraTV {
     server.listen(8973)
   }
 
-  public static async setup(target: string): Promise<void> {
-    if (!Address4.isValid(target)) throw Error('Please introduce a valid ip address!')
-
-    const ip = new Address4(target)
+  public static async setup(ip: string): Promise<void> {
+    if (!isIP(ip)) throw Error('Please introduce a valid ip address!')
 
     if (!(await this.livenessProbe(ip))) throw Error('The IP you provided is unreachable.')
 
