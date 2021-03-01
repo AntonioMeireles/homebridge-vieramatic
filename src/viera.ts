@@ -162,8 +162,7 @@ class VieraTV implements VieraTV {
           resolve(false)
         } else {
           const match = properties.filter((prop) => ['on', 'off'].includes(prop.X_ScreenState))
-          /*
-           * TODO: FIXME:
+          /* TODO: FIXME
            *
            * if we do not get a match, we assume that we're facing an older TV set
            * which may only reply when it is ON (which is what we want to spot after all)
