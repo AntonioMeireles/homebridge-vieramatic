@@ -192,12 +192,7 @@ class VieraTV implements VieraTV {
   async requestSessionId(): Promise<Outcome<void>> {
     const appId = xml({ X_ApplicationId: this.auth.appId })
 
-    const outcome = this.encryptPayload(
-      appId,
-      this.session.key,
-      this.session.iv,
-      this.session.hmacKey
-    )
+    const outcome = this.encryptPayload(appId)
 
     if (Abnormal(outcome)) return outcome
 
@@ -263,9 +258,9 @@ class VieraTV implements VieraTV {
 
   private encryptPayload(
     original: string,
-    key: Buffer,
-    iv: Buffer,
-    hmacKey: Buffer
+    key: Buffer = this.session.key,
+    iv: Buffer = this.session.iv,
+    hmacKey: Buffer = this.session.hmacKey
   ): Outcome<string> {
     const pad = (unpadded: Buffer): Buffer => {
       const blockSize = 16
@@ -350,12 +345,7 @@ class VieraTV implements VieraTV {
       X_SequenceNumber: X_SN,
       X_SessionId: this.session.id
     })
-    const outcome = this.encryptPayload(
-      encCommand,
-      this.session.key,
-      this.session.iv,
-      this.session.hmacKey
-    )
+    const outcome = this.encryptPayload(encCommand)
 
     if (Abnormal(outcome)) return outcome
 
