@@ -4,12 +4,19 @@
     "source.fixAll.eslint": true
   },
   "editor.formatOnSave": true,
-  "editor.rulers": [80, 100],
-  "eslint.enable": true,
-  "spellright.language": ["en"],
-  "spellright.documentTypes": ["plaintext", "markdown"],
+  "editor.rulers": [
+    50,
+    80,
+    100
+  ],
+  "spellright.language": [
+    "en"
+  ],
+  "spellright.documentTypes": [
+    "plaintext",
+    "markdown"
+  ],
   "recommendations": [
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode"
+    "dbaeumer.vscode-eslint"
   ]
 }
