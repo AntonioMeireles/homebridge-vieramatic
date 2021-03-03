@@ -337,7 +337,8 @@ class VieramaticPlatformAccessory {
           break
         case 'TUNER':
         default:
-          hidden = inputs.TUNER.hidden
+          // by default TUNER is visible
+          hidden = inputs.TUNER.hidden ?? 0
       }
       return hidden.toFixed()
     }
