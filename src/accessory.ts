@@ -352,18 +352,18 @@ class VieramaticPlatformAccessory {
       const id = source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
       const { inputs } = this.storage.data
 
-      switch (false) {
-        case !(id < 100):
+      switch (true) {
+        case id < 100:
           // hdmi input
           idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
           inputs.hdmi[idx].hidden = state as InputVisibility
           break
-        case !(id > 999):
+        case id > 999:
           // APP
           idx = (id as number) - 1000
           inputs.applications[idx].hidden = state as InputVisibility
           break
-        case !(id === 500):
+        case id === 500:
         default:
           inputs.TUNER.hidden = state as InputVisibility
           break
