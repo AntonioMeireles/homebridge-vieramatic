@@ -21,7 +21,7 @@ module.exports = {
   ignorePatterns: ['dist'],
   parser: '@typescript-eslint/parser',
   parserOptions: { ecmaVersion: 2018, project: './tsconfig.json', sourceType: 'module' },
-  plugins: ['prettier', '@typescript-eslint', 'import', 'json', 'promise'],
+  plugins: ['prettier', '@typescript-eslint', 'import', 'json', 'promise', 'eslint-comments'],
   rules: {
     '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
     '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
