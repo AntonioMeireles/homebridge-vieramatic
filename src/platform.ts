@@ -111,7 +111,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const cached = this.knownWorking(ip)
     const reachable = await VieraTV.livenessProbe(ip)
 
-    if (!(reachable || cached != null)) {
+    if (!reachable || isEmpty(cached)) {
       const msg = printf(
         "IGNORING '%s' as it is not reachable, and we can't relay on cached data",
         ip,
