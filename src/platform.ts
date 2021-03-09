@@ -92,7 +92,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   }
 
   private knownWorking(ip: string): VieraSpecs {
-    if (this.storage.accessories === null) return {}
+    if (isEmpty(this.storage.accessories)) return {}
 
     for (const [_, v] of Object.entries(this.storage.accessories))
       if (v.data.ipAddress === ip) return v.data.specs
@@ -178,7 +178,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     accessory.context.device = tv
     let apps: VieraApps = []
     if (
-      this.storage.accessories === null ||
+      isEmpty(this.storage.accessories) ||
       this.storage.accessories[tv.specs.serialNumber] === undefined
     ) {
       this.log.info("Initializing '%s' first time ever.", tv.specs.friendlyName)
