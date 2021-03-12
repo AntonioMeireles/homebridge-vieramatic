@@ -68,7 +68,7 @@
   },
   "scripts": {
     "build": "rimraf ./dist && tsc",
-    "lint": "eslint src/**.ts",
+    "lint": "eslint './src/**/*.ts'",
     "prepublishOnly": "npm run lint && npm run build",
     "watch": "npm run build && npm link && nodemon"
   },
