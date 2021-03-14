@@ -473,29 +473,27 @@ class VieramaticPlatformAccessory {
   }
 
   async updateTVstatus(newState: CharacteristicValue): Promise<void> {
-    let customSpeakerService: Service | undefined
     const tvService = this.accessory.getService(this.Service.Television)
     const speakerService = this.accessory.getService(this.Service.TelevisionSpeaker)
+    const customSpeakerService = this.accessory.getService(this.Service.Fan)
 
     if (tvService === undefined || speakerService === undefined) return
 
-    if (this.userConfig.customVolumeSlider === true)
-      customSpeakerService = this.accessory.getService(this.Service.Fan)
-
     speakerService.updateCharacteristic(this.Characteristic.Active, newState)
     tvService.updateCharacteristic(this.Characteristic.Active, newState)
+
     if (newState === true) {
-      const cmd = await this.device.getMute()
+      const [cmd, volume] = [await this.device.getMute(), await this.getVolume()]
       const muted = Abnormal(cmd) ? true : cmd.value
 
-      speakerService.updateCharacteristic(this.Characteristic.Mute, muted)
-      if (customSpeakerService != null)
-        customSpeakerService.updateCharacteristic(this.Characteristic.On, !muted)
+      speakerService
+        .updateCharacteristic(this.Characteristic.Mute, muted)
+        .updateCharacteristic(this.Characteristic.Volume, volume)
 
-      const volume = await this.getVolume()
-      speakerService.updateCharacteristic(this.Characteristic.Volume, volume)
       if (customSpeakerService != null)
-        customSpeakerService.updateCharacteristic(this.Characteristic.RotationSpeed, volume)
+        customSpeakerService
+          .updateCharacteristic(this.Characteristic.On, !muted)
+          .updateCharacteristic(this.Characteristic.RotationSpeed, volume)
     } else if (customSpeakerService != null)
       customSpeakerService.updateCharacteristic(this.Characteristic.On, newState)
   }
