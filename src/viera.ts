@@ -385,7 +385,7 @@ class VieraTV implements VieraTV {
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
-    _callback?: (...args: string[]) => Outcome<T>
+    _callback?: (arg: string) => Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = []
     const sessionGoneRogue = 'No such session'
@@ -431,14 +431,12 @@ class VieraTV implements VieraTV {
 
           return { value }
         })
-        .catch((error) => {
-          return error.response != null &&
-            error.response.status === 500 &&
-            error.response.data != null &&
-            (error.response.data as string).includes(sessionGoneRogue)
+        .catch((error) =>
+          error.response?.status === 500 &&
+          (error.response.data as string)?.includes(sessionGoneRogue)
             ? { error: Error(sessionGoneRogue) }
             : { error }
-        })
+        )
     }
 
     let payload = await doIt()
