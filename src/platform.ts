@@ -7,8 +7,7 @@ import {
   PlatformConfig,
   Service
 } from 'homebridge'
-
-import isIP from 'is-ip'
+import { isIPv4 } from 'net'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
 import { Abnormal, Outcome, isEmpty, isValidMACAddress, printf } from './helpers'
@@ -68,7 +67,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
   deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
     const raw = JSON.stringify(device, undefined, 2)
-    if (!isIP(device.ipAddress)) {
+    if (!isIPv4(device.ipAddress)) {
       const msg = printf(
         "IGNORING '%s' as it is not a valid ip address.\n\n%s",
         device.ipAddress,

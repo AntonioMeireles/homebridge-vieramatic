@@ -1,13 +1,12 @@
 import crypto from 'crypto'
 import { Logger } from 'homebridge'
 import http from 'http'
-import net from 'net'
+import net, { isIPv4 } from 'net'
 import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
-import isIP from 'is-ip'
 // @ts-expect-error noImplicityAny...
 import UPnPsub from 'node-upnp-subscription'
 import { question } from 'readline-sync'
@@ -593,7 +592,7 @@ class VieraTV implements VieraTV {
 
           ctx.log.debug(urlObject.toString())
 
-          if (isIP(ip as string)) {
+          if (isIPv4(ip as string)) {
             const address = ip as string
             if (await VieraTV.livenessProbe(address)) {
               tv = new VieraTV(address, ctx.log)
@@ -624,7 +623,7 @@ class VieraTV implements VieraTV {
           }
         }
       } else if ((ip = urlObject.searchParams.get('ip')) != null) {
-        if (!isIP(ip)) {
+        if (!isIPv4(ip)) {
           returnCode = 500
           body = html` the supplied TV ip address ('${ip}') is NOT a valid IPv4 address... `
         } else {
@@ -727,7 +726,7 @@ class VieraTV implements VieraTV {
   }
 
   public static async setup(ip: string): Promise<void> {
-    if (!isIP(ip)) throw Error('Please introduce a valid ip address!')
+    if (!isIPv4(ip)) throw Error('Please introduce a valid ip address!')
 
     if (!(await this.livenessProbe(ip))) throw Error('The IP you provided is unreachable.')
 
