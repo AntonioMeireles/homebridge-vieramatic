@@ -1,5 +1,8 @@
 import util from 'util'
 
+const isValidMACAddress = (address: string): boolean =>
+  /^([0-9A-F]{2}:){5}([0-9A-F]{2})$/.test(address)
+
 const sleep = async (ms: number): Promise<unknown> =>
   await new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -25,4 +28,4 @@ type Outcome<T> = Success<T> | Failure
 
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 
-export { sleep, isEmpty, html, Outcome, printf, Abnormal }
+export { sleep, isEmpty, isValidMACAddress, html, Outcome, printf, Abnormal }

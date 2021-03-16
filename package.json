@@ -7,7 +7,6 @@
     "url": "https://github.com/AntonioMeireles/homebridge-vieramatic/issues"
   },
   "dependencies": {
-    "@mi-sec/mac-address": "^1.0.15",
     "@mi-sec/wol": "^1.0.12",
     "axios": "^0.21.1",
     "entities": "^2.2.0",

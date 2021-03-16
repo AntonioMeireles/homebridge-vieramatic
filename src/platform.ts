@@ -8,12 +8,10 @@ import {
   Service
 } from 'homebridge'
 
-// @ts-expect-error noImplicityAny...
-import { isValidMACAddress } from '@mi-sec/mac-address'
 import isIP from 'is-ip'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { Abnormal, Outcome, isEmpty, printf } from './helpers'
+import { Abnormal, Outcome, isEmpty, isValidMACAddress, printf } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { VieraApps, VieraSpecs, VieraTV } from './viera'
@@ -79,7 +77,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       return { error: Error(msg) }
     }
     const { mac } = device
-    if (mac != null && isValidMACAddress(mac) === false) {
+    if (mac != null && !isValidMACAddress(mac)) {
       const msg = printf(
         "IGNORING '%s' as it has an invalid MAC address: '%s'\n\n%s",
         device.ipAddress,
