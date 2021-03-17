@@ -7,13 +7,12 @@ import { URL } from 'url'
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
-// @ts-expect-error noImplicityAny...
-import UPnPsub from 'node-upnp-subscription'
 import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
 import { Abnormal, Outcome, html, isEmpty } from './helpers'
 import VieramaticPlatform from './platform'
+import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,10 +150,9 @@ class VieraTV implements VieraTV {
 
   async isTurnedOn(): Promise<boolean> {
     const status = await new Promise<boolean>((resolve) => {
-      const watcher = new UPnPsub(this.address, API_ENDPOINT, '/nrc/event_0')
+      const watcher = new UPnPSubscription(this.address, API_ENDPOINT, '/nrc/event_0')
       setTimeout(() => watcher.unsubscribe(), 1500)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      watcher.once('message', (message: any): void => {
+      watcher.once('message', (message): void => {
         const properties = message.body['e:propertyset']['e:property']
         if (!Array.isArray(properties)) {
           this.log.error('Unsuccessful (!) communication with TV.')
