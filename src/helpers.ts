@@ -1,7 +1,7 @@
 import util from 'util'
 
 const isValidMACAddress = (address: string): boolean =>
-  /^([0-9A-F]{2}:){5}([0-9A-F]{2})$/.test(address)
+  /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/.test(address)
 
 const sleep = async (ms: number): Promise<unknown> =>
   await new Promise((resolve) => setTimeout(resolve, ms))
