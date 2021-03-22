@@ -152,28 +152,29 @@ class VieraTV implements VieraTV {
     const status = await new Promise<boolean>((resolve) => {
       const watcher = new UPnPSubscription(this.address, API_ENDPOINT, '/nrc/event_0')
       setTimeout(() => watcher.unsubscribe(), 1500)
-      watcher.once('message', (message): void => {
-        const properties = message.body['e:propertyset']['e:property']
-        if (!Array.isArray(properties)) {
-          this.log.error('Unsuccessful (!) communication with TV.')
-          resolve(false)
-        } else {
-          const match = properties.filter((prop) => ['on', 'off'].includes(prop.X_ScreenState))
-          /* TODO: FIXME
-           *
-           * if we do not get a match, we assume that we're facing an older TV set
-           * which may only reply when it is ON (which is what we want to spot after all)
-           *
-           * heuristic bellow is likely not enough to cover all angles as it seems
-           * that there are old models which shutdown the wifi interface when in
-           * standby but not the wired one i.e the exact same model may behave
-           * differently depending on how it is connected to the network
-           *
-           */
-          match.length > 0 ? resolve(match[0].X_ScreenState === 'on') : resolve(true)
-        }
-      })
-      watcher.on('error', () => resolve(false))
+      watcher
+        .once('message', (message): void => {
+          const properties = message.body['e:propertyset']['e:property']
+          if (!Array.isArray(properties)) {
+            this.log.error('Unsuccessful (!) communication with TV.')
+            resolve(false)
+          } else {
+            const match = properties.filter((prop) => ['on', 'off'].includes(prop.X_ScreenState))
+            /* TODO: FIXME
+             *
+             * if we do not get a match, we assume that we're facing an older TV set
+             * which may only reply when it is ON (which is what we want to spot after all)
+             *
+             * heuristic bellow is likely not enough to cover all angles as it seems
+             * that there are old models which shutdown the wifi interface when in
+             * standby but not the wired one i.e the exact same model may behave
+             * differently depending on how it is connected to the network
+             *
+             */
+            match.length > 0 ? resolve(match[0].X_ScreenState === 'on') : resolve(true)
+          }
+        })
+        .on('error', () => resolve(false))
     })
     return status
   }
