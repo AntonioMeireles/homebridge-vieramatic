@@ -120,14 +120,14 @@ class VieraTV implements VieraTV {
   public static async livenessProbe(
     tv: string,
     port = API_ENDPOINT,
-    timeout = 2000
+    timeout = 1500
   ): Promise<boolean> {
-    const probe = new Promise<void>((resolve, reject) => {
+    return await new Promise<boolean>((resolve) => {
       const socket = new net.Socket()
 
-      const onError = (error: Error): void => {
+      const onError = (): void => {
         socket.destroy()
-        reject(error)
+        resolve(false)
       }
 
       socket
@@ -136,16 +136,10 @@ class VieraTV implements VieraTV {
         .on('timeout', onError)
         .connect(port, tv, () => {
           socket.end()
-          resolve()
+          socket.destroy()
+          resolve(true)
         })
     })
-
-    try {
-      await probe
-      return true
-    } catch {
-      return false
-    }
   }
 
   async isTurnedOn(): Promise<boolean> {
