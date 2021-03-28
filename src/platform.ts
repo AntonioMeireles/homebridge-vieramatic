@@ -99,14 +99,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
   private async deviceSetup(device: UserConfig): Promise<Outcome<VieramaticPlatformAccessory>> {
     this.log.info("handling '%s' from config.json", device.ipAddress)
-    const ip = device.ipAddress
 
-    const outcome = this.deviceSetupPreFlight(device)
+    const [ip, outcome] = [device.ipAddress, this.deviceSetupPreFlight(device)]
 
     if (Abnormal(outcome)) return outcome
 
-    const cached = this.knownWorking(ip)
-    const reachable = await VieraTV.livenessProbe(ip)
+    const [reachable, cached] = [await VieraTV.livenessProbe(ip), this.knownWorking(ip)]
 
     if (!reachable && isEmpty(cached)) {
       this.log.error(

@@ -117,28 +117,17 @@ class VieraTV implements VieraTV {
     this.mac = mac
   }
 
-  public static async livenessProbe(
-    tv: string,
-    port = API_ENDPOINT,
-    timeout = 1500
-  ): Promise<boolean> {
+  static async livenessProbe(tv: string, port = API_ENDPOINT, timeout = 1500): Promise<boolean> {
     return await new Promise<boolean>((resolve) => {
       const socket = new net.Socket()
 
-      const onError = (): void => {
+      const state = (state = true): void => {
         socket.destroy()
-        resolve(false)
+        resolve(state)
       }
+      const [isUp, isDown] = [(): void => state(true), (): void => state(false)]
 
-      socket
-        .setTimeout(timeout)
-        .on('error', onError)
-        .on('timeout', onError)
-        .connect(port, tv, () => {
-          socket.end()
-          socket.destroy()
-          resolve(true)
-        })
+      socket.connect(port, tv, isUp).on('error', isDown).setTimeout(timeout).on('timeout', isDown)
     })
   }
 

@@ -36,16 +36,16 @@ class UPNPSubscription extends EventEmitter {
       this.httpServerPort = (this.httpSubscriptionResponseServer.address() as AddressInfo).port
 
       this.httpSubscriptionResponseServer.on('request', (req, res) => {
-        const sid = req.headers.sid
         let data = ''
 
         req
           .setEncoding('utf8')
           .on('data', (chunk: string) => (data += chunk))
           .on('end', () => {
+            const emitter = this.subscriptions.get(this.sid)
             if (res != null) res.end()
-            const emitter = this.subscriptions.get(sid)
-            if (emitter != null) emitter.emit('message', { body: parser.parse(data), sid })
+            if (emitter != null)
+              emitter.emit('message', { body: parser.parse(data), sid: this.sid })
           })
       })
 
@@ -74,17 +74,18 @@ class UPNPSubscription extends EventEmitter {
   }
 
   unsubscribe(): void {
+    const didIt = (): boolean => this.emit('unsubscribed', { sid: this.sid })
+    const didnt = (error: Error): boolean => this.emit('error:unsubscribe', error)
+
     if (this.sid != null) {
+      const method = { headers: { SID: this.sid }, method: 'UNSUBSCRIBE' }
       http
-        .request(
-          Object.assign(this.baseConfig, { headers: { SID: this.sid }, method: 'UNSUBSCRIBE' }),
-          () => this.emit('unsubscribed', { sid: this.sid })
-        )
-        .on('error', (error) => this.emit('error:unsubscribe', error))
-        .setTimeout(TIMEOUT_IN_SECONDS * 1000, () => this.emit('unsubscribed', { sid: this.sid }))
+        .request(Object.assign(this.baseConfig, method), didIt)
+        .on('error', didnt)
+        .setTimeout(TIMEOUT_IN_SECONDS * 1000, didIt)
         .end()
       this.subscriptions.delete(this.sid)
-    } else this.emit('error:unsubscribe', Error('No SID for subscription'))
+    } else didnt(Error('No SID for subscription'))
 
     this.httpSubscriptionResponseServer.close()
   }
