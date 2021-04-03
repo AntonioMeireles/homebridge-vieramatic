@@ -71,9 +71,8 @@ const getKey = (searchKey: string, data: string): Outcome<string> => {
     const r = results
     Object.keys(object).forEach((k) => {
       const value = object[k]
-      key === k
-        ? typeof value !== 'object' && r.push(value)
-        : typeof value === 'object' && fn(value, key, r)
+      const isntObj = (x: unknown): boolean => typeof x !== 'object'
+      key === k ? isntObj(value) && r.push(value) : !isntObj(value) && fn(value, key, r)
     })
     // we only care about 1st result...
     return r[0]
