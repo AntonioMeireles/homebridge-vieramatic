@@ -68,20 +68,22 @@ class VieramaticPlatformAccessory {
     this.log.debug(JSON.stringify(this.userConfig, undefined, 2))
 
     const handler = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      get: (obj: any, prop: PropertyKey): unknown => {
+      get: <T, K extends keyof T>(obj: T, prop: K): unknown => {
         if (prop === 'isProxy') return true
 
         const property = obj[prop]
         if (typeof property === 'undefined') return
-
+        // @ts-expect-error Property 'isProxy' does not exist on type 'T[K]'.
         if (property.isProxy == null && typeof property === 'object')
-          obj[prop] = new Proxy(property, handler)
+          obj[prop] = (new Proxy(
+            (property as unknown) as Record<string, unknown>,
+            handler
+          ) as unknown) as T[K]
 
         return obj[prop]
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      set: (obj: any, prop: PropertyKey, value: any): boolean => {
+      set: <T, K extends keyof T>(obj: T, prop: K, value: unknown) => {
+        // @ts-expect-error Property 'isProxy' does not exist on type 'T[K]'.
         obj[prop] = value
         this.platform.storage.save()
         return true

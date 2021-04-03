@@ -15,8 +15,7 @@ import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const xml = (data: any): string =>
+const xml = (data: unknown): string =>
   // eslint-disable-next-line new-cap
   new parser.j2xParser({ ignoreAttributes: false }).parse(data)
 const API_ENDPOINT = 55000
@@ -66,13 +65,12 @@ type VieraAuth =
 
 const getKey = (searchKey: string, data: string): Outcome<string> => {
   let value: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (object: any, key: string, results: string[] = []): string => {
+  const fn = (object: Record<string, unknown>, key: string, results: string[] = []): string => {
     const r = results
     Object.keys(object).forEach((k) => {
       const value = object[k]
-      const isntObj = (x: unknown): boolean => typeof x !== 'object'
-      key === k ? isntObj(value) && r.push(value) : !isntObj(value) && fn(value, key, r)
+      const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object'
+      key === k ? !isObj(value) && r.push(value as string) : isObj(value) && fn(value, key, r)
     })
     // we only care about 1st result...
     return r[0]
