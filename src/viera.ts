@@ -10,7 +10,7 @@ import parser from 'fast-xml-parser'
 import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, Outcome, html, isEmpty } from './helpers'
+import { Abnormal, html, isEmpty, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
