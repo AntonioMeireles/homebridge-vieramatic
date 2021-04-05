@@ -97,14 +97,12 @@ class VieramaticPlatformAccessory {
     )
 
     const svc = this.accessory.getService(this.Service.AccessoryInformation)
+    const model = `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
     if (svc != null)
       svc
         .setCharacteristic(this.Characteristic.Manufacturer, this.device.specs.manufacturer)
-        .setCharacteristic(
-          this.Characteristic.Model,
-          `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
-        )
         .setCharacteristic(this.Characteristic.SerialNumber, this.device.specs.serialNumber)
+        .setCharacteristic(this.Characteristic.Model, model)
 
     this.accessory.on('identify', () =>
       this.log.info(this.device.specs.friendlyName, 'Identified!')
@@ -165,11 +163,8 @@ class VieramaticPlatformAccessory {
       .onSet(this.setVolumeSelector.bind(this))
 
     if (this.userConfig.customVolumeSlider === true) {
-      const customSpeakerService = this.accessory.addService(
-        this.Service.Fan,
-        `${this.device.specs.friendlyName} Volume`,
-        'VolumeAsFanService'
-      )
+      const [friendlyN, svcN] = [`${this.device.specs.friendlyName} Volume`, 'VolumeAsFanService']
+      const customSpeakerService = this.accessory.addService(this.Service.Fan, friendlyN, svcN)
       this.service.addLinkedService(customSpeakerService)
 
       customSpeakerService
@@ -216,7 +211,7 @@ class VieramaticPlatformAccessory {
       return true
     })
 
-    if (this.storage.data == null) {
+    if (this.storage.data == null)
       this.storage.data = {
         inputs: {
           applications: { ...this.tvApps },
@@ -227,7 +222,7 @@ class VieramaticPlatformAccessory {
         ipAddress: this.userConfig.ipAddress,
         specs: { ...this.device.specs }
       }
-    } else {
+    else {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
@@ -236,11 +231,8 @@ class VieramaticPlatformAccessory {
 
         const found = this.storage.data.inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
         if (found === -1) {
-          this.log.info(
-            "adding HDMI input '%s' - '%s' as it was appended to config.json",
-            input.id,
-            input.name
-          )
+          const msg = "adding HDMI input '%s' - '%s' as it was appended to config.json"
+          this.log.info(msg, input.id, input.name)
           this.storage.data.inputs.hdmi.push(input)
         }
       })
@@ -398,21 +390,18 @@ class VieramaticPlatformAccessory {
     const message = nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
     const currentState = await this.device.isTurnedOn()
     this.log.debug('(setPowerStatus)', nextState, currentState)
-    if ((nextState === this.Characteristic.Active.ACTIVE) === currentState) {
+    if ((nextState === this.Characteristic.Active.ACTIVE) === currentState)
       this.log.debug('TV is already %s: Ignoring!', message)
-    } else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac != null) {
+    else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac != null) {
       this.log.debug('sending WOL packets to awake TV')
       await wakeOnLan(this.device.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
       this.log.debug('Turned TV', message)
     } else {
       const cmd = await this.device.sendCommand('POWER')
-      if (Abnormal(cmd)) {
-        this.log.error(
-          '(setPowerStatus)/-> %s  - unable to power cycle TV - probably unpowered',
-          message
-        )
-      } else {
+      if (Abnormal(cmd))
+        this.log.error('(setPowerStatus)/-> %s - unable to power cycle TV - unpowered ?', message)
+      else {
         await this.updateTVstatus(nextState)
         this.log.debug('Turned TV', message)
       }
@@ -434,9 +423,7 @@ class VieramaticPlatformAccessory {
     if (state) {
       const cmd = await this.device.getMute()
       mute = !Abnormal(cmd) ? cmd.value : true
-    } else {
-      mute = true
-    }
+    } else mute = true
 
     this.log.debug('(getMute) is', mute)
     return mute

@@ -65,7 +65,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     })
   }
 
-  deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
+  deviceSetupPreFlight(device: UserConfig): Outcome<void> {
     const raw = JSON.stringify(device, undefined, 2)
     if (!isIPv4(device.ipAddress)) {
       const msg = printf(

@@ -363,7 +363,7 @@ class VieraTV implements VieraTV {
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
-    _callback?: (arg: string) => Outcome<T>
+    closure: (arg: string) => Outcome<T> = (x) => (x as unknown) as Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = []
     const sessionGoneRogue = 'No such session'
@@ -382,13 +382,8 @@ class VieraTV implements VieraTV {
         const outcome = await this.renderEncryptedRequest(realAction, urn, realParameters)
 
         if (Abnormal(outcome)) return outcome
-
-        action = outcome.value[0]
-        parameters = outcome.value[1]
-      } else {
-        action = realAction
-        parameters = realParameters
-      }
+        else [action, parameters] = outcome.value
+      } else [action, parameters] = [realAction, realParameters]
 
       const request = this.renderRequest(action, urn, parameters)
 
@@ -418,12 +413,10 @@ class VieraTV implements VieraTV {
     }
 
     let payload = await doIt()
+    const warn = 'Session mismatch found, so the session counter was reset in order to move on.'
     if (Abnormal(payload)) {
       if (payload.error.message === sessionGoneRogue) {
-        this.log.warn(
-          'A session mismatch was found,',
-          'so the session counter was reset in order to move on.'
-        )
+        this.log.warn(warn)
         const reset = await this.requestSessionId()
         if (Abnormal(reset)) return reset
         const retry = await doIt()
@@ -432,17 +425,16 @@ class VieraTV implements VieraTV {
       } else return payload
     }
 
-    return _callback != null ? _callback((payload.value as unknown) as string) : payload
+    return closure((payload.value as unknown) as string)
   }
 
   private async requestPinCode(): Promise<Outcome<void>> {
     const parameters = xml({ X_DeviceName: 'MyRemote' })
     const callback = (data: string): Outcome<void> => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
-      if (match === null)
-        return {
-          error: Error('unexpected reply from TV when requesting challenge key')
-        }
+      const error = Error('unexpected reply from TV when requesting challenge key')
+
+      if (match === null) return { error }
 
       this.session.challenge = Buffer.from(match[1], 'base64')
       return { value: undefined }
@@ -512,8 +504,8 @@ class VieraTV implements VieraTV {
       if (Abnormal(raw)) return raw
 
       const authResultDecrypted = this.decryptPayload(raw.value, key, iv)
-
       const appId = getKey('X_ApplicationId', authResultDecrypted)
+
       if (Abnormal(appId)) return appId
 
       const keyy = getKey('X_Keyword', authResultDecrypted)
