@@ -1,4 +1,5 @@
 import { Characteristic, CharacteristicValue, Logger, PlatformAccessory, Service } from 'homebridge'
+import util from 'util'
 
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
@@ -68,13 +69,13 @@ class VieramaticPlatformAccessory {
     this.log.debug(JSON.stringify(this.userConfig, undefined, 2))
 
     const handler = {
-      get: <T, K extends keyof T>(obj: T, prop: K): unknown => {
+      get: <T, K extends keyof T>(obj: T, prop: K): T[K] | boolean | undefined => {
         if (prop === 'isProxy') return true
 
         const property = obj[prop]
         if (typeof property === 'undefined') return
-        // @ts-expect-error Property 'isProxy' does not exist on type 'T[K]'.
-        if (property.isProxy == null && typeof property === 'object')
+
+        if (!util.types.isProxy(property) && typeof property === 'object')
           obj[prop] = (new Proxy(
             (property as unknown) as Record<string, unknown>,
             handler
@@ -82,8 +83,7 @@ class VieramaticPlatformAccessory {
 
         return obj[prop]
       },
-      set: <T, K extends keyof T>(obj: T, prop: K, value: unknown) => {
-        // @ts-expect-error Property 'isProxy' does not exist on type 'T[K]'.
+      set: <T, K extends keyof T>(obj: T, prop: K, value: T[K]) => {
         obj[prop] = value
         this.platform.storage.save()
         return true
