@@ -224,6 +224,20 @@ class VieramaticPlatformAccessory {
       }
     else {
       this.log.debug('Restoring', this.device.specs.friendlyName)
+      // properly handle hdmi interface renaming (#78)
+      const fx = (element: HdmiInput): HdmiInput => {
+        const fy = (e: HdmiInput): boolean => element.id === e.id
+        const found = userConfig.hdmiInputs.findIndex((x: HdmiInput) => fy(x))
+        if (found === -1 || userConfig.hdmiInputs[found].name === element.name) return element
+        else {
+          const msg = "HDMI input '%s' renamed from '%s' to '%s'"
+          this.log.info(msg, element.id, element.name, userConfig.hdmiInputs[found].name)
+          element.name = userConfig.hdmiInputs[found].name
+          return element
+        }
+      }
+
+      this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.map(fx)
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
         const fn = (element: HdmiInput): boolean =>
