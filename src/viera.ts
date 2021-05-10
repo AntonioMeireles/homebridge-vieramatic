@@ -273,29 +273,27 @@ class VieraTV implements VieraTV {
   async getSpecs(): Promise<VieraSpecs> {
     return await curl
       .get(`${this.baseURL}/nrc/ddd.xml`)
-      .then(
-        async (raw): Promise<VieraSpecs> => {
-          const jsonObject = parser.parse(raw.data)
-          const { device } = jsonObject.root
-          const specs: VieraSpecs = {
-            friendlyName: device.friendlyName.length > 0 ? device.friendlyName : device.modelName,
-            manufacturer: device.manufacturer,
-            modelName: device.modelName,
-            modelNumber: device.modelNumber,
-            requiresEncryption: await this.needsCrypto(),
-            serialNumber: device.UDN.slice(5)
-          }
-
-          this.log.info(
-            "found a '%s' TV (%s) at '%s' %s.\n",
-            specs.modelName,
-            specs.modelNumber,
-            this.address,
-            specs.requiresEncryption ? '(requires crypto for communication)' : ''
-          )
-          return specs
+      .then(async (raw): Promise<VieraSpecs> => {
+        const jsonObject = parser.parse(raw.data)
+        const { device } = jsonObject.root
+        const specs: VieraSpecs = {
+          friendlyName: device.friendlyName.length > 0 ? device.friendlyName : device.modelName,
+          manufacturer: device.manufacturer,
+          modelName: device.modelName,
+          modelNumber: device.modelNumber,
+          requiresEncryption: await this.needsCrypto(),
+          serialNumber: device.UDN.slice(5)
         }
-      )
+
+        this.log.info(
+          "found a '%s' TV (%s) at '%s' %s.\n",
+          specs.modelName,
+          specs.modelNumber,
+          this.address,
+          specs.requiresEncryption ? '(requires crypto for communication)' : ''
+        )
+        return specs
+      })
       .catch((error) => {
         this.log.debug('getSpecs:', error)
         return {}
@@ -363,7 +361,7 @@ class VieraTV implements VieraTV {
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
-    closure: (arg: string) => Outcome<T> = (x) => (x as unknown) as Outcome<T>
+    closure: (arg: string) => Outcome<T> = (x) => x as unknown as Outcome<T>
   ): Promise<Outcome<T>> {
     let [urL, urn, action, parameters]: string[] = []
     const sessionGoneRogue = 'No such session'
@@ -395,11 +393,11 @@ class VieraTV implements VieraTV {
 
             if (Abnormal(extracted)) return extracted
 
-            value = (this.decryptPayload(
+            value = this.decryptPayload(
               extracted.value,
               this.session.key,
               this.session.iv
-            ) as unknown) as T
+            ) as unknown as T
           } else value = r.data
 
           return { value }
@@ -425,7 +423,7 @@ class VieraTV implements VieraTV {
       } else return payload
     }
 
-    return closure((payload.value as unknown) as string)
+    return closure(payload.value as unknown as string)
   }
 
   private async requestPinCode(): Promise<Outcome<void>> {
@@ -453,38 +451,9 @@ class VieraTV implements VieraTV {
     }
     // Derive HMAC key from IV & HMAC key mask (taken from libtvconnect.so)
     const hmacKeyMaskVals = [
-      0x15,
-      0xc9,
-      0x5a,
-      0xc2,
-      0xb0,
-      0x8a,
-      0xa7,
-      0xeb,
-      0x4e,
-      0x22,
-      0x8f,
-      0x81,
-      0x1e,
-      0x34,
-      0xd0,
-      0x4f,
-      0xa5,
-      0x4b,
-      0xa7,
-      0xdc,
-      0xac,
-      0x98,
-      0x79,
-      0xfa,
-      0x8a,
-      0xcd,
-      0xa3,
-      0xfc,
-      0x24,
-      0x4f,
-      0x38,
-      0x54
+      0x15, 0xc9, 0x5a, 0xc2, 0xb0, 0x8a, 0xa7, 0xeb, 0x4e, 0x22, 0x8f, 0x81, 0x1e, 0x34, 0xd0,
+      0x4f, 0xa5, 0x4b, 0xa7, 0xdc, 0xac, 0x98, 0x79, 0xfa, 0x8a, 0xcd, 0xa3, 0xfc, 0x24, 0x4f,
+      0x38, 0x54
     ]
     for (j = l = 0; l < 32; j = l += 4) {
       hmacKey[j] = hmacKeyMaskVals[j] ^ iv[(j + 2) & 0xf]

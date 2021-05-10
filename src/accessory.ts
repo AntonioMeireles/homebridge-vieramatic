@@ -76,10 +76,10 @@ class VieramaticPlatformAccessory {
         if (typeof property === 'undefined') return
 
         if (!util.types.isProxy(property) && typeof property === 'object')
-          obj[prop] = (new Proxy(
-            (property as unknown) as Record<string, unknown>,
+          obj[prop] = new Proxy(
+            property as unknown as Record<string, unknown>,
             handler
-          ) as unknown) as T[K]
+          ) as unknown as T[K]
 
         return obj[prop]
       },
