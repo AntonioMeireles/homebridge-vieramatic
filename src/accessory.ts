@@ -225,25 +225,23 @@ class VieramaticPlatformAccessory {
     else {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // properly handle hdmi interface renaming (#78)
-      const fx = (element: HdmiInput): HdmiInput => {
-        const fy = (e: HdmiInput): boolean => element.id === e.id
-        const found = userConfig.hdmiInputs.findIndex((x: HdmiInput) => fy(x))
-        if (found === -1 || userConfig.hdmiInputs[found].name === element.name) return element
-        else {
-          const msg = "HDMI input '%s' renamed from '%s' to '%s'"
-          this.log.info(msg, element.id, element.name, userConfig.hdmiInputs[found].name)
-          element.name = userConfig.hdmiInputs[found].name
+      const sameId = (a: HdmiInput, b: HdmiInput): boolean => a.id === b.id
+      const sameNameId = (a: HdmiInput, b: HdmiInput): boolean => a.id === b.id && a.name === b.name
+
+      this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.map(
+        (element: HdmiInput): HdmiInput => {
+          const found = userConfig.hdmiInputs.findIndex((x) => sameId(x, element))
+          if (found !== -1 && userConfig.hdmiInputs[found].name !== element.name) {
+            const msg = "HDMI input '%s' renamed from '%s' to '%s'"
+            this.log.info(msg, element.id, element.name, userConfig.hdmiInputs[found].name)
+            element.name = userConfig.hdmiInputs[found].name
+          }
           return element
         }
-      }
-
-      this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.map(fx)
+      )
       // check for new user added inputs
       userConfig.hdmiInputs.forEach((input) => {
-        const fn = (element: HdmiInput): boolean =>
-          element.id === input.id && element.name === input.name
-
-        const found = this.storage.data.inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
+        const found = this.storage.data.inputs.hdmi.findIndex((x) => sameNameId(x, input))
         if (found === -1) {
           const msg = "adding HDMI input '%s' - '%s' as it was appended to config.json"
           this.log.info(msg, input.id, input.name)
@@ -251,20 +249,15 @@ class VieramaticPlatformAccessory {
         }
       })
       // check for user removed inputs
-      const shallow: HdmiInput[] = []
-      this.storage.data.inputs.hdmi.forEach((input: HdmiInput) => {
-        const fn = (element: HdmiInput): boolean => element.id === input.id
+      this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.filter((input) => {
+        const found = userConfig.hdmiInputs.findIndex((x) => sameId(x, input))
+        if (found !== -1) return true
 
-        const found = userConfig.hdmiInputs.findIndex((x) => fn(x))
-        found === -1
-          ? this.log.info(
-              "unsetting HDMI input '%s' ['%s'] since it was dropped from the config.json",
-              input.id,
-              input.name
-            )
-          : shallow.push(input)
+        const msg = "unsetting HDMI input '%s' ['%s'] since it was dropped from the config.json"
+        this.log.info(msg, input.id, input.name)
+        return false
       })
-      this.storage.data.inputs.hdmi = [...shallow]
+
       this.storage.data.ipAddress = this.userConfig.ipAddress
       this.storage.data.specs = { ...this.device.specs }
 
@@ -274,23 +267,25 @@ class VieramaticPlatformAccessory {
     // TV Tuner
     this.configureInputSource('TUNER', 'TV Tuner', 500)
     // HDMI inputs ...
-    this.storage.data.inputs.hdmi.forEach((input: HdmiInput, idx: number) => {
-      const sig = Number.parseInt(input.id, 10)
-      // catch gracefully user cfg errors (#67)
-      try {
-        this.configureInputSource('HDMI', input.name, sig)
-      } catch (error) {
-        this.log.error(
-          "Unable to add as an accessory to your TV 'HDMI' input:\n%s\n\n%s",
-          JSON.stringify(input, undefined, 2),
-          "If you do believe that your homebridge's 'config.json' is in order and",
-          'has absolutelly no duplicated entries for HDMI inputs then please fill',
-          'a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues,',
-          'otherwise just remove or fix the duplicated stuff.'
-        )
-        this.storage.data.inputs.hdmi.splice(idx)
+    this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.filter(
+      (input: HdmiInput): boolean => {
+        // catch gracefully user cfg errors (#67)
+        try {
+          this.configureInputSource('HDMI', input.name, Number.parseInt(input.id, 10))
+        } catch (error) {
+          this.log.error(
+            "Unable to add as an accessory to your TV 'HDMI' input:\n%s\n\n%s",
+            JSON.stringify(input, undefined, 2),
+            "If you do believe that your homebridge's 'config.json' is in order and",
+            'has absolutelly no duplicated entries for HDMI inputs then please fill',
+            'a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues,',
+            'otherwise just remove or fix the duplicated stuff.'
+          )
+          return false
+        }
+        return true
       }
-    })
+    )
     // Apps
     Object.entries(this.storage.data.inputs.applications).forEach((line) => {
       const [id, app] = line
