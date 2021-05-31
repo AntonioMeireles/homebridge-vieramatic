@@ -58,7 +58,7 @@ class VieramaticPlatformAccessory {
 
   constructor(
     private readonly platform: VieramaticPlatform,
-    public readonly accessory: PlatformAccessory,
+    readonly accessory: PlatformAccessory,
     private readonly userConfig: UserConfig,
     private readonly tvApps: VieraApps
   ) {

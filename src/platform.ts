@@ -16,18 +16,18 @@ import Storage from './storage'
 import { VieraApps, VieraSpecs, VieraTV } from './viera'
 
 class VieramaticPlatform implements DynamicPlatformPlugin {
-  public readonly Service: typeof Service = this.api.hap.Service
+  readonly Service: typeof Service = this.api.hap.Service
 
-  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic
+  readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic
 
-  public readonly accessories: PlatformAccessory[] = []
+  readonly accessories: PlatformAccessory[] = []
 
-  public readonly storage: Storage
+  readonly storage: Storage
 
   constructor(
-    public readonly log: Logger,
-    public readonly config: PlatformConfig,
-    public readonly api: API
+    readonly log: Logger,
+    private readonly config: PlatformConfig,
+    private readonly api: API
   ) {
     this.storage = new Storage(api)
 
@@ -39,12 +39,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     })
   }
 
-  configureAccessory(accessory: PlatformAccessory): void {
+  configureAccessory = (accessory: PlatformAccessory): void => {
     this.log.info('Loading accessory from cache:', accessory.displayName)
     this.accessories.push(accessory)
   }
 
-  async discoverDevices(): Promise<void> {
+  discoverDevices = async (): Promise<void> => {
     this.accessories.map((cachedAccessory) =>
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cachedAccessory])
     )
@@ -53,7 +53,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const devices = this.config.tvs as UserConfig[]
 
     devices.forEach(async (device: UserConfig) => {
-      const outcome = await this.deviceSetup(device)
+      const outcome = await this.#deviceSetup(device)
       if (Abnormal(outcome)) {
         this.log.error(outcome.error.message)
         return
@@ -65,7 +65,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     })
   }
 
-  deviceSetupPreFlight(device: UserConfig): Outcome<void> {
+  #deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
     const raw = JSON.stringify(device, undefined, 2)
     if (!isIPv4(device.ipAddress)) {
       const msg = printf(
@@ -88,7 +88,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     return { value: undefined }
   }
 
-  private knownWorking(ip: string): VieraSpecs {
+  #knownWorking = (ip: string): VieraSpecs => {
     if (isEmpty(this.storage.accessories)) return {}
 
     for (const [_, v] of Object.entries(this.storage.accessories))
@@ -97,14 +97,14 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     return {}
   }
 
-  private async deviceSetup(device: UserConfig): Promise<Outcome<VieramaticPlatformAccessory>> {
+  #deviceSetup = async (device: UserConfig): Promise<Outcome<VieramaticPlatformAccessory>> => {
     this.log.info("handling '%s' from config.json", device.ipAddress)
 
-    const [ip, outcome] = [device.ipAddress, this.deviceSetupPreFlight(device)]
+    const [ip, outcome] = [device.ipAddress, this.#deviceSetupPreFlight(device)]
 
     if (Abnormal(outcome)) return outcome
 
-    const [reachable, cached] = [await VieraTV.livenessProbe(ip), this.knownWorking(ip)]
+    const [reachable, cached] = [await VieraTV.livenessProbe(ip), this.#knownWorking(ip)]
 
     if (!reachable && isEmpty(cached)) {
       this.log.error(
@@ -206,9 +206,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       }
     }
 
-    return {
-      value: new VieramaticPlatformAccessory(this, accessory, device, apps)
-    }
+    return { value: new VieramaticPlatformAccessory(this, accessory, device, apps) }
   }
 }
 
