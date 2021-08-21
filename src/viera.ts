@@ -84,7 +84,7 @@ const getKey = (searchKey: string, data: string): Outcome<string> => {
      */
     value = fn(parser.parse(data), searchKey)
   } catch (error) {
-    return { error }
+    return { error: error as Error }
   }
   return { value }
 }
@@ -200,7 +200,7 @@ class VieraTV implements VieraTV {
       return { error }
     }
 
-    return this.#sendRequest('command', 'X_GetEncryptSessionId', parameters, callback)
+    return await this.#sendRequest('command', 'X_GetEncryptSessionId', parameters, callback)
   }
 
   deriveSessionKey = (key: string): void => {
@@ -266,7 +266,7 @@ class VieraTV implements VieraTV {
       const hmac = crypto.createHmac('sha256', hmacKey)
       sig = hmac.update(ciphered).digest()
     } catch (error) {
-      return { error }
+      return { error: error as Error }
     }
     return { value: Buffer.concat([ciphered, sig]).toString('base64') }
   }
@@ -441,7 +441,7 @@ class VieraTV implements VieraTV {
       this.session.challenge = Buffer.from(match[1], 'base64')
       return { value: undefined }
     }
-    return this.#sendRequest('command', 'X_DisplayPinCode', parameters, callback)
+    return await this.#sendRequest('command', 'X_DisplayPinCode', parameters, callback)
   }
 
   #authorizePinCode = async (pin: string): Promise<Outcome<VieraAuth>> => {
@@ -493,7 +493,7 @@ class VieraTV implements VieraTV {
       }
     }
 
-    return this.#sendRequest('command', 'X_RequestAuth', parameters, callback)
+    return await this.#sendRequest('command', 'X_RequestAuth', parameters, callback)
   }
 
   #renderSampleConfig = (): void => {
@@ -662,7 +662,7 @@ class VieraTV implements VieraTV {
 
     server.on('clientError', (error, socket) => {
       socket.end('HTTP/1.1 400 Bad Request\r\n\r\n')
-      ctx.log.error(error)
+      ctx.log.error(error.message)
     })
 
     ctx.log.info('launching encryption helper endpoint on :8973')
@@ -742,7 +742,7 @@ class VieraTV implements VieraTV {
     }
     const parameters = AudioChannel
 
-    return this.#sendRequest<string>('render', 'GetVolume', parameters, callback)
+    return await this.#sendRequest<string>('render', 'GetVolume', parameters, callback)
   }
 
   /**
@@ -764,7 +764,7 @@ class VieraTV implements VieraTV {
       return match != null ? { value: match[1] === '1' } : { value: true }
     }
 
-    return this.#sendRequest('render', 'GetMute', AudioChannel, callback)
+    return await this.#sendRequest('render', 'GetMute', AudioChannel, callback)
   }
 
   /**
@@ -797,7 +797,7 @@ class VieraTV implements VieraTV {
 
       return apps.length === 0 ? { error: Error('The TV is in standby!') } : { value: apps }
     }
-    return this.#sendRequest('command', 'X_GetAppList', undefined, callback)
+    return await this.#sendRequest('command', 'X_GetAppList', undefined, callback)
   }
 }
 
