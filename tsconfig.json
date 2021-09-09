@@ -27,8 +27,5 @@
   "include": [
     "src/",
     ".eslintrc.js"
-  ],
-  "exclude": [
-    "**/*.spec.ts"
   ]
 }

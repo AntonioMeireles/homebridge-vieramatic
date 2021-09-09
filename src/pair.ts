@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// istanbul ignore file
 import { VieraTV } from './viera'
 
 const ip = process.argv.slice(2)

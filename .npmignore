@@ -5,11 +5,15 @@
 # Ignore source code
 src
 
+# Ignore tests
+dist/*.spec.*
+
 # ------------- Defaults ------------- #
 
 # eslint
 .eslintrc.js
-
+# jest
+jest.config.js
 # typescript
 tsconfig.json
 

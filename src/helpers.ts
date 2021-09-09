@@ -11,6 +11,7 @@ const isEmpty = (obj: Record<string, unknown>): boolean =>
 
 const printf = util.format
 // vscode decorator trickery
+// istanbul ignore next
 const lit = (s: TemplateStringsArray, ...args: string[]): string =>
   s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
 const html = lit
