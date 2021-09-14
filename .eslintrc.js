@@ -36,6 +36,7 @@ module.exports = {
         varsIgnorePattern: '^_'
       }
     ],
+    'eslint-comments/disable-enable-pair': 'off',
     'eslint-comments/no-unused-disable': 'error',
     'import/exports-last': 'error',
     'import/group-exports': 'error',

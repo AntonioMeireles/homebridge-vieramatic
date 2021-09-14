@@ -3,5 +3,12 @@ module.exports = {
   testEnvironment: "node",
   verbose: true,
   collectCoverageFrom: ["src/*.ts"],
-  testMatch: ["**/?(*.)+(spec|test).ts"]
+  testMatch: ["**/?(*.)+(spec|test).ts"],
+  transform: {
+    '^.+\\.tsx?$': [
+      'esbuild-jest', {
+        "sourcemap": true
+      }
+    ]
+  }
 }
