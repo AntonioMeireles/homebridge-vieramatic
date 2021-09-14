@@ -5,8 +5,8 @@ import net, { isIPv4 } from 'net'
 import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
-import { decodeXML } from 'entities'
 import parser from 'fast-xml-parser'
+import { decode } from 'html-entities'
 import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
@@ -792,7 +792,7 @@ class VieraTV implements VieraTV {
       const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
 
       let i
-      while ((i = re.exec(decodeXML(raw.value))) != null)
+      while ((i = re.exec(decode(raw.value, { level: 'xml' }))) != null)
         i.groups !== undefined && apps.push({ id: i.groups.id, name: i.groups.appName })
 
       return apps.length === 0 ? { error: Error('The TV is in standby!') } : { value: apps }

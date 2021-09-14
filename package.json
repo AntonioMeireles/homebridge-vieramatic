@@ -9,9 +9,9 @@
   "dependencies": {
     "@mi-sec/wol": "^1.0.13",
     "axios": "^0.21.4",
-    "entities": "^3.0.1",
     "fast-xml-parser": "^3.20.0",
     "fs-extra": "^10.0.0",
+    "html-entities": "^2.3.2",
     "readline-sync": "^1.4.10"
   },
   "description": "Homebridge plugin for Panasonic™ Viera™ TVs (with full support for 2018 and later models)",
