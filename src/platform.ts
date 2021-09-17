@@ -16,9 +16,9 @@ import Storage from './storage'
 import { VieraApps, VieraSpecs, VieraTV } from './viera'
 
 class VieramaticPlatform implements DynamicPlatformPlugin {
-  readonly Service: typeof Service = this.api.hap.Service
+  readonly Service: typeof Service
 
-  readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic
+  readonly Characteristic: typeof Characteristic
 
   readonly accessories: PlatformAccessory[] = []
 
@@ -30,6 +30,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     private readonly api: API
   ) {
     this.storage = new Storage(api)
+    this.Characteristic = this.api.hap.Characteristic
+    this.Service = this.api.hap.Service
 
     this.log.debug('Finished initializing platform:', this.config.platform)
 
@@ -180,12 +182,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     accessory.context.device = tv
     let apps: VieraApps = []
-    if (
+    const firstTime =
       isEmpty(this.storage.accessories) ||
       this.storage.accessories[tv.specs.serialNumber] === undefined
-    ) {
+    const status = await tv.isTurnedOn()
+    if (firstTime) {
       this.log.info("Initializing '%s' first time ever.", tv.specs.friendlyName)
-      const status = await tv.isTurnedOn()
       if (!status) {
         const msg = printf(
           'Unable to finish initial setup of %s.\n\n',
@@ -194,16 +196,15 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         )
         return { error: Error(msg) }
       }
-      if (device.disabledAppSupport == null || !device.disabledAppSupport) {
-        const cmd = await tv.getApps()
+    }
+    if (device.disabledAppSupport == null || !device.disabledAppSupport) {
+      const cmd = await tv.getApps()
 
-        if (Abnormal(cmd)) {
-          const msg = printf('unable to fetch Apps list from the TV:\n\n', cmd.error.message)
-          return { error: Error(msg) }
-        }
-
-        apps = cmd.value
-      }
+      if (Abnormal(cmd)) {
+        const msg = printf('unable to fetch Apps list from the TV:\n\n', cmd.error.message)
+        if (firstTime) return { error: Error(msg) }
+        else this.log.warn(msg)
+      } else apps = cmd.value
     }
 
     return { value: new VieramaticPlatformAccessory(this, accessory, device, apps) }
