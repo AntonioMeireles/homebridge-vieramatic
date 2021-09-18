@@ -261,7 +261,27 @@ class VieramaticPlatformAccessory {
       this.storage.data.ipAddress = this.userConfig.ipAddress
       this.storage.data.specs = { ...this.device.specs }
 
-      // FIXME: check also for added/removed apps (just in case)
+      if (this.tvApps.length > 0) {
+        const next: VieraApps = []
+        Object.entries(this.storage.data.inputs.applications).forEach((line) => {
+          const [_, app] = line
+          const found = [...tvApps].some((x: VieraApp): boolean => x.name === app.name)
+          if (!found) {
+            const msg = "deleting TV App '%s' as it wasn't removed from your TV's"
+            this.log.warn(msg, app.name)
+          } else next.push(app)
+        })
+        Object.entries([...this.tvApps]).forEach((line) => {
+          const [_, app] = line
+          const found = next.some((x: VieraApp): boolean => x.name === app.name)
+          if (!found) {
+            const msg = "adding TV App '%s' since it was added to your TV"
+            this.log.warn(msg, app.name)
+            next.push(app)
+          }
+        })
+        this.storage.data.inputs.applications = { ...next }
+      }
     }
 
     // TV Tuner
