@@ -1,5 +1,21 @@
 import util from 'util'
 
+import parser from 'fast-xml-parser'
+
+const xml2obj = (raw: string): Record<string, unknown> =>
+  parser.parse(raw, {
+    numParseOptions: {
+      hex: true,
+      leadingZeros: true,
+      // workarounds fxp 3.20.0 woes
+      // encrypted payloads were sometimes being parsed as (!) bigNums
+      skipLike: /^\S+=$/
+    }
+  })
+const obj2xml = (data: unknown): string =>
+  // eslint-disable-next-line new-cap
+  new parser.j2xParser({ ignoreAttributes: false }).parse(data)
+
 const isValidMACAddress = (address: string): boolean =>
   /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/.test(address)
 
@@ -29,4 +45,4 @@ type Outcome<T> = Success<T> | Failure
 
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 
-export { sleep, isEmpty, isValidMACAddress, html, Outcome, printf, Abnormal }
+export { sleep, isEmpty, isValidMACAddress, html, Outcome, printf, Abnormal, obj2xml, xml2obj }

@@ -5,23 +5,18 @@ import net, { isIPv4 } from 'net'
 import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
-import parser from 'fast-xml-parser'
 import { decode } from 'html-entities'
 import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, html, isEmpty, Outcome } from './helpers'
+import { Abnormal, html, isEmpty, Outcome, xml2obj, obj2xml } from './helpers'
 import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
-const xml = (data: unknown): string =>
-  // eslint-disable-next-line new-cap
-  new parser.j2xParser({ ignoreAttributes: false }).parse(data)
 const API_ENDPOINT = 55000
 const curl: AxiosInstance = axios.create({ timeout: 3500 })
-const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
-
+const AudioChannel: string = obj2xml({ Channel: 'Master', InstanceID: 0 })
 type VieraSpecs =
   | {
       friendlyName: string
@@ -82,7 +77,7 @@ const getKey = (searchKey: string, data: string): Outcome<string> => {
      *          Error: Multiple possible root nodes found.
      *        which of all things breaks pairing (#34)
      */
-    value = fn(parser.parse(data), searchKey)
+    value = fn(xml2obj(data), searchKey)
   } catch (error) {
     return { error: error as Error }
   }
@@ -171,13 +166,13 @@ class VieraTV implements VieraTV {
   }
 
   requestSessionId = async (): Promise<Outcome<void>> => {
-    const appId = xml({ X_ApplicationId: this.auth.appId })
+    const appId = obj2xml({ X_ApplicationId: this.auth.appId })
 
     const outcome = this.#encryptPayload(appId)
 
     if (Abnormal(outcome)) return outcome
 
-    const parameters = xml({
+    const parameters = obj2xml({
       X_ApplicationId: this.auth.appId,
       X_EncInfo: outcome.value
     })
@@ -278,7 +273,8 @@ class VieraTV implements VieraTV {
     return await curl
       .get(`${this.baseURL}/nrc/ddd.xml`)
       .then(async (raw): Promise<VieraSpecs> => {
-        const jsonObject = parser.parse(raw.data)
+        const jsonObject = xml2obj(raw.data)
+        // @ts-expect-error ts(2339)
         const { device } = jsonObject.root
         const specs: VieraSpecs = {
           friendlyName: device.friendlyName.length > 0 ? device.friendlyName : device.modelName,
@@ -317,7 +313,7 @@ class VieraTV implements VieraTV {
     )
     this.session.seqNum += 1
     const X_SN = ('00000000' + this.session.seqNum.toString(10)).slice(-8)
-    const encCommand = xml({
+    const encCommand = obj2xml({
       X_OriginalCommand: {
         [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` }
       },
@@ -331,7 +327,7 @@ class VieraTV implements VieraTV {
     return {
       value: [
         'X_EncryptedCommand',
-        xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
+        obj2xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
       ]
     }
   }
@@ -347,7 +343,7 @@ class VieraTV implements VieraTV {
       Pragma: 'no-cache',
       SOAPACTION: `"urn:${urn}#${action}"`
     }
-    const body = xml({
+    const body = obj2xml({
       's:Envelope': {
         '@_s:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/',
         '@_xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/',
@@ -431,7 +427,7 @@ class VieraTV implements VieraTV {
   }
 
   #requestPinCode = async (): Promise<Outcome<void>> => {
-    const parameters = xml({ X_DeviceName: 'MyRemote' })
+    const parameters = obj2xml({ X_DeviceName: 'MyRemote' })
     const callback = (data: string): Outcome<void> => {
       const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
       const error = Error('unexpected reply from TV when requesting challenge key')
@@ -465,12 +461,12 @@ class VieraTV implements VieraTV {
       hmacKey[j + 2] = hmacKeyMaskVals[j + 2] ^ iv[j & 0xf]
       hmacKey[j + 3] = hmacKeyMaskVals[j + 3] ^ iv[(j + 1) & 0xf]
     }
-    const data = xml({ X_PinCode: pin })
+    const data = obj2xml({ X_PinCode: pin })
     const outcome = this.#encryptPayload(data, key, iv, hmacKey)
 
     if (Abnormal(outcome)) return outcome
 
-    const parameters = xml({ X_AuthInfo: outcome.value })
+    const parameters = obj2xml({ X_AuthInfo: outcome.value })
 
     const callback = (r: string): Outcome<VieraAuth> => {
       const raw = getKey('X_AuthResult', r)
@@ -708,7 +704,7 @@ class VieraTV implements VieraTV {
    * Sends a command to the TV
    */
   sendCommand = async <T>(cmd: string): Promise<Outcome<T>> => {
-    const parameters = xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` })
+    const parameters = obj2xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` })
 
     return await this.#sendRequest('command', 'X_SendKey', parameters)
   }
@@ -717,7 +713,7 @@ class VieraTV implements VieraTV {
    * Send a change HDMI input to the TV
    */
   sendHDMICommand = async <T>(hdmiInput: string): Promise<Outcome<T>> => {
-    const parameters = xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` })
+    const parameters = obj2xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` })
 
     return await this.#sendRequest('command', 'X_SendKey', parameters)
   }
@@ -727,7 +723,7 @@ class VieraTV implements VieraTV {
    */
   sendAppCommand = async <T>(appId: string): Promise<Outcome<T>> => {
     const cmd = appId.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`
-    const parameters = xml({ X_AppType: 'vc_app', X_LaunchKeyword: cmd })
+    const parameters = obj2xml({ X_AppType: 'vc_app', X_LaunchKeyword: cmd })
 
     return await this.#sendRequest('command', 'X_LaunchApp', parameters)
   }
@@ -749,7 +745,7 @@ class VieraTV implements VieraTV {
    * Set Volume
    */
   setVolume = async (volume: string): Promise<Outcome<void>> => {
-    const parameters = AudioChannel + xml({ DesiredVolume: volume })
+    const parameters = AudioChannel + obj2xml({ DesiredVolume: volume })
 
     return await this.#sendRequest('render', 'SetVolume', parameters)
   }
@@ -772,7 +768,7 @@ class VieraTV implements VieraTV {
    */
   setMute = async (enable: boolean): Promise<Outcome<void>> => {
     const mute = enable ? '1' : '0'
-    const parameters = AudioChannel + xml({ DesiredMute: mute })
+    const parameters = AudioChannel + obj2xml({ DesiredMute: mute })
 
     return await this.#sendRequest('render', 'SetMute', parameters)
   }

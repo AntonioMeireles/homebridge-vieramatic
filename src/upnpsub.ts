@@ -5,7 +5,7 @@ import http from 'http'
 import { AddressInfo } from 'net'
 import { networkInterfaces } from 'os'
 
-import parser from 'fast-xml-parser'
+import { xml2obj } from './helpers'
 
 const TIMEOUT_IN_SECONDS = 2
 
@@ -44,8 +44,7 @@ class UPNPSubscription extends EventEmitter {
           .on('end', () => {
             const emitter = this.#subscriptions.get(this.#sid)
             if (res != null) res.end()
-            if (emitter != null)
-              emitter.emit('message', { body: parser.parse(data), sid: this.#sid })
+            if (emitter != null) emitter.emit('message', { body: xml2obj(data), sid: this.#sid })
           })
       })
 
