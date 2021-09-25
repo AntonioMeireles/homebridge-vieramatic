@@ -19,7 +19,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "preserveConstEnums": true
+    "preserveConstEnums": true,
+    "resolveJsonModule": true,
   },
   "include": [
     "src/",
