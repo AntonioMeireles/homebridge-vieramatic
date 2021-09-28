@@ -1,4 +1,4 @@
 const PLATFORM_NAME = 'PanasonicVieraTV'
 const PLUGIN_NAME = 'homebridge-vieramatic'
 
-export { PLUGIN_NAME, PLATFORM_NAME }
+export { PLATFORM_NAME, PLUGIN_NAME }

@@ -581,4 +581,4 @@ class VieramaticPlatformAccessory {
   }
 }
 
-export { sleep, OnDisk, InputVisibility, UserConfig, VieramaticPlatformAccessory }
+export { InputVisibility, OnDisk, sleep, UserConfig, VieramaticPlatformAccessory }

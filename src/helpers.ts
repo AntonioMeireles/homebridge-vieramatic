@@ -45,4 +45,4 @@ type Outcome<T> = Success<T> | Failure
 
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 
-export { sleep, isEmpty, isValidMACAddress, html, Outcome, printf, Abnormal, obj2xml, xml2obj }
+export { Abnormal, html, isEmpty, isValidMACAddress, obj2xml, Outcome, printf, sleep, xml2obj }

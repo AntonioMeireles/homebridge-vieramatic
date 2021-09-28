@@ -18,11 +18,19 @@ module.exports = {
   ignorePatterns: ['dist', 'jest.config.js'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: 2018,
+    ecmaVersion: 'latest',
     project: './tsconfig.json',
     sourceType: 'module'
   },
-  plugins: ['prettier', '@typescript-eslint', 'import', 'json', 'promise', 'eslint-comments'],
+  plugins: [
+    'prettier',
+    '@typescript-eslint',
+    'import',
+    'json',
+    'promise',
+    'eslint-comments',
+    'sort-exports'
+  ],
   rules: {
     '@typescript-eslint/no-misused-promises': [
       'error',
@@ -51,6 +59,14 @@ module.exports = {
       }
     ],
     'json/*': ['error', 'allowComments'],
+    'sort-exports/sort-exports': [
+      'error',
+      {
+        ignoreCase: true,
+        sortDir: 'asc',
+        sortExportKindFirst: 'type'
+      }
+    ],
     'sort-keys': [
       'error',
       'asc',
