@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const esbuild = require('esbuild')
-const { nodeExternalsPlugin } = require('esbuild-node-externals')
+// https://github.com/evanw/esbuild/issues/619#issuecomment-751995294
+const makeAllPackagesExternalPlugin = {
+  name: 'make-all-packages-external',
+  setup(build) {
+    const filter = /^[^./]|^\.[^./]|^\.\.[^/]/ // Must not start with "/" or "./" or "../"
+    build.onResolve({ filter }, (args) => ({ external: true, path: args.path }))
+  }
+}
 
 esbuild
   .build({
@@ -10,7 +17,7 @@ esbuild
     minify: true,
     outdir: 'dist/',
     platform: 'node',
-    plugins: [nodeExternalsPlugin()],
+    plugins: [makeAllPackagesExternalPlugin],
     sourcemap: true,
     target: ['node10']
   })
