@@ -19,7 +19,7 @@ esbuild
     platform: 'node',
     plugins: [makeAllPackagesExternalPlugin],
     sourcemap: true,
-    target: ['node10']
+    target: 'node12'
   })
   .then((result) => esbuild.analyzeMetafile(result.metafile))
   .then((analytics) => console.log(analytics))
