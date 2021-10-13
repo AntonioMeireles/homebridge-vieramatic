@@ -161,7 +161,8 @@ class VieraTV implements VieraTV {
   needsCrypto = async (): Promise<boolean> => {
     return await curl
       .get(`${this.baseURL}/nrc/sdd_0.xml`)
-      .then((resp) => !!(resp.data.match(/X_GetEncryptSessionId/u) as boolean))
+      // @ts-expect-error (ts2352)
+      .then((resp) => !!((resp.data as string).match(/X_GetEncryptSessionId/u) as boolean))
       .catch(() => false)
   }
 
@@ -273,7 +274,7 @@ class VieraTV implements VieraTV {
     return await curl
       .get(`${this.baseURL}/nrc/ddd.xml`)
       .then(async (raw): Promise<VieraSpecs> => {
-        const jsonObject = xml2obj(raw.data)
+        const jsonObject = xml2obj(raw.data as string)
         // @ts-expect-error ts(2339)
         const { device } = jsonObject.root
         const specs: VieraSpecs = {
@@ -389,7 +390,7 @@ class VieraTV implements VieraTV {
         .then((r) => {
           let value: T
           if (AlwaysEncrypted.includes(action)) {
-            const extracted = getKey('X_EncResult', r.data)
+            const extracted = getKey('X_EncResult', r.data as string)
 
             if (Abnormal(extracted)) return extracted
 
@@ -398,7 +399,7 @@ class VieraTV implements VieraTV {
               this.session.key,
               this.session.iv
             ) as unknown as T
-          } else value = r.data
+          } else value = r.data as T
 
           return { value }
         })
