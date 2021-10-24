@@ -17,7 +17,10 @@ class Storage {
     this.accessories = data ?? {}
   }
 
-  get = (id: string): OnDisk => (this.accessories[id] == null ? {} : this.accessories[id])
+  get = (id: string): OnDisk => {
+    this.accessories[id] ??= {}
+    return this.accessories[id]
+  }
 
   save = (): void => writeJsonSync(this.#filePath, this.accessories)
 }
