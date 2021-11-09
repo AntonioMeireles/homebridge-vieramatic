@@ -1,7 +1,7 @@
 import { API } from 'homebridge'
 import path from 'path'
 
-import { readJsonSync, writeJsonSync } from 'fs-extra'
+import { readJsonSync, outputJsonSync } from 'fs-extra'
 
 import { OnDisk } from './accessory'
 
@@ -22,7 +22,7 @@ class Storage {
     return this.accessories[id]
   }
 
-  save = (): void => writeJsonSync(this.#filePath, this.accessories)
+  save = (): void => outputJsonSync(this.#filePath, this.accessories)
 }
 
 export default Storage
