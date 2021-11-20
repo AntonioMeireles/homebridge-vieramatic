@@ -517,63 +517,36 @@ class VieramaticPlatformAccessory {
   }
 
   async remoteControl(keyId: CharacteristicValue): Promise<void> {
-    let action: string
-    //  https://github.com/KhaosT/HAP-NodeJS/blob/master/src/lib/gen/HomeKit-TV.ts#L235
-    switch (keyId) {
+    // https://github.com/homebridge/HAP-NodeJS/blob/master/src/lib/definitions/CharacteristicDefinitions.ts#L3029
+    const keys: Record<number, string> = {
       // Rewind
-      case 0:
-        action = 'REW'
-        break
+      0: 'REW',
       // Fast Forward
-      case 1:
-        action = 'FF'
-        break
+      1: 'FF',
       // Next Track
-      case 2:
-        action = 'SKIP_NEXT'
-        break
+      2: 'SKIP_NEXT',
       // Previous Track
-      case 3:
-        action = 'SKIP_PREV'
-        break
+      3: 'SKIP_PREV',
       // Up Arrow
-      case 4:
-        action = 'UP'
-        break
+      4: 'UP',
       // Down Arrow
-      case 5:
-        action = 'DOWN'
-        break
+      5: 'DOWN',
       // Left Arrow
-      case 6:
-        action = 'LEFT'
-        break
+      6: 'LEFT',
       // Right Arrow
-      case 7:
-        action = 'RIGHT'
-        break
+      7: 'RIGHT',
       // Select
-      case 8:
-        action = 'ENTER'
-        break
+      8: 'ENTER',
       // Back
-      case 9:
-        action = 'RETURN'
-        break
+      9: 'RETURN',
       // Exit
-      case 10:
-        action = 'CANCEL'
-        break
+      10: 'CANCEL',
       // Play / Pause
-      case 11:
-        action = 'PLAY'
-        break
+      11: 'PLAY',
       // Information
-      case 15:
-      default:
-        action = 'HOME'
-        break
+      15: 'HOME'
     }
+    const action = (keyId as number) in keys ? keys[keyId as number] : 'HOME'
     this.log.debug('remote control:', action)
     const cmd = await this.device.sendCommand(action)
 
