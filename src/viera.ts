@@ -6,18 +6,16 @@ import { URL } from 'url'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decode } from 'html-entities'
-import { question } from 'readline-sync'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, html, isEmpty, Outcome, xml2obj, obj2xml } from './helpers'
+import { Abnormal, html, isEmpty, Ok, Outcome, xml2obj, xml } from './helpers'
 import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
-const API_ENDPOINT = 55000
-const curl: AxiosInstance = axios.create({ timeout: 3500 })
-const AudioChannel: string = obj2xml({ Channel: 'Master', InstanceID: 0 })
+const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
 type VieraSpecs =
+  | Record<string, never>
   | {
       friendlyName: string
       modelName: string
@@ -26,7 +24,6 @@ type VieraSpecs =
       serialNumber: string
       requiresEncryption: boolean
     }
-  | Record<string, never>
 
 interface VieraApp {
   name: string
@@ -37,10 +34,8 @@ type VieraApps = VieraApp[]
 
 type RequestType = 'command' | 'render'
 
-const AlwaysInPlainText = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
-const AlwaysEncrypted = ['X_GetEncryptSessionId', 'X_EncryptedCommand']
-
-type VieraAuthSession =
+type VieraSession =
+  | Record<string, never>
   | {
       iv: Buffer
       key: Buffer
@@ -49,7 +44,6 @@ type VieraAuthSession =
       seqNum: number
       id: number
     }
-  | Record<string, never>
 
 type VieraAuth =
   | Record<string, never>
@@ -58,78 +52,114 @@ type VieraAuth =
       key: string
     }
 
-const getKey = (searchKey: string, data: string): Outcome<string> => {
-  let value: string
-  const fn = (object: Record<string, unknown>, key: string, results: string[] = []): string => {
-    const r = results
-    Object.keys(object).forEach((k) => {
-      const value = object[k]
-      const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object'
-      key === k ? !isObj(value) && r.push(value as string) : isObj(value) && fn(value, key, r)
-    })
-    // we only care about 1st result...
-    return r[0]
-  }
-  try {
-    /*
-     * FIXME: we should do some fine grained error handling here, sadly the
-     *        obvious one can't be done as we 'd get ...
-     *          Error: Multiple possible root nodes found.
-     *        which of all things breaks pairing (#34)
-     */
-    value = fn(xml2obj(data), searchKey)
-  } catch (error) {
-    return { error: error as Error }
-  }
-  return { value }
-}
-
 class VieraTV implements VieraTV {
+  private static readonly NRC = '/nrc/control_0'
+  private static readonly DMR = '/dmr/control_0'
+  private static readonly INFO = '/nrc/ddd.xml'
+  private static readonly ACTIONS = '/nrc/sdd_0.xml'
+
+  private static readonly RemoteURN = 'panasonic-com:service:p00NetworkControl:1'
+  private static readonly RenderingURN = 'schemas-upnp-org:service:RenderingControl:1'
+  private static readonly plainText = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
+
+  static readonly port = 55000
+
   readonly address: string
 
   readonly mac: string | undefined
 
-  readonly port = API_ENDPOINT
-
-  readonly baseURL: string
-
   readonly log: Logger | Console
 
+  apps: Outcome<VieraApps> = {}
   auth: VieraAuth = {}
-
-  session: VieraAuthSession = {}
+  #client: AxiosInstance
+  #session: VieraSession = {}
 
   specs: VieraSpecs = {}
 
-  constructor(ip: string, log: Logger | Console, mac?: string) {
+  private constructor(ip: string, log: Logger | Console, mac?: string) {
     this.address = ip
-    this.baseURL = `http://${this.address}:${this.port}`
-
     this.log = log
     this.mac = mac
+
+    this.#client = axios.create({
+      baseURL: `http://${this.address}:${VieraTV.port}`,
+      headers: {
+        Accept: 'application/xml',
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/xml; charset="utf-8"',
+        Host: `${this.address}:${VieraTV.port}`,
+        Pragma: 'no-cache'
+      },
+      timeout: 3500
+    })
   }
 
-  static livenessProbe = async (
-    tv: string,
-    port = API_ENDPOINT,
-    timeout = 1500
-  ): Promise<boolean> => {
-    return await new Promise<boolean>((resolve) => {
-      const socket = new net.Socket()
+  static async connect(
+    ip: string,
+    log: Logger | Console,
+    settings: { auth?: VieraAuth; bootstrap?: boolean; cached?: VieraSpecs; mac?: string } = {}
+  ): Promise<Outcome<VieraTV>> {
+    const tv = new VieraTV(ip, log, settings.mac)
+    tv.specs = await tv.#getSpecs()
+    settings.bootstrap ??= false
+    if (!settings.bootstrap) {
+      if (isEmpty(tv.specs) && settings?.cached != null) {
+        tv.log.warn(`Unable to fetch specs from TV at '${ip}'.`)
+        tv.log.warn('Using the previously cached ones:\n\n', JSON.stringify(settings?.cached))
+        if (settings?.cached?.requiresEncryption) {
+          const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`
+          return { error: Error(err) }
+        }
+        tv.specs ??= settings?.cached
+      }
 
+      if (tv.specs.requiresEncryption) {
+        const err = `'${ip} ('${tv.specs.modelName}')' ignored, as it is from a Panasonic TV that
+        requires  encryption and no working credentials were supplied.`
+
+        if (settings?.auth != null) tv.auth = settings.auth
+        if (tv.auth == null) return { error: Error(err) }
+
+        tv.#deriveSessionKey(tv.auth.key)
+        const result = await tv.#requestSessionId()
+
+        if (Abnormal(result)) return { error: Error(err) }
+      }
+    } else if (isEmpty(tv.specs))
+      return { error: Error('An unexpected error occurred - Unable to fetch specs from the TV.') }
+
+    tv.apps = await tv.#getApps()
+
+    return { value: tv }
+  }
+
+  static probe = async (ip: string, log: Logger | Console = console): Promise<Outcome<VieraTV>> =>
+    !isIPv4(ip)
+      ? { error: Error('Please introduce a valid ip address!') }
+      : !(await VieraTV.livenessProbe(ip))
+      ? { error: Error(`The provided IP (${ip}) is unreachable.`) }
+      : await this.connect(ip, log, { bootstrap: true })
+
+  static livenessProbe = async (tv: string, timeout = 1500): Promise<boolean> =>
+    await new Promise<boolean>((resolve) => {
+      const socket = new net.Socket()
       const state = (state = true): void => {
         socket.destroy()
         resolve(state)
       }
       const [isUp, isDown] = [(): void => state(true), (): void => state(false)]
 
-      socket.connect(port, tv, isUp).on('error', isDown).setTimeout(timeout).on('timeout', isDown)
+      socket
+        .connect(VieraTV.port, tv, isUp)
+        .on('error', isDown)
+        .setTimeout(timeout)
+        .on('timeout', isDown)
     })
-  }
 
-  isTurnedOn = async (): Promise<boolean> => {
-    const status = await new Promise<boolean>((resolve) => {
-      const watcher = new UPnPSubscription(this.address, API_ENDPOINT, '/nrc/event_0')
+  isTurnedOn = async (): Promise<boolean> =>
+    await new Promise<boolean>((resolve) => {
+      const watcher = new UPnPSubscription(this.address, VieraTV.port, '/nrc/event_0')
       setTimeout(() => watcher.unsubscribe(), 1500)
       watcher
         .once('message', (message): void => {
@@ -155,124 +185,87 @@ class VieraTV implements VieraTV {
         })
         .on('error', () => resolve(false))
     })
-    return status
-  }
 
-  needsCrypto = async (): Promise<boolean> => {
-    return await curl
-      .get(`${this.baseURL}/nrc/sdd_0.xml`)
+  #needsCrypto = async (): Promise<boolean> =>
+    await this.#client
+      .get(VieraTV.ACTIONS)
       // @ts-expect-error (ts2352)
       .then((resp) => !!((resp.data as string).match(/X_GetEncryptSessionId/u) as boolean))
       .catch(() => false)
-  }
 
-  requestSessionId = async (): Promise<Outcome<void>> => {
-    const appId = obj2xml({ X_ApplicationId: this.auth.appId })
-
-    const outcome = this.#encryptPayload(appId)
-
-    if (Abnormal(outcome)) return outcome
-
-    const parameters = obj2xml({
-      X_ApplicationId: this.auth.appId,
-      X_EncInfo: outcome.value
-    })
-
+  #requestSessionId = async (): Promise<Outcome<void>> => {
+    let outcome: Outcome<string>
     const callback = (data: string): Outcome<void> => {
       const error = Error('abnormal result from TV - session ID is not (!) an integer')
-      this.session.seqNum = 1
-      const number = getKey('X_SessionId', data)
+      const match = /<X_SessionId>(?<sessionId>\d+)<\/X_SessionId>/u.exec(data)
+      const number = match?.groups?.sessionId
 
-      if (Abnormal(number)) {
-        this.log.error(number.error.message)
-        return { error }
-      }
+      if (number == null || Number.isNaN(number)) return { error }
 
-      if (Number.isInteger(number.value)) {
-        this.session.id = Number.parseInt(number.value, 10)
-        return { value: undefined }
-      }
-
-      return { error }
+      this.#session.seqNum = 1
+      this.#session.id = Number.parseInt(number, 10)
+      return {}
     }
 
-    return await this.#sendRequest('command', 'X_GetEncryptSessionId', parameters, callback)
+    return Ok((outcome = this.#encryptPayload(xml({ X_ApplicationId: this.auth.appId }))))
+      ? await this.#postRemote(
+          'X_GetEncryptSessionId',
+          xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value }),
+          callback
+        )
+      : outcome
   }
 
-  deriveSessionKey = (key: string): void => {
+  #deriveSessionKey = (key: string): void => {
     let [i, j]: number[] = []
     const iv = Buffer.from(key, 'base64')
-
-    this.session.iv = iv
-
     const keyVals = Buffer.alloc(16)
+
     for (i = j = 0; j < 16; i = j += 4) {
       keyVals[i] = iv[i + 2]
       keyVals[i + 1] = iv[i + 3]
       keyVals[i + 2] = iv[i]
       keyVals[i + 3] = iv[i + 1]
     }
-    this.session.key = Buffer.from(keyVals)
-    this.session.hmacKey = Buffer.concat([iv, iv])
+    this.#session.iv = iv
+    this.#session.key = Buffer.from(keyVals)
+    this.#session.hmacKey = Buffer.concat([iv, iv])
   }
 
   #decryptPayload(payload: string, key: Buffer, iv: Buffer): string {
-    const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv).setAutoPadding(false)
-
-    const decrypted = Buffer.concat([decipher.update(payload, 'base64'), decipher.final()]).slice(
-      16
-    )
-
-    const zero = decrypted.indexOf(0)
-    let clean = zero > -1 ? decrypted.slice(0, zero - 1) : decrypted
-
-    const finalizer = '</X_OriginalResult>'
-    const junk = clean.lastIndexOf(finalizer)
-    clean = junk > -1 ? clean.slice(0, junk + finalizer.length) : clean
-
-    return clean.toString('binary')
+    const aes = crypto.createDecipheriv('aes-128-cbc', key, iv)
+    const decrypted = aes.update(Buffer.from(payload, 'base64'))
+    return decrypted.toString('utf-8', 16, decrypted.indexOf('\u0000', 16))
   }
 
   #encryptPayload(
     original: string,
-    key: Buffer = this.session.key,
-    iv: Buffer = this.session.iv,
-    hmacKey: Buffer = this.session.hmacKey
+    key: Buffer = this.#session.key,
+    iv: Buffer = this.#session.iv,
+    hmacKey: Buffer = this.#session.hmacKey
   ): Outcome<string> {
-    const pad = (unpadded: Buffer): Buffer => {
-      const blockSize = 16
-      const extra = Buffer.alloc(blockSize - (unpadded.length % blockSize))
-      return Buffer.concat([unpadded, extra])
-    }
-    let ciphered: Buffer
-    let sig: Buffer
-
     try {
       const data = Buffer.from(original)
-      const headerPrefix = Buffer.from(
-        [...new Array(12)].map(() => Math.round(Math.random() * 255))
-      )
-
+      const headerPrefix = Buffer.from(crypto.randomBytes(12))
       const headerSufix = Buffer.alloc(4)
       headerSufix.writeIntBE(data.length, 0, 4)
-      const header = Buffer.concat([headerPrefix, headerSufix])
-      const payload = pad(Buffer.concat([header, data]))
-      const cipher = crypto.createCipheriv('aes-128-cbc', key, iv).setAutoPadding(false)
-      ciphered = Buffer.concat([cipher.update(payload), cipher.final()])
-      const hmac = crypto.createHmac('sha256', hmacKey)
-      sig = hmac.update(ciphered).digest()
+      const payload = Buffer.concat([headerPrefix, headerSufix, data])
+      const aes = crypto.createCipheriv('aes-128-cbc', key, iv)
+      const ciphered = Buffer.concat([aes.update(payload), aes.final()])
+      const sig = crypto.createHmac('sha256', hmacKey).update(ciphered).digest()
+
+      return { value: Buffer.concat([ciphered, sig]).toString('base64') }
     } catch (error) {
       return { error: error as Error }
     }
-    return { value: Buffer.concat([ciphered, sig]).toString('base64') }
   }
 
   /*
    * Returns the TV specs
    */
-  getSpecs = async (): Promise<VieraSpecs> => {
-    return await curl
-      .get(`${this.baseURL}/nrc/ddd.xml`)
+  #getSpecs = async (): Promise<VieraSpecs> => {
+    return await this.#client
+      .get(VieraTV.INFO)
       .then(async (raw): Promise<VieraSpecs> => {
         const jsonObject = xml2obj(raw.data as string)
         // @ts-expect-error ts(2339)
@@ -282,7 +275,7 @@ class VieraTV implements VieraTV {
           manufacturer: device.manufacturer,
           modelName: device.modelName,
           modelNumber: device.modelNumber,
-          requiresEncryption: await this.needsCrypto(),
+          requiresEncryption: await this.#needsCrypto(),
           serialNumber: device.UDN.slice(5)
         }
 
@@ -306,144 +299,123 @@ class VieraTV implements VieraTV {
     urn: string,
     parameters: string
   ): Promise<Outcome<string[]>> => {
-    this.log.debug(
-      '(renderEncryptedRequest) action: [%s] urn:[%s], parameters: [%s]',
-      action,
-      urn,
-      parameters
-    )
-    this.session.seqNum += 1
-    const X_SN = ('00000000' + this.session.seqNum.toString(10)).slice(-8)
-    const encCommand = obj2xml({
-      X_OriginalCommand: {
-        [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` }
-      },
-      X_SequenceNumber: X_SN,
-      X_SessionId: this.session.id
+    // this.log.debug(`(renderEncryptedRequest) [${action}] urn:[${urn}], parameters: [${parameters}]`)
+    this.#session.seqNum += 1
+
+    const encCommand = xml({
+      X_OriginalCommand: { [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` } },
+      X_SequenceNumber: String(this.#session.seqNum + 1).padStart(8, '0'),
+      X_SessionId: this.#session.id
     })
     const outcome = this.#encryptPayload(encCommand)
 
-    if (Abnormal(outcome)) return outcome
-
-    return {
-      value: [
-        'X_EncryptedCommand',
-        obj2xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
-      ]
-    }
+    return Ok(outcome)
+      ? {
+          value: [
+            'X_EncryptedCommand',
+            xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
+          ]
+        }
+      : outcome
   }
 
   #renderRequest = (action: string, urn: string, parameters: string): AxiosRequestConfig => {
     const method: AxiosRequestConfig['method'] = 'POST'
     const responseType: AxiosRequestConfig['responseType'] = 'text'
-    const headers = {
-      Accept: 'text/xml',
-      'Cache-Control': 'no-cache',
-      'Content-Type': 'text/xml; charset="utf-8"',
-      Host: `${this.address}:${this.port}`,
-      Pragma: 'no-cache',
-      SOAPACTION: `"urn:${urn}#${action}"`
-    }
-    const body = obj2xml({
-      's:Envelope': {
-        '@_s:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/',
-        '@_xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/',
-        's:Body': {
-          [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` }
+    const headers = { SOAPACTION: `"urn:${urn}#${action}"` }
+    const data = '<?xml version="1.0" encoding="utf-8"?>'.concat(
+      xml({
+        's:Envelope': {
+          '@_s:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/',
+          '@_xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/',
+          's:Body': { [`u:${action}`]: { '#text': parameters, '@_xmlns:u': `urn:${urn}` } }
         }
-      }
-    })
-    const data = '<?xml version="1.0" encoding="utf-8"?>' + body
+      })
+    )
 
     return { data, headers, method, responseType }
   }
 
-  #sendRequest = async <T>(
+  #post = async <T>(
     requestType: RequestType,
     realAction: string,
     realParameters = 'None',
     closure: (arg: string) => Outcome<T> = (x) => x as unknown as Outcome<T>
   ): Promise<Outcome<T>> => {
-    let [urL, urn, action, parameters]: string[] = []
-    const sessionGoneRogue = 'No such session'
-    const reqIs4Command = requestType === 'command'
-
-    urL = reqIs4Command ? '/nrc/control_0' : '/dmr/control_0'
-    urn = reqIs4Command
-      ? 'panasonic-com:service:p00NetworkControl:1'
-      : 'schemas-upnp-org:service:RenderingControl:1'
+    let [action, parameters]: string[] = []
+    let payload: Outcome<T>, reset: Outcome<void>
+    const [sessionGone, isCommand] = ['No such session', requestType === 'command']
+    const [urL, urn] = isCommand
+      ? [VieraTV.NRC, VieraTV.RemoteURN]
+      : [VieraTV.DMR, VieraTV.RenderingURN]
 
     const doIt = async (): Promise<Outcome<T>> => {
-      const reencode =
-        this.specs.requiresEncryption && reqIs4Command && !AlwaysInPlainText.includes(realAction)
-
-      if (reencode) {
+      if (this.specs.requiresEncryption && isCommand && !VieraTV.plainText.includes(realAction)) {
         const outcome = await this.#renderEncryptedRequest(realAction, urn, realParameters)
 
-        if (Abnormal(outcome)) return outcome
-        else [action, parameters] = outcome.value
+        if (Ok(outcome)) [action, parameters] = outcome.value
+        else return outcome
       } else [action, parameters] = [realAction, realParameters]
 
-      const request = this.#renderRequest(action, urn, parameters)
-
-      return await curl(this.baseURL + urL, request)
+      return await this.#client(urL, this.#renderRequest(action, urn, parameters))
         .then((r) => {
-          let value: T
-          if (AlwaysEncrypted.includes(action)) {
-            const extracted = getKey('X_EncResult', r.data as string)
-
-            if (Abnormal(extracted)) return extracted
-
-            value = this.#decryptPayload(
-              extracted.value,
-              this.session.key,
-              this.session.iv
-            ) as unknown as T
-          } else value = r.data as T
+          const replacer = (_match: string, _offset: string, content: string): string =>
+            this.#decryptPayload(content, this.#session.key, this.#session.iv)
+          const value = r.data.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer)
 
           return { value }
         })
         .catch((error) =>
-          error.response?.status === 500 &&
-          (error.response.data as string)?.includes(sessionGoneRogue)
-            ? { error: Error(sessionGoneRogue) }
+          error.response?.status === 500 && (error.response.data as string)?.includes(sessionGone)
+            ? { error: Error(sessionGone) }
             : { error }
         )
     }
 
-    let payload = await doIt()
-    const warn = 'Session mismatch found, so the session counter was reset in order to move on.'
-    if (Abnormal(payload)) {
-      if (payload.error.message === sessionGoneRogue) {
-        this.log.warn(warn)
-        const reset = await this.requestSessionId()
-        if (Abnormal(reset)) return reset
-        const retry = await doIt()
-        if (Abnormal(retry)) return retry
-        payload = retry
+    if (Abnormal((payload = await doIt())))
+      if (payload.error.message === sessionGone) {
+        this.log.warn('Session mismatch found; The session counter was reset in order to move on.')
+        if (Abnormal((reset = await this.#requestSessionId()))) return reset
+        if (Abnormal((payload = await doIt()))) return payload
       } else return payload
-    }
 
     return closure(payload.value as unknown as string)
   }
 
-  #requestPinCode = async (): Promise<Outcome<void>> => {
-    const parameters = obj2xml({ X_DeviceName: 'MyRemote' })
+  requestPinCode = async (): Promise<Outcome<void>> => {
+    const overreachErr = `The ${this.specs.modelNumber} model at ${this.address} doesn't need encryption!`
+    const unexpectedErr = `An unexpected error occurred while attempting to request a pin code from the TV.`
+    const notReadyErr = `Unable to request pin code as the TV seems to be in standby; Please turn it ON!`
+
+    const parameters = xml({ X_DeviceName: 'MyRemote' })
     const callback = (data: string): Outcome<void> => {
-      const match = /<X_ChallengeKey>(\S*)<\/X_ChallengeKey>/gmu.exec(data)
-      const error = Error('unexpected reply from TV when requesting challenge key')
+      const match = /<X_ChallengeKey>(?<challenge>\S*)<\/X_ChallengeKey>/u.exec(data)
 
-      if (match === null) return { error }
+      if (match?.groups?.challenge == null) return { error: Error(unexpectedErr) }
 
-      this.session.challenge = Buffer.from(match[1], 'base64')
-      return { value: undefined }
+      this.#session.challenge = Buffer.from(match.groups.challenge, 'base64')
+      return {}
     }
-    return await this.#sendRequest('command', 'X_DisplayPinCode', parameters, callback)
+
+    return !this.specs.requiresEncryption
+      ? { error: Error(overreachErr) }
+      : !(await this.isTurnedOn())
+      ? { error: Error(notReadyErr) }
+      : await this.#postRemote('X_DisplayPinCode', parameters, callback)
   }
 
-  #authorizePinCode = async (pin: string): Promise<Outcome<VieraAuth>> => {
-    const [iv, key, hmacKey] = [this.session.challenge, Buffer.alloc(16), Buffer.alloc(32)]
+  #postRemote = async <T>(
+    realAction: string,
+    realParameters = 'None',
+    closure: (arg: string) => Outcome<T> = (x) => x as unknown as Outcome<T>
+  ): Promise<Outcome<T>> => await this.#post('command', realAction, realParameters, closure)
+
+  authorizePinCode = async (pin: string): Promise<Outcome<VieraAuth>> => {
     let [i, j, l, k]: number[] = []
+    let ack: Outcome<VieraAuth>, outcome: Outcome<string>
+    const [iv, key, hmacKey] = [this.#session.challenge, Buffer.alloc(16), Buffer.alloc(32)]
+    const error = Error('Wrong pin code...')
+
     for (i = k = 0; k < 16; i = k += 4) {
       key[i] = ~iv[i + 3] & 0xff
       key[i + 1] = ~iv[i + 2] & 0xff
@@ -462,38 +434,30 @@ class VieraTV implements VieraTV {
       hmacKey[j + 2] = hmacKeyMaskVals[j + 2] ^ iv[j & 0xf]
       hmacKey[j + 3] = hmacKeyMaskVals[j + 3] ^ iv[(j + 1) & 0xf]
     }
-    const data = obj2xml({ X_PinCode: pin })
-    const outcome = this.#encryptPayload(data, key, iv, hmacKey)
-
-    if (Abnormal(outcome)) return outcome
-
-    const parameters = obj2xml({ X_AuthInfo: outcome.value })
-
     const callback = (r: string): Outcome<VieraAuth> => {
-      const raw = getKey('X_AuthResult', r)
-      if (Abnormal(raw)) return raw
+      const AuthResult = /(<X_AuthResult>)(.*)(<\/X_AuthResult>)/g
+      const KeyPair =
+        /<X_ApplicationId>(?<appId>\S+)<\/X_ApplicationId>\s+<X_Keyword>(?<key>\S+)<\/X_Keyword>/
+      const replacer = (_match: string, _offset: string, content: string): string =>
+        this.#decryptPayload(content, key, iv)
 
-      const authResultDecrypted = this.#decryptPayload(raw.value, key, iv)
-      const appId = getKey('X_ApplicationId', authResultDecrypted)
-
-      if (Abnormal(appId)) return appId
-
-      const keyy = getKey('X_Keyword', authResultDecrypted)
-
-      if (Abnormal(keyy)) return keyy
-
-      return {
-        value: {
-          appId: appId.value,
-          key: keyy.value
-        }
-      }
+      return { value: KeyPair.exec(r.replace(AuthResult, replacer))?.groups as VieraAuth }
     }
 
-    return await this.#sendRequest('command', 'X_RequestAuth', parameters, callback)
+    return Abnormal((outcome = this.#encryptPayload(xml({ X_PinCode: pin }), key, iv, hmacKey)))
+      ? outcome
+      : Ok(
+          (ack = await this.#postRemote(
+            'X_RequestAuth',
+            xml({ X_AuthInfo: outcome.value }),
+            callback
+          ))
+        )
+      ? ack
+      : { error }
   }
 
-  #renderSampleConfig = (): void => {
+  renderSampleConfig = (): void => {
     const sample = {
       platform: 'PanasonicVieraTV',
       tvs: [
@@ -507,7 +471,7 @@ class VieraTV implements VieraTV {
 
     console.info(
       '\n',
-      "Please add, as a starting point, the snippet bellow inside the'",
+      'Please add, as a starting point, the snippet bellow inside the ',
       "'platforms' array of your homebridge's 'config.json'\n--x--"
     )
 
@@ -519,130 +483,74 @@ class VieraTV implements VieraTV {
 
   static webSetup = async (ctx: VieramaticPlatform): Promise<void> => {
     const server = http.createServer(async (request, response) => {
-      let ip: string | null
-      let tv: VieraTV
-      const urlObject = new URL(request.url ?? '', `http://${request.headers.host as string}`)
+      let ip: string, tv: VieraTV
+      const urlObj = new URL(request.url ?? '', `http://${request.headers.host as string}`)
 
       let [returnCode, body] = [200, 'nothing to see here - move on']
 
-      ctx.log.debug(urlObject.toString())
+      ctx.log.debug(urlObj.toString())
 
-      if (urlObject.searchParams.has('pin')) {
-        if (urlObject.searchParams.has('tv')) {
-          const [ip, pin] = [urlObject.searchParams.get('tv'), urlObject.searchParams.get('pin')]
+      if (urlObj.searchParams.has('pin')) {
+        if (urlObj.searchParams.has('tv')) {
+          const ip = urlObj.searchParams.get('tv') as string
+          const pin = urlObj.searchParams.get('pin') as string
 
-          ctx.log.debug(urlObject.toString())
+          ctx.log.debug(urlObj.toString())
 
-          if (isIPv4(ip as string)) {
-            const address = ip as string
-            if (await VieraTV.livenessProbe(address)) {
-              tv = new VieraTV(address, ctx.log)
-              const specs = await tv.getSpecs()
-              tv.specs = specs
-              if (specs?.requiresEncryption && urlObject.searchParams.has('challenge')) {
-                tv.session.challenge = Buffer.from(
-                  urlObject.searchParams.get('challenge') as string,
-                  'base64'
-                )
-                const result = await tv.#authorizePinCode(pin as string)
-                if (Abnormal(result)) {
-                  returnCode = 500
-                  body = 'Wrong Pin code...'
-                } else {
-                  tv.auth = result.value
-                  body = html`
-                    Paired with your TV sucessfully!.
-                    <br />
-                    <b>Encryption Key</b>: <b>${tv.auth.key}</b>
-                    <br />
-                    <b>AppId</b>: <b>${tv.auth.appId}</b>
-                    <br />
-                  `
-                }
-              }
+          const probe = await VieraTV.probe(ip, ctx.log)
+          if (Ok(probe)) {
+            tv = probe.value
+            if (tv?.specs?.requiresEncryption && urlObj.searchParams.has('challenge')) {
+              const challenge = urlObj.searchParams.get('challenge') as string
+              tv.#session.challenge = Buffer.from(challenge, 'base64')
+              const auth = await tv.authorizePinCode(pin)
+              if (Ok(auth)) {
+                tv.auth = auth.value
+                body = html` Paired with your TV sucessfully!. <br />
+                  <b>Encryption Key</b>: <b>${tv.auth.key}</b> <br />
+                  <b>AppId</b>: <b>${tv.auth.appId}</b> <br />`
+              } else [returnCode, body] = [500, auth.error.message]
             }
-          }
+          } else [returnCode, body] = [500, probe.error.message]
         }
-      } else if ((ip = urlObject.searchParams.get('ip')) != null) {
-        if (!isIPv4(ip)) {
-          returnCode = 500
-          body = html` the supplied TV ip address ('${ip}') is NOT a valid IPv4 address... `
-        } else {
-          const address = ip
-          if (!(await VieraTV.livenessProbe(address))) {
-            body = html`the supplied TV ip address '${ip}' is unreachable...`
+      } else if ((ip = urlObj.searchParams.get('ip') as string) != null) {
+        const probe = await VieraTV.probe(ip, ctx.log)
+        if (Ok(probe)) {
+          tv = probe.value
+          if (isEmpty(tv.specs)) {
+            returnCode = 500
+            body = html` An unexpected error occurred: <br />
+              Unable to fetch specs from the TV (at ${ip}).`
           } else {
-            tv = new VieraTV(address, ctx.log)
-            const specs = await tv.getSpecs()
-            tv.specs = specs
-            if (isEmpty(specs)) {
-              returnCode = 500
-              body = html`
-                An unexpected error occurred:
-                <br />
-                Unable to fetch specs from the TV (with ip address ${ip}).
-              `
-            } else if (!specs.requiresEncryption) {
-              returnCode = 500
-              body = html`
-                Found a <b>${specs.modelNumber}</b> on ip address ${ip}!
-                <br />
-                It's just that
-                <b>this specific model does not require encryption</b>!
-              `
-            } else if (!(await tv.isTurnedOn())) {
-              returnCode = 500
-              body = html`
-                Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires encryption.
-                <br />
-                Unfortunatelly the TV seems to be in standby.
-                <b>Please turn it ON</b> and try again.
-              `
-            } else {
-              const newRequest = await tv.#requestPinCode()
-              if (Abnormal(newRequest)) {
-                returnCode = 500
-                body = html`
-                  Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires
-                  encryption.
-                  <br />
-                  Sadly an unexpected error ocurred while attempting to request a pin code from the
-                  TV. Please make sure that the TV is powered ON (and NOT in standby).
-                `
-              } else {
-                body = html`
-                  Found a <b>${specs.modelNumber}</b>, on ip address ${ip}, which requires
-                  encryption.
-                  <br />
-                  <form action="/">
-                    <label for="pin">
-                      Please enter the PIN just displayed in Panasonic™ Viera™ TV:
-                    </label>
-                    <br /><input type="text" id="pin" name="pin" />
-                    <input type="hidden" value=${ip} name="tv" />
-                    <input
-                      type="hidden"
-                      value=${tv.session.challenge.toString('base64')}
-                      name="challenge"
-                    />
-                    <input type="submit" value="Submit" />
-                  </form>
-                `
-              }
-            }
+            const challenge = await tv.requestPinCode()
+            if (Ok(challenge)) {
+              body = html` Found a <b>${tv.specs.modelNumber}</b>, on ${ip}, which requires
+                encryption. <br />
+                <form action="/">
+                  <label for="pin">
+                    Please enter the PIN just displayed in Panasonic™ Viera™ TV:
+                  </label>
+                  <br /><input type="text" id="pin" name="pin" />
+                  <input type="hidden" value=${ip} name="tv" />
+                  <input
+                    type="hidden"
+                    value=${tv.#session.challenge.toString('base64')}
+                    name="challenge"
+                  />
+                  <input type="submit" value="Submit" />
+                </form>`
+            } else [returnCode, body] = [500, challenge.error.message]
           }
-        }
+        } else [returnCode, body] = [500, probe.error.message]
       } else {
-        body = html`
-          <form action="/">
-            <label for="ip">
-              Please enter your Panasonic™ Viera™ (2018 or later model) IP address:
-            </label>
-            <br />
-            <input type="text" id="ip" name="ip" />
-            <input type="submit" value="Submit" />
-          </form>
-        `
+        body = html` <form action="/">
+          <label for="ip">
+            Please enter your Panasonic™ Viera™ (2018 or later model) IP address:
+          </label>
+          <br />
+          <input type="text" id="ip" name="ip" />
+          <input type="submit" value="Submit" />
+        </form>`
       }
 
       response.writeHead(returnCode, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -666,136 +574,84 @@ class VieraTV implements VieraTV {
     server.listen(8973)
   }
 
-  static setup = async (ip: string): Promise<void> => {
-    if (!isIPv4(ip)) throw Error('Please introduce a valid ip address!')
-
-    if (!(await VieraTV.livenessProbe(ip))) throw Error('The IP you provided is unreachable.')
-
-    const tv = new VieraTV(ip, console)
-    const specs = await tv.getSpecs()
-
-    if (isEmpty(specs))
-      throw Error('An unexpected error occurred - Unable to fetch specs from the TV.')
-
-    tv.specs = specs
-    if (tv.specs.requiresEncryption) {
-      if (!(await tv.isTurnedOn()))
-        throw Error(
-          'Unable to proceed further as the TV seems to be in standby; Please turn it ON!'
-        )
-
-      const request = await tv.#requestPinCode()
-      if (Abnormal(request))
-        throw Error(
-          `\nAn unexpected error occurred while attempting to request a pin code from the TV.
-           \nPlease make sure that the TV is powered ON (and NOT in standby).`
-        )
-
-      const pin = question('Enter the displayed pin code: ')
-      const outcome = await tv.#authorizePinCode(pin)
-
-      if (Abnormal(outcome)) throw Error('Wrong pin code...')
-
-      tv.auth = outcome.value
-    }
-    tv.#renderSampleConfig()
-  }
-
   /**
-   * Sends a command to the TV
+   * Sends a (command) Key to the TV
    */
-  sendCommand = async <T>(cmd: string): Promise<Outcome<T>> => {
-    const parameters = obj2xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` })
-
-    return await this.#sendRequest('command', 'X_SendKey', parameters)
-  }
+  sendKey = async <T>(cmd: string): Promise<Outcome<T>> =>
+    await this.#postRemote('X_SendKey', xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` }))
 
   /**
    * Send a change HDMI input to the TV
    */
-  sendHDMICommand = async <T>(hdmiInput: string): Promise<Outcome<T>> => {
-    const parameters = obj2xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` })
-
-    return await this.#sendRequest('command', 'X_SendKey', parameters)
-  }
+  switchToHDMI = async <T>(hdmiInput: string): Promise<Outcome<T>> =>
+    await this.#postRemote('X_SendKey', xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` }))
 
   /**
    * Send command to open app on the TV
    */
-  sendAppCommand = async <T>(appId: string): Promise<Outcome<T>> => {
-    const cmd = appId.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`
-    const parameters = obj2xml({ X_AppType: 'vc_app', X_LaunchKeyword: cmd })
-
-    return await this.#sendRequest('command', 'X_LaunchApp', parameters)
-  }
+  launchApp = async <T>(appId: string): Promise<Outcome<T>> =>
+    await this.#postRemote(
+      'X_LaunchApp',
+      xml({
+        X_AppType: 'vc_app',
+        X_LaunchKeyword: appId.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`
+      })
+    )
 
   /**
    * Get volume from TV
    */
   getVolume = async (): Promise<Outcome<string>> => {
     const callback = (data: string): Outcome<string> => {
-      const match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gmu.exec(data)
-      return match != null ? { value: match[1] } : { value: '0' }
+      const match = /<CurrentVolume>(?<volume>\d*)<\/CurrentVolume>/u.exec(data)
+      return match?.groups?.volume != null ? { value: match.groups.volume } : { value: '0' }
     }
-    const parameters = AudioChannel
-
-    return await this.#sendRequest<string>('render', 'GetVolume', parameters, callback)
+    return await this.#post('render', 'GetVolume', AudioChannel, callback)
   }
 
   /**
    * Set Volume
    */
-  setVolume = async (volume: string): Promise<Outcome<void>> => {
-    const parameters = AudioChannel + obj2xml({ DesiredVolume: volume })
-
-    return await this.#sendRequest('render', 'SetVolume', parameters)
-  }
+  setVolume = async (volume: string): Promise<Outcome<void>> =>
+    await this.#post('render', 'SetVolume', AudioChannel.concat(xml({ DesiredVolume: volume })))
 
   /**
-   * Get the current mute setting
+   * Gets the current mute setting
+   * @returns true for mute
    */
   getMute = async (): Promise<Outcome<boolean>> => {
     const callback = (data: string): Outcome<boolean> => {
-      const match = /<CurrentMute>([0-1])<\/CurrentMute>/gmu.exec(data)
+      const match = /<CurrentMute>(?<mute>[01])<\/CurrentMute>/u.exec(data)
 
-      return match != null ? { value: match[1] === '1' } : { value: true }
+      return match?.groups?.mute != null ? { value: match.groups.mute === '1' } : { value: true }
     }
 
-    return await this.#sendRequest('render', 'GetMute', AudioChannel, callback)
+    return await this.#post('render', 'GetMute', AudioChannel, callback)
   }
 
   /**
    * Set mute to on/off
    */
-  setMute = async (enable: boolean): Promise<Outcome<void>> => {
-    const mute = enable ? '1' : '0'
-    const parameters = AudioChannel + obj2xml({ DesiredMute: mute })
-
-    return await this.#sendRequest('render', 'SetMute', parameters)
-  }
+  setMute = async (d: boolean): Promise<Outcome<void>> =>
+    await this.#post('render', 'SetMute', AudioChannel.concat(xml({ DesiredMute: d ? '1' : '0' })))
 
   /**
    * Returns the list of apps on the TV
    */
-  getApps = async (): Promise<Outcome<VieraApps>> => {
+  #getApps = async (): Promise<Outcome<VieraApps>> => {
     const callback = (data: string): Outcome<VieraApps> => {
-      const raw = getKey('X_AppList', data)
-      if (Abnormal(raw)) {
-        this.log.error('X_AppList returned originally', data)
-        return raw
-      }
+      const value: VieraApps = []
+      const raw = /<X_AppList>(?<appList>.*)<\/X_AppList>/u.exec(data)?.groups?.appList
 
-      const apps: VieraApps = []
-      const re = /'product_id=(?<id>(\d|[A-Z])+)'(?<appName>([^'])+)/gmu
+      if (raw == null) return { error: Error('X_AppList returned originally:\n'.concat(data)) }
 
-      let i
-      while ((i = re.exec(decode(raw.value, { level: 'xml' }))) != null)
-        i.groups !== undefined && apps.push({ id: i.groups.id, name: i.groups.appName })
+      for (const i of decode(raw).matchAll(/'product_id=(?<id>[\dA-Z]+)'(?<name>[^']+)/gu))
+        i.groups != null && value.push(i.groups as unknown as VieraApp)
 
-      return apps.length === 0 ? { error: Error('The TV is in standby!') } : { value: apps }
+      return value.length === 0 ? { error: Error('The TV is in standby!') } : { value }
     }
-    return await this.#sendRequest('command', 'X_GetAppList', undefined, callback)
+    return await this.#postRemote('X_GetAppList', undefined, callback)
   }
 }
 
-export { VieraApp, VieraApps, VieraSpecs, VieraTV }
+export { VieraApp, VieraApps, VieraAuth, VieraSpecs, VieraTV }

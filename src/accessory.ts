@@ -4,7 +4,7 @@ import util from 'util'
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, sleep, Outcome } from './helpers'
+import { Abnormal, sleep, Ok, Outcome } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
@@ -59,8 +59,7 @@ class VieramaticPlatformAccessory {
   constructor(
     private readonly platform: VieramaticPlatform,
     readonly accessory: PlatformAccessory,
-    private readonly userConfig: UserConfig,
-    private readonly tvApps: VieraApps
+    private readonly userConfig: UserConfig
   ) {
     this.log = this.platform.log
     this.Service = this.platform.Service
@@ -120,7 +119,7 @@ class VieramaticPlatformAccessory {
       )
 
     this.service.addCharacteristic(this.Characteristic.PowerModeSelection).onSet(async () => {
-      const outcome = await this.device.sendCommand('MENU')
+      const outcome = await this.device.sendKey('MENU')
       if (Abnormal(outcome))
         this.log.error('unexpected error in PowerModeSelection.set', outcome.error)
     })
@@ -201,20 +200,20 @@ class VieramaticPlatformAccessory {
       for (const req of required)
         if (!Object.prototype.hasOwnProperty.call(input, req)) {
           this.log.warn(
-            'ignoring hdmi input "%s" as it has a missing required field ("%s" is required)',
-            input,
-            req
+            `ignoring hdmi input "${JSON.stringify(
+              input
+            )}" as it has a missing required field ("${req}" is required)`
           )
           return false
         }
 
       return true
     })
-
+    const apps = Ok(this.device.apps) ? this.device.apps.value : []
     if (this.storage.data == null)
       this.storage.data = {
         inputs: {
-          applications: { ...this.tvApps },
+          applications: { ...apps },
           hdmi: this.userConfig.hdmiInputs,
           // add default TUNER (live TV)... visible by default
           TUNER: { hidden: 0 }
@@ -243,8 +242,8 @@ class VieramaticPlatformAccessory {
       userConfig.hdmiInputs.forEach((input) => {
         const found = this.storage.data.inputs.hdmi.findIndex((x) => sameNameId(x, input))
         if (found === -1) {
-          const msg = "adding HDMI input '%s' - '%s' as it was appended to config.json"
-          this.log.info(msg, input.id, input.name)
+          const msg = `appending HDMI input '${input.id}':'${input.name}' as it was appended to config.json`
+          this.log.info(msg)
           this.storage.data.inputs.hdmi.push(input)
         }
       })
@@ -253,35 +252,32 @@ class VieramaticPlatformAccessory {
         const found = userConfig.hdmiInputs.findIndex((x) => sameId(x, input))
         if (found !== -1) return true
 
-        const msg = "unsetting HDMI input '%s' ['%s'] since it was dropped from the config.json"
+        const msg = `removing HDMI input '${input.id}':'${input.name}' as it was dropped from the config.json`
         this.log.info(msg, input.id, input.name)
         return false
       })
 
       this.storage.data.ipAddress = this.userConfig.ipAddress
       this.storage.data.specs = { ...this.device.specs }
-
-      if (this.tvApps.length > 0) {
+      if (apps.length > 0) {
         const next: VieraApps = []
         Object.entries(this.storage.data.inputs.applications).forEach((line) => {
           const [_, app] = line
-          const found = [...tvApps].some((x: VieraApp): boolean => x.name === app.name)
+          const found = [...apps].some((x: VieraApp): boolean => x.name === app.name)
           if (!found) {
-            const msg = "deleting TV App '%s' as it wasn't removed from your TV's"
-            this.log.warn(msg, app.name)
+            this.log.warn(`deleting TV App '${app.name}' as it wasn't removed from your TV's`)
           } else next.push(app)
         })
-        Object.entries([...this.tvApps]).forEach((line) => {
+        Object.entries([...apps]).forEach((line) => {
           const [_, app] = line
           const found = next.some((x: VieraApp): boolean => x.name === app.name)
           if (!found) {
-            const msg = "adding TV App '%s' since it was added to your TV"
-            this.log.warn(msg, app.name)
+            this.log.warn(`adding TV App '${app.name}' since it was added to your TV`)
             next.push(app)
           }
         })
         this.storage.data.inputs.applications = { ...next }
-      }
+      } else this.log.warn('Using previously cached App listing.')
     }
 
     // TV Tuner
@@ -316,22 +312,21 @@ class VieramaticPlatformAccessory {
 
   private async setInput(value: CharacteristicValue): Promise<void> {
     const fn = async (): Promise<Outcome<void>> => {
-      let app: VieraApp
-      let real: number
+      let app: VieraApp, real: number
 
       switch (true) {
         case value < 100:
           this.log.debug('(setInput) switching to HDMI INPUT ', value)
-          return await this.device.sendHDMICommand((value as number).toString())
+          return await this.device.switchToHDMI((value as number).toString())
         case value > 999:
           real = (value as number) - 1000
           app = this.storage.data.inputs.applications[real]
           this.log.debug('(setInput) switching to App', app.name)
-          return await this.device.sendAppCommand(app.id)
+          return await this.device.launchApp(app.id)
         case value === 500:
         default:
           this.log.debug('(setInput) switching to internal TV tunner')
-          return await this.device.sendCommand('AD_CHANGE')
+          return await this.device.sendKey('AD_CHANGE')
       }
     }
 
@@ -427,7 +422,7 @@ class VieramaticPlatformAccessory {
       await this.updateTVstatus(nextState)
       this.log.debug('Turned TV', message)
     } else {
-      const cmd = await this.device.sendCommand('POWER')
+      const cmd = await this.device.sendKey('POWER')
       if (Abnormal(cmd))
         this.log.error('(setPowerStatus)/-> %s - unable to power cycle TV - unpowered ?', message)
       else {
@@ -451,7 +446,7 @@ class VieramaticPlatformAccessory {
 
     if (state) {
       const cmd = await this.device.getMute()
-      mute = !Abnormal(cmd) ? cmd.value : true
+      mute = Ok(cmd) ? cmd.value : true
     } else mute = true
 
     this.log.debug('(getMute) is', mute)
@@ -460,24 +455,21 @@ class VieramaticPlatformAccessory {
 
   async setMute(state: CharacteristicValue): Promise<void> {
     this.log.debug('(setMute) is', state)
-    const cmd = await this.device.setMute(state as boolean)
-
-    if (Abnormal(cmd)) this.log.error('(setMute)/(%s) unable to change mute state on TV...', state)
+    if (Abnormal(await this.device.setMute(state as boolean)))
+      this.log.error('(setMute)/(%s) unable to change mute state on TV...', state)
   }
 
   async setVolume(value: CharacteristicValue): Promise<void> {
     this.log.debug('(setVolume)', value)
-    const cmd = await this.device.setVolume((value as number).toString())
-    if (Abnormal(cmd)) this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
+    if (Abnormal(await this.device.setVolume((value as number).toString())))
+      this.log.error('(setVolume)/(%s) unable to set volume on TV...', value)
   }
 
   async getVolume(): Promise<number> {
     const cmd = await this.device.getVolume()
     let volume = 0
 
-    Abnormal(cmd)
-      ? this.log.debug('(getVolume) unable to get volume from TV...')
-      : (volume = Number(cmd.value))
+    Ok(cmd) ? (volume = Number(cmd.value)) : this.log.debug('(getVolume) no volume from TV...')
 
     return volume
   }
@@ -485,8 +477,7 @@ class VieramaticPlatformAccessory {
   async setVolumeSelector(key: CharacteristicValue): Promise<void> {
     this.log.debug('setVolumeSelector', key)
     const action = key === this.Characteristic.VolumeSelector.INCREMENT ? 'VOLUP' : 'VOLDOWN'
-    const cmd = await this.device.sendCommand(action)
-
+    const cmd = await this.device.sendKey(action)
     if (Abnormal(cmd)) this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
   }
 
@@ -502,7 +493,7 @@ class VieramaticPlatformAccessory {
 
     if (newState === true) {
       const [cmd, volume] = [await this.device.getMute(), await this.getVolume()]
-      const muted = Abnormal(cmd) ? true : cmd.value
+      const muted = Ok(cmd) ? cmd.value : true
 
       speakerService
         .updateCharacteristic(this.Characteristic.Mute, muted)
@@ -548,7 +539,7 @@ class VieramaticPlatformAccessory {
     }
     const action = (keyId as number) in keys ? keys[keyId as number] : 'HOME'
     this.log.debug('remote control:', action)
-    const cmd = await this.device.sendCommand(action)
+    const cmd = await this.device.sendKey(action)
 
     if (Abnormal(cmd)) this.log.error('(remoteControl)/(%s) %s', action, cmd.error)
   }

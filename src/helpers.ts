@@ -1,5 +1,3 @@
-import util from 'util'
-
 import parser from 'fast-xml-parser'
 
 const xml2obj = (raw: string): Record<string, unknown> =>
@@ -12,20 +10,17 @@ const xml2obj = (raw: string): Record<string, unknown> =>
       skipLike: /^\S+=$/
     }
   })
-const obj2xml = (data: unknown): string =>
-  // eslint-disable-next-line new-cap
-  new parser.j2xParser({ ignoreAttributes: false }).parse(data)
+// eslint-disable-next-line new-cap
+const xml = (data: unknown): string => new parser.j2xParser({ ignoreAttributes: false }).parse(data)
 
-const isValidMACAddress = (address: string): boolean =>
-  /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/.test(address)
+const isValidMACAddress = (mac: string): boolean => /^(?:[\dA-Fa-f]{2}:){5}[\dA-Fa-f]{2}$/.test(mac)
 
 const sleep = async (ms: number): Promise<unknown> =>
   await new Promise((resolve) => setTimeout(resolve, ms))
 
 const isEmpty = (obj: Record<string, unknown>): boolean =>
-  Object.keys(obj).length === 0 && obj.constructor === Object
+  obj.constructor === Object && Object.keys(obj).length === 0
 
-const printf = util.format
 // vscode decorator trickery
 // istanbul ignore next
 const lit = (s: TemplateStringsArray, ...args: string[]): string =>
@@ -33,16 +28,16 @@ const lit = (s: TemplateStringsArray, ...args: string[]): string =>
 const html = lit
 
 // error handling
-interface Success<T> {
-  value: T
-}
-
+type Success<T> =
+  | Record<string, never>
+  | {
+      value: T
+    }
 interface Failure {
   error: Error
 }
-
 type Outcome<T> = Success<T> | Failure
-
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
+const Ok = <T>(result: unknown): result is Success<T> => (result as Failure).error == null
 
-export { Abnormal, html, isEmpty, isValidMACAddress, obj2xml, Outcome, printf, sleep, xml2obj }
+export { Abnormal, html, isEmpty, isValidMACAddress, Ok, Outcome, sleep, xml, xml2obj }
