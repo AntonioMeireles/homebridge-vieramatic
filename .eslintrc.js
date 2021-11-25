@@ -3,7 +3,7 @@ module.exports = {
     'eslint:recommended',
 
     'plugin:@typescript-eslint/recommended',
-
+    'plugin:jest/recommended',
     'plugin:json/recommended',
     'plugin:promise/recommended',
     'plugin:eslint-comments/recommended',
@@ -29,7 +29,8 @@ module.exports = {
     'json',
     'promise',
     'eslint-comments',
-    'sort-exports'
+    'sort-exports',
+    'jest'
   ],
   rules: {
     '@typescript-eslint/no-misused-promises': [
