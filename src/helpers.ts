@@ -1,17 +1,18 @@
-import parser from 'fast-xml-parser'
+import { XMLBuilder, XMLParser } from 'fast-xml-parser'
 
 const xml2obj = (raw: string): Record<string, unknown> =>
-  parser.parse(raw, {
-    numParseOptions: {
+  new XMLParser({
+    numberParseOptions: {
       hex: true,
       leadingZeros: true,
-      // workarounds fxp 3.20.0 woes
+      // workarounds fxp 3.20.0+ woes
       // encrypted payloads were sometimes being parsed as (!) bigNums
       skipLike: /^\S+=$/
     }
-  })
-// eslint-disable-next-line new-cap
-const xml = (data: unknown): string => new parser.j2xParser({ ignoreAttributes: false }).parse(data)
+  }).parse(raw)
+
+const xml = (data: unknown): string =>
+  new XMLBuilder({ ignoreAttributes: false, processEntities: false }).build(data)
 
 const isValidMACAddress = (mac: string): boolean => /^(?:[\dA-Fa-f]{2}:){5}[\dA-Fa-f]{2}$/.test(mac)
 
