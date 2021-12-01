@@ -71,7 +71,8 @@
     "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic.git"
   },
   "scripts": {
-    "build": "npm run clean && node esbuild.config.js",
+    "hui": "(cd src/homebridge-ui; npm run build)",
+    "build": "npm run clean && node esbuild.config.js&& npm run hui",
     "clean": "rimraf dist/",
     "lint": "eslint 'src/**/**.ts' --max-warnings=0",
     "prepublishOnly": "npm run lint && npm run build",
