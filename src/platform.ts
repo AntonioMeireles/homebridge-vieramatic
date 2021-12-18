@@ -50,7 +50,6 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cachedAccessory])
     )
 
-    VieraTV.webSetup(this).catch((error) => this.log.error(error))
     const devices = this.config.tvs as UserConfig[]
 
     devices.forEach(async (device: UserConfig) => {

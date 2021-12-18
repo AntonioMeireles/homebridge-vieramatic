@@ -8,7 +8,6 @@ import { decode } from 'html-entities'
 import { InputVisibility } from './accessory'
 import { Abnormal, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
 import { xml2obj, xml } from './helpers.server'
-import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
@@ -481,99 +480,6 @@ class VieraTV implements VieraTV {
     console.log(JSON.stringify(sample, undefined, 4))
     console.groupEnd()
     console.log('--x--')
-  }
-
-  static webSetup = async (ctx: VieramaticPlatform): Promise<void> => {
-    const server = http.createServer(async (request, response) => {
-      let ip: string, tv: VieraTV
-      const urlObj = new URL(request.url ?? '', `http://${request.headers.host as string}`)
-
-      let [returnCode, body] = [200, 'nothing to see here - move on']
-
-      ctx.log.debug(urlObj.toString())
-
-      if (urlObj.searchParams.has('pin')) {
-        if (urlObj.searchParams.has('tv')) {
-          const ip = urlObj.searchParams.get('tv') as string
-          const pin = urlObj.searchParams.get('pin') as string
-
-          ctx.log.debug(urlObj.toString())
-
-          const probe = await VieraTV.probe(ip, ctx.log)
-          if (Ok(probe)) {
-            tv = probe.value
-            if (tv?.specs?.requiresEncryption && urlObj.searchParams.has('challenge')) {
-              const challenge = urlObj.searchParams.get('challenge') as string
-              tv.#session.challenge = Buffer.from(challenge, 'base64')
-              const auth = await tv.authorizePinCode(pin)
-              if (Ok(auth)) {
-                tv.auth = auth.value
-                body = html` Paired with your TV sucessfully!. <br />
-                  <b>Encryption Key</b>: <b>${tv.auth.key}</b> <br />
-                  <b>AppId</b>: <b>${tv.auth.appId}</b> <br />`
-              } else [returnCode, body] = [500, auth.error.message]
-            }
-          } else [returnCode, body] = [500, probe.error.message]
-        }
-      } else if ((ip = urlObj.searchParams.get('ip') as string) != null) {
-        const probe = await VieraTV.probe(ip, ctx.log)
-        if (Ok(probe)) {
-          tv = probe.value
-          if (isEmpty(tv.specs)) {
-            returnCode = 500
-            body = html` An unexpected error occurred: <br />
-              Unable to fetch specs from the TV (at ${ip}).`
-          } else {
-            const challenge = await tv.requestPinCode()
-            if (Ok(challenge)) {
-              body = html` Found a <b>${tv.specs.modelNumber}</b>, on ${ip}, which requires
-                encryption. <br />
-                <form action="/">
-                  <label for="pin">
-                    Please enter the PIN just displayed in Panasonic™ Viera™ TV:
-                  </label>
-                  <br /><input type="text" id="pin" name="pin" />
-                  <input type="hidden" value=${ip} name="tv" />
-                  <input
-                    type="hidden"
-                    value=${tv.#session.challenge.toString('base64')}
-                    name="challenge"
-                  />
-                  <input type="submit" value="Submit" />
-                </form>`
-            } else [returnCode, body] = [500, challenge.error.message]
-          }
-        } else [returnCode, body] = [500, probe.error.message]
-      } else {
-        body = html` <form action="/">
-          <label for="ip">
-            Please enter your Panasonic™ Viera™ (2018 or later model) IP address:
-          </label>
-          <br />
-          <input type="text" id="ip" name="ip" />
-          <input type="submit" value="Submit" />
-        </form>`
-      }
-
-      response.writeHead(returnCode, { 'Content-Type': 'text/html; charset=utf-8' })
-      response.write(
-        html`<!DOCTYPE html>
-          <html>
-            <body>
-              ${body}
-            </body>
-          </html>`
-      )
-      response.end()
-    })
-
-    server.on('clientError', (error, socket) => {
-      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n')
-      ctx.log.error(error.message)
-    })
-
-    ctx.log.info('launching encryption helper endpoint on :8973')
-    server.listen(8973)
   }
 
   /**
