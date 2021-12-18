@@ -9,7 +9,7 @@ import {
 } from 'homebridge'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { Abnormal, Outcome, isEmpty, isValidMACAddress } from './helpers'
+import { Abnormal, Outcome, isEmpty, isValidMACAddress, isValidIPv4 } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { VieraAuth, VieraSpecs, VieraTV } from './viera'
@@ -70,10 +70,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const invalid = (type: string): Error =>
       Error(`IGNORED '${device.ipAddress}' as it has an invalid ${type} address.\n\n${raw}`)
 
-    if (!isValidMACAddress(device.ipAddress)) return { error: invalid('ip') }
+    if (!isValidIPv4(device.ipAddress)) return { error: invalid('ip') }
 
     const { mac } = device
-    if (mac != null && !isValidMACAddress(mac)) return { error: invalid('MAV') }
+    if (mac != null && !isValidMACAddress(mac)) return { error: invalid('MAC') }
 
     return {}
   }
