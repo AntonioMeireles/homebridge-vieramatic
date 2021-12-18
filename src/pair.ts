@@ -7,10 +7,8 @@ import { VieraTV, VieraAuth } from './viera'
 
 const oops = (error: Error): void => {
   console.error(`${error.name}: ${error.message}`)
-  process.exit(-1)
+  process.exitCode = -1
 }
-if (process.argv.length !== 3)
-  oops(Error('Please specify your Panasonic TV IP address as the (only) argument'))
 
 const setup = async (ip: string): Promise<void> => {
   let probe: Outcome<VieraTV>
@@ -28,4 +26,6 @@ const setup = async (ip: string): Promise<void> => {
   tv.renderSampleConfig()
 }
 
-setup(process.argv[2]).catch(oops)
+process.argv.length !== 3
+  ? oops(Error('Please specify your Panasonic TV IP address as the (only) argument'))
+  : setup(process.argv[2]).catch(oops)
