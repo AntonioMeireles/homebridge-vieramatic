@@ -1,6 +1,6 @@
 # Ignore compiled code
 dist
-
+homebridge-ui
 # ------------- Defaults ------------- #
 
 # Logs

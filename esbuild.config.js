@@ -1,5 +1,9 @@
+/* eslint-disable node/no-unpublished-require */
 /* eslint-disable @typescript-eslint/no-var-requires */
+const fs = require('fs')
+
 const esbuild = require('esbuild')
+
 // https://github.com/evanw/esbuild/issues/619#issuecomment-751995294
 const makeAllPackagesExternalPlugin = {
   name: 'make-all-packages-external',
@@ -9,21 +13,40 @@ const makeAllPackagesExternalPlugin = {
   }
 }
 
-esbuild
-  .build({
-    bundle: true,
-    entryPoints: ['./src/index.ts', './src/pair.ts'],
-    metafile: true,
-    minify: true,
-    outdir: 'dist/',
-    platform: 'node',
-    plugins: [makeAllPackagesExternalPlugin],
-    sourcemap: true,
-    target: 'node12'
-  })
-  .then((result) => esbuild.analyzeMetafile(result.metafile))
-  .then((analytics) => console.log(analytics))
-  .catch((err) => {
-    console.log(err)
-    process.exit(1)
-  })
+const catcher = (err) => {
+  console.log(err)
+  // eslint-disable-next-line no-process-exit
+  process.exit(1)
+}
+const targets = { Browser: 'browser', Node: 'node' }
+
+const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
+  esbuild
+    .build({
+      ...{ bundle: true, metafile: true, minify: true, sourcemap: true },
+      entryPoints,
+      outdir,
+      ...(target === targets.Node
+        ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node12' }
+        : {
+            define: { 'process.env.NODE_ENV': "'production'" },
+            format: 'esm',
+            inject: ['src/ui/react-shim.ts'],
+            jsxFactory: 'h',
+            jsxFragment: 'Fragment',
+            platform: 'browser'
+          })
+    })
+    .then((result) => esbuild.analyzeMetafile(result.metafile))
+    .then(console.info)
+
+fs.mkdirSync('dist/homebridge-ui/public', { recursive: true })
+fs.copyFileSync('src/ui/public/index.html', 'dist/homebridge-ui/public/index.html')
+
+const deliverables = [
+  [['src/index.ts', 'src/pair.ts']],
+  [['src/ui/server.ts'], 'dist/homebridge-ui/'],
+  [['src/ui/index.tsx'], 'dist/homebridge-ui/public/', targets.Browser]
+]
+
+deliverables.forEach((payload) => builder(...payload).catch(catcher))

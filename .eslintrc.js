@@ -2,45 +2,49 @@ module.exports = {
   extends: [
     'eslint:recommended',
 
-    'plugin:@typescript-eslint/recommended',
+    'plugin:import/errors',
+    'plugin:import/warnings',
+    'plugin:import/typescript',
     'plugin:jest/recommended',
+    'plugin:node/recommended',
     'plugin:json/recommended',
     'plugin:regexp/recommended',
     'plugin:promise/recommended',
     'plugin:eslint-comments/recommended',
-    'plugin:import/errors',
-    'plugin:import/warnings',
-    'plugin:import/typescript',
 
-    'standard-with-typescript',
+    'preact',
+
+    'plugin:@typescript-eslint/eslint-recommended',
+    'plugin:@typescript-eslint/recommended',
+    // 'plugin:@typescript-eslint/recommended-requiring-type-checking',
 
     'plugin:prettier/recommended'
   ],
-  ignorePatterns: ['dist', 'jest.config.js'],
+  ignorePatterns: ['dist'],
   parser: '@typescript-eslint/parser',
+
   parserOptions: {
+    ecmaFeatures: {
+      jsx: true
+    },
     ecmaVersion: 'latest',
     project: './tsconfig.json',
     sourceType: 'module'
   },
   plugins: [
-    'prettier',
     '@typescript-eslint',
-    'import',
-    'json',
-    'promise',
     'eslint-comments',
-    'sort-exports',
+    'import',
     'jest',
-    'regexp'
+    'node',
+    'json',
+    'prettier',
+    'promise',
+    'regexp',
+    'sort-exports'
   ],
+  root: true,
   rules: {
-    '@typescript-eslint/no-misused-promises': [
-      'error',
-      {
-        checksVoidReturn: false
-      }
-    ],
     '@typescript-eslint/no-unused-vars': [
       'error',
       {
@@ -62,6 +66,9 @@ module.exports = {
       }
     ],
     'json/*': ['error', 'allowComments'],
+    'node/no-missing-import': 'off',
+    'node/no-unsupported-features/es-syntax': 'off',
+    'node/shebang': 'off',
     'sort-exports/sort-exports': [
       'error',
       {
