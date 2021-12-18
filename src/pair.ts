@@ -18,7 +18,7 @@ const setup = async (ip: string): Promise<void> => {
   const tv = probe.value
 
   if (tv.specs.requiresEncryption) {
-    let auth: Outcome<VieraAuth>, challenge: Outcome<void>
+    let auth: Outcome<VieraAuth>, challenge: Outcome<string>
     if (Abnormal((challenge = await tv.requestPinCode()))) throw challenge.error
     const pin = question('Enter the displayed pin code: ')
     if (Abnormal((auth = await tv.authorizePinCode(pin)))) throw auth.error

@@ -382,19 +382,19 @@ class VieraTV implements VieraTV {
     return closure(payload.value as unknown as string)
   }
 
-  requestPinCode = async (): Promise<Outcome<void>> => {
+  requestPinCode = async (): Promise<Outcome<string>> => {
     const overreachErr = `The ${this.specs.modelNumber} model at ${this.address} doesn't need encryption!`
     const unexpectedErr = `An unexpected error occurred while attempting to request a pin code from the TV.`
     const notReadyErr = `Unable to request pin code as the TV seems to be in standby; Please turn it ON!`
 
     const parameters = xml({ X_DeviceName: 'MyRemote' })
-    const callback = (data: string): Outcome<void> => {
+    const callback = (data: string): Outcome<string> => {
       const match = /<X_ChallengeKey>(?<challenge>\S*)<\/X_ChallengeKey>/u.exec(data)
 
       if (match?.groups?.challenge == null) return { error: Error(unexpectedErr) }
 
       this.#session.challenge = Buffer.from(match.groups.challenge, 'base64')
-      return {}
+      return { value: match.groups.challenge }
     }
 
     return !this.specs.requiresEncryption
@@ -410,7 +410,10 @@ class VieraTV implements VieraTV {
     closure: (arg: string) => Outcome<T> = (x) => x as unknown as Outcome<T>
   ): Promise<Outcome<T>> => await this.#post('command', realAction, realParameters, closure)
 
-  authorizePinCode = async (pin: string): Promise<Outcome<VieraAuth>> => {
+  authorizePinCode = async (pin: string, challenge?: string): Promise<Outcome<VieraAuth>> => {
+    // injection needed by the ui-server
+    if (challenge) this.#session.challenge = Buffer.from(challenge, 'base64')
+
     let [i, j, l, k]: number[] = []
     let ack: Outcome<VieraAuth>, outcome: Outcome<string>
     const [iv, key, hmacKey] = [this.#session.challenge, Buffer.alloc(16), Buffer.alloc(32)]
