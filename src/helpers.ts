@@ -1,20 +1,6 @@
-import { XMLBuilder, XMLParser } from 'fast-xml-parser'
-
-const xml2obj = (raw: string): Record<string, unknown> =>
-  new XMLParser({
-    numberParseOptions: {
-      hex: true,
-      leadingZeros: true,
-      // workarounds fxp 3.20.0+ woes
-      // encrypted payloads were sometimes being parsed as (!) bigNums
-      skipLike: /^\S+=$/
-    }
-  }).parse(raw)
-
-const xml = (data: unknown): string =>
-  new XMLBuilder({ ignoreAttributes: false, processEntities: false }).build(data)
-
 const isValidMACAddress = (mac: string): boolean => /^(?:[\dA-Fa-f]{2}:){5}[\dA-Fa-f]{2}$/.test(mac)
+const isValidIPv4 = (ip: string): boolean =>
+  /^(?:(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])$/.test(ip)
 
 const sleep = async (ms: number): Promise<unknown> =>
   await new Promise((resolve) => setTimeout(resolve, ms))
@@ -41,4 +27,4 @@ type Outcome<T> = Success<T> | Failure
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 const Ok = <T>(result: unknown): result is Success<T> => (result as Failure).error == null
 
-export { Abnormal, html, isEmpty, isValidMACAddress, Ok, Outcome, sleep, xml, xml2obj }
+export { Abnormal, html, isEmpty, isValidIPv4, isValidMACAddress, Ok, Outcome, sleep }

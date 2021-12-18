@@ -8,7 +8,8 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, html, isEmpty, Ok, Outcome, xml2obj, xml } from './helpers'
+import { Abnormal, html, isEmpty, Ok, Outcome } from './helpers'
+import { xml2obj, xml } from './helpers.server'
 import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
 
@@ -119,7 +120,7 @@ class VieraTV implements VieraTV {
         requires  encryption and no working credentials were supplied.`
 
         if (settings?.auth != null) tv.auth = settings.auth
-        if (tv.auth == null) return { error: Error(err) }
+        if (isEmpty(tv.auth)) return { error: Error(err) }
 
         tv.#deriveSessionKey(tv.auth.key)
         const result = await tv.#requestSessionId()

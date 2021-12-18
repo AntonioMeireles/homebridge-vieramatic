@@ -5,7 +5,7 @@ import http from 'http'
 import { AddressInfo } from 'net'
 import { networkInterfaces } from 'os'
 
-import { xml2obj } from './helpers'
+import { xml2obj } from './helpers.server'
 
 const TIMEOUT_IN_SECONDS = 2
 
