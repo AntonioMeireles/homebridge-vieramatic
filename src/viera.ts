@@ -1,14 +1,12 @@
 import crypto from 'crypto'
 import { Logger } from 'homebridge'
-import http from 'http'
-import net, { isIPv4 } from 'net'
-import { URL } from 'url'
+import net from 'net'
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, html, isEmpty, Ok, Outcome } from './helpers'
+import { Abnormal, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
 import { xml2obj, xml } from './helpers.server'
 import VieramaticPlatform from './platform'
 import UPnPSubscription from './upnpsub'
@@ -136,7 +134,7 @@ class VieraTV implements VieraTV {
   }
 
   static probe = async (ip: string, log: Logger | Console = console): Promise<Outcome<VieraTV>> =>
-    !isIPv4(ip)
+    !isValidIPv4(ip)
       ? { error: Error('Please introduce a valid ip address!') }
       : !(await VieraTV.livenessProbe(ip))
       ? { error: Error(`The provided IP (${ip}) is unreachable.`) }
