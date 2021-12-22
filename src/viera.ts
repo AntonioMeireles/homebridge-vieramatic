@@ -272,7 +272,8 @@ class VieraTV implements VieraTV {
           friendlyName: device.friendlyName.length > 0 ? device.friendlyName : device.modelName,
           manufacturer: device.manufacturer,
           modelName: device.modelName,
-          modelNumber: device.modelNumber,
+          // #87
+          modelNumber: device.modelNumber ?? '(very old) model unknown',
           requiresEncryption: await this.#needsCrypto(),
           serialNumber: device.UDN.slice(5)
         }
