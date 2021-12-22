@@ -91,5 +91,5 @@
     "test": "jest --forceExit --detectOpenHandles",
     "watch": "npm run build && npm link && nodemon"
   },
-  "version": "3.2.4"
+  "version": "4.0.0"
 }
