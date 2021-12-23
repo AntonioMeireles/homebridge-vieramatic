@@ -2,5 +2,6 @@
   "pluginAlias": "PanasonicVieraTV",
   "pluginType": "platform",
   "singular": true,
-  "customUi": true
+  "customUi": true,
+  "customUiPath": "dist/homebridge-ui"
 }
