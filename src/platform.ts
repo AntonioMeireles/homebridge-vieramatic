@@ -50,7 +50,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cachedAccessory])
     )
 
-    const devices = this.config.tvs as UserConfig[]
+    const devices = (this.config.tvs as UserConfig[]) || []
 
     devices.forEach(async (device: UserConfig) => {
       const outcome = await this.#deviceSetup(device)

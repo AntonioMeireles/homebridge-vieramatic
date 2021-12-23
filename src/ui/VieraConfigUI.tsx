@@ -3,8 +3,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IHomebridgeUiFormHelper } from '@homebridge/plugin-ui-utils/dist/ui.interface'
 import { createState, useState } from '@hookstate/core'
 import { JSX } from 'preact'
-import { useEffect } from 'preact/hooks'
-import { Alert, Button, Form, Spinner } from 'react-bootstrap'
+import { useEffect } from 'preact/compat'
+import { Alert, Button, Form } from 'react-bootstrap'
 
 import { UserConfig } from '../accessory'
 import { sleep, isEmpty, isValidIPv4 } from '../helpers'
@@ -22,6 +22,13 @@ import { getUntrackedObject, InitialState } from './state'
 
 const globalState = createState(InitialState)
 
+const enum actionType {
+  create = 'added',
+  update = 'changed',
+  delete = 'deleted',
+  none = 'unchanged'
+}
+
 const enum UIServerRequestErrorType {
   NotConnectable,
   AuthFailed,
@@ -36,8 +43,18 @@ interface UIServerRequestError {
 
 const { homebridge } = window
 
-const updateGlobalConfig = async (): Promise<void> =>
-  globalState.config.set((await homebridge.getPluginConfig())[0])
+const updateGlobalConfig = async (): Promise<void> => {
+  const current = (await homebridge.getPluginConfig())[0]
+  current.tvs ??= []
+  globalState.config.set(current)
+}
+
+const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: actionType) => {
+  await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...next] }])
+  await homebridge.savePluginConfig()
+  await updateGlobalConfig()
+  homebridge.toast.success(`${ip} ${type}.`)
+}
 
 const Body = (): JSX.Element => {
   const state = useState(globalState)
@@ -49,8 +66,8 @@ const Body = (): JSX.Element => {
 
   const backToMain = (form?: IHomebridgeUiFormHelper) => {
     if (form) form.end()
-    state.frontPage.set(true)
     state.selected.set({})
+    state.frontPage.set(true)
   }
 
   const onEdition = async (raw?: string): Promise<void> => {
@@ -166,9 +183,16 @@ const Body = (): JSX.Element => {
 
     return (
       <section style={{ minHeight: '25em' }}>
-        <Form className="d-flex justify-content-end mt-3 mb-5">
-          <Form.Switch onChange={flipKillSwitch} id="kS" label={label} checked={killSwitch.get()} />
-        </Form>
+        {available?.length != 0 && (
+          <Form className="d-flex justify-content-end mt-3 mb-5">
+            <Form.Switch
+              onChange={flipKillSwitch}
+              id="kS"
+              label={label}
+              checked={killSwitch.get()}
+            />
+          </Form>
+        )}
         <AvailableTVs />
         <AddNewTvButton />
       </section>
@@ -200,10 +224,7 @@ const Body = (): JSX.Element => {
         const remaining = getUntrackedObject(
           state.config.get().tvs.filter((o: UserConfig) => o.ipAddress !== target)
         )
-        await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...remaining] }])
-        await homebridge.savePluginConfig()
-        updateGlobalConfig()
-        homebridge.toast.success(`${target} deleted`)
+        await updateHomebridgeConfig(target, remaining, actionType.delete)
         backToMain()
       }
       return (
@@ -250,29 +271,24 @@ const Body = (): JSX.Element => {
       tvform.onCancel(() => backToMain(tvform))
 
       tvform.onSubmit(async (change) => {
-        const previous = previousConfig(change.ipAddress)
-        const changed = previous != null
-        if (changed && equals(previous, change))
-          homebridge.toast.info('No changes were made.', change.ipAddress)
-        else {
-          const remaining = changed
-            ? getUntrackedObject(state.config.get().tvs.filter((v: UserConfig) => v != previous))
+        const now = previousConfig(change.ipAddress)
+        const changed = now != null
+        let staging: UserConfig[] = []
+        let type = actionType.none
+        if (!(changed && equals(now, change))) {
+          const config = state.config.get()
+          staging = changed
+            ? getUntrackedObject(config.get().tvs.filter((v: UserConfig) => v != now))
             : []
-          await homebridge.updatePluginConfig([
-            { platform: 'PanasonicVieraTV', tvs: [...remaining, change] }
-          ])
-          await homebridge.savePluginConfig()
-          updateGlobalConfig()
-          homebridge.toast.success(`${change.ipAddress} ${changed ? 'changed' : 'added.'}`)
+          type = changed ? actionType.update : actionType.create
         }
+        await updateHomebridgeConfig(change.ipAddress, [...staging, change as UserConfig], type)
         backToMain(tvform)
       })
-
-      return <></>
+      return null
     }
 
-    if (isEmpty(getUntrackedObject(state.selected.value)))
-      return <Spinner animation="border" variant="primary" />
+    if (isEmpty(getUntrackedObject(state.selected.value))) return <></>
 
     if (state.killSwitch.get() && !isEmpty(getUntrackedObject(state['selected'].get())))
       return <AreWeSure />
@@ -280,7 +296,7 @@ const Body = (): JSX.Element => {
     if (!state.selected.get().reachable && state.selected.get().config?.ipAddress)
       return <IsOffline />
 
-    if (!state.selected.get().specs) return <Spinner animation="border" variant="primary" />
+    if (!state.selected.get().specs) return <></>
 
     return <Editor />
   }
