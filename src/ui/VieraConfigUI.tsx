@@ -1,6 +1,5 @@
 import { faTv, faCartPlus, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IHomebridgeUiFormHelper } from '@homebridge/plugin-ui-utils/dist/ui.interface'
 import { createState, useState } from '@hookstate/core'
 import { JSX } from 'preact'
 import { useEffect } from 'preact/compat'
@@ -64,8 +63,7 @@ const Body = (): JSX.Element => {
   const previousConfig = (ip: string) =>
     state.config.get().tvs.find((o: UserConfig) => o.ipAddress === ip)
 
-  const backToMain = (form?: IHomebridgeUiFormHelper) => {
-    if (form) form.end()
+  const backToMain = () => {
     state.selected.set({})
     state.frontPage.set(true)
   }
@@ -80,10 +78,12 @@ const Body = (): JSX.Element => {
           await homebridge
             .request('/pair', { challenge, ip: tv.ipAddress, pin: data.pin })
             .then(async (auth: VieraAuth) => {
+              homebridge.showSpinner()
               const specs: VieraSpecs = await homebridge.request(
                 '/specs',
                 JSON.stringify({ ...tv, appId: auth.appId, encKey: auth.key })
               )
+              homebridge.hideSpinner()
               return { auth, specs }
             })
             .then((payload) =>
@@ -103,15 +103,18 @@ const Body = (): JSX.Element => {
     if (!raw) {
       state.frontPage.set(false)
       const newTvForm = homebridge.createForm(tvAddressSchema, null, 'Next', 'Cancel')
-      newTvForm.onCancel(() => backToMain(newTvForm))
+      newTvForm.onCancel(() => {
+        newTvForm.end()
+        backToMain()
+      })
 
       newTvForm.onSubmit(async (data) => {
         if (isValidIPv4(data.ipAddress)) {
           if (previousConfig(data.ipAddress))
             homebridge.toast.error('Trying to setup an already configured TV set!', data.ipAddress)
           else {
-            state['selected'].merge({ config: { hdmiInputs: [], ipAddress: data.ipAddress } })
             newTvForm.end()
+            state['selected'].merge({ config: { hdmiInputs: [], ipAddress: data.ipAddress } })
             wait = false
           }
         } else homebridge.toast.error('Please insert a valid IP address...', data.ipAddress)
@@ -121,8 +124,10 @@ const Body = (): JSX.Element => {
       wait = false
     }
     while (wait) await sleep(200)
+    homebridge.showSpinner()
     const tv = getUntrackedObject(state['selected'].get().config)
     const reachable = await homebridge.request('/ping', tv.ipAddress)
+    homebridge.hideSpinner()
     state['selected'].merge({ config: tv, reachable })
     state.frontPage.set(false)
 
@@ -131,11 +136,12 @@ const Body = (): JSX.Element => {
         state['selected'].merge({ specs })
         return true
       }
+      homebridge.showSpinner()
       const done = await homebridge
         .request('/specs', JSON.stringify(tv))
         .then(async (specs) => defaultClosure(specs))
         .catch(() => false)
-
+      homebridge.hideSpinner()
       if (!done)
         await homebridge
           .request('/pin', tv.ipAddress)
@@ -268,22 +274,28 @@ const Body = (): JSX.Element => {
         'Cancel'
       )
 
-      tvform.onCancel(() => backToMain(tvform))
+      tvform.onCancel(() => {
+        tvform.end()
+        backToMain()
+      })
 
-      tvform.onSubmit(async (change) => {
-        const now = previousConfig(change.ipAddress)
-        const changed = now != null
-        let staging: UserConfig[] = []
+      tvform.onSubmit(async (incoming) => {
+        homebridge.showSpinner()
+        tvform.end()
+        backToMain()
+        const z = incoming.ipAddress
+        const before = previousConfig(z)
+        let others: UserConfig[] = []
         let type = actionType.none
-        if (!(changed && equals(now, change))) {
-          const config = state.config.get()
-          staging = changed
-            ? getUntrackedObject(config.get().tvs.filter((v: UserConfig) => v != now))
+        if (!equals(before, incoming)) {
+          const modded = before != null
+          others = modded
+            ? getUntrackedObject(state.config.get().tvs.filter((v: UserConfig) => v.ipAddress != z))
             : []
-          type = changed ? actionType.update : actionType.create
+          type = modded ? actionType.update : actionType.create
         }
-        await updateHomebridgeConfig(change.ipAddress, [...staging, change as UserConfig], type)
-        backToMain(tvform)
+        await updateHomebridgeConfig(z, [...others, incoming as UserConfig], type)
+        homebridge.hideSpinner()
       })
       return null
     }
