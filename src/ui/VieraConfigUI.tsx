@@ -6,7 +6,7 @@ import { useEffect } from 'preact/compat'
 import { Alert, Button, Form } from 'react-bootstrap'
 
 import { UserConfig } from '../accessory'
-import { sleep, isEmpty, isValidIPv4 } from '../helpers'
+import { sleep, isEmpty, isValidIPv4, Abnormal, dupeChecker } from '../helpers'
 import { VieraAuth, VieraSpecs } from '../viera'
 
 import {
@@ -45,6 +45,14 @@ const { homebridge } = window
 const updateGlobalConfig = async (): Promise<void> => {
   const current = (await homebridge.getPluginConfig())[0]
   current.tvs ??= []
+  if (Abnormal(dupeChecker(current.tvs))) {
+    globalState.abnormal.set(true)
+    globalState.killSwitch.set(true)
+  } else {
+    globalState.abnormal.set(false)
+    globalState.killSwitch.set(false)
+  }
+
   globalState.config.set(current)
 }
 
@@ -111,7 +119,10 @@ const Body = (): JSX.Element => {
       newTvForm.onSubmit(async (data) => {
         if (isValidIPv4(data.ipAddress)) {
           if (previousConfig(data.ipAddress))
-            homebridge.toast.error('Trying to setup an already configured TV set!', data.ipAddress)
+            homebridge.toast.error(
+              'Trying to add as new  an already configured TV set!',
+              data.ipAddress
+            )
           else {
             newTvForm.end()
             state['selected'].merge({ config: { hdmiInputs: [], ipAddress: data.ipAddress } })
@@ -158,12 +169,27 @@ const Body = (): JSX.Element => {
   const FrontPage = () => {
     const available = getUntrackedObject(state.config.get().tvs as UserConfig[])
     const killSwitch = state.killSwitch
-    const flipKillSwitch = () => killSwitch.set(!killSwitch.get())
+    const flipKillSwitch = () => {
+      if (!state.abnormal.get()) killSwitch.set(!killSwitch.get())
+    }
 
     const label = `${killSwitch.get() ? 'deletion' : 'edition'} mode`
     const ButtonCSS = { height: '4em', width: '10em' }
     const icon = killSwitch.get() ? faTrash : faTv
     const fn = (tv: string) => (killSwitch.get() ? onDeletion(tv) : onEdition(tv))
+    const KillBox = () => {
+      return state.abnormal.get() ? (
+        <Alert variant="warning" className="d-flex justify-content-center mt-3 mb-5">
+          <strong>
+            more than one TV with same IP address found: please delete the bogus ones!
+          </strong>
+        </Alert>
+      ) : available?.length != 0 ? (
+        <Form className="d-flex justify-content-end mt-3 mb-5">
+          <Form.Switch onChange={flipKillSwitch} id="kS" label={label} checked={killSwitch.get()} />
+        </Form>
+      ) : null
+    }
     const AvailableTVs = () =>
       available &&
       (available as UserConfig[]).map((tv, idx) => (
@@ -189,16 +215,7 @@ const Body = (): JSX.Element => {
 
     return (
       <section style={{ minHeight: '25em' }}>
-        {available?.length != 0 && (
-          <Form className="d-flex justify-content-end mt-3 mb-5">
-            <Form.Switch
-              onChange={flipKillSwitch}
-              id="kS"
-              label={label}
-              checked={killSwitch.get()}
-            />
-          </Form>
-        )}
+        <KillBox />
         <AvailableTVs />
         <AddNewTvButton />
       </section>
@@ -240,8 +257,17 @@ const Body = (): JSX.Element => {
             from this Homebridge.
           </Alert.Heading>
           <hr />
-          <p className="mb-2">Please, make sure you know what you are doing....</p>
-          <div className="d-flex justify-content-end mt-5">
+          <div className="d-flex justify-content-center">
+            <div className="w-75">
+              <p className="mb-2">Please, make sure you know what you are doing...</p>
+              <hr />
+              <pre class="text-monospace text-left bg-light p-2">
+                {JSON.stringify(state.selected.config.get(), undefined, 2)}
+              </pre>
+              <hr />
+            </div>
+          </div>
+          <div className="d-flex justify-content-end mt-1">
             <Button onClick={() => backToMain()} variant="primary" style={{ width: '15em' }}>
               Cancel
             </Button>

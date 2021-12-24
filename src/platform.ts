@@ -9,7 +9,7 @@ import {
 } from 'homebridge'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { Abnormal, Outcome, isEmpty, isValidMACAddress, isValidIPv4 } from './helpers'
+import { Abnormal, Outcome, isEmpty, isValidMACAddress, isValidIPv4, dupeChecker } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { VieraAuth, VieraSpecs, VieraTV } from './viera'
@@ -51,6 +51,17 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     )
 
     const devices = (this.config.tvs as UserConfig[]) || []
+
+    const sanityCheck = dupeChecker(devices)
+    if (Abnormal(sanityCheck)) {
+      this.log.error('Aborted loading as a fatal error was found.')
+      this.log.error(
+        'Attempting to setup more than a single TV with same IP address: ',
+        sanityCheck.error.message
+      )
+      this.log.error('please fix your config and then restart homebridge again!')
+      return
+    }
 
     devices.forEach(async (device: UserConfig) => {
       const outcome = await this.#deviceSetup(device)

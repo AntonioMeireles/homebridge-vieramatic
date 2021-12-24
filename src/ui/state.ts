@@ -14,6 +14,7 @@ type Selected =
 type GlobalState =
   | Record<string, never>
   | {
+      abnormal: boolean
       config: PluginConfig
       frontPage: boolean
       killSwitch: boolean
@@ -21,6 +22,7 @@ type GlobalState =
     }
 
 const InitialState: GlobalState = {
+  abnormal: false.valueOf(),
   config: [],
   frontPage: true,
   killSwitch: false,

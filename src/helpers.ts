@@ -1,3 +1,19 @@
+import { UserConfig } from './accessory'
+
+const dupeChecker = (devices: UserConfig[]): Outcome<void> => {
+  const unique: string[] = []
+  let error: Error = Error()
+  const state = devices.some((it) => {
+    if (!unique.includes(it.ipAddress)) {
+      unique.push(it.ipAddress)
+      return false
+    }
+    error = Error(it.ipAddress)
+    return true
+  })
+  return state ? { error } : {}
+}
+
 const isValidMACAddress = (mac: string): boolean => /^(?:[\dA-Fa-f]{2}:){5}[\dA-Fa-f]{2}$/.test(mac)
 const isValidIPv4 = (ip: string): boolean =>
   /^(?:(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])$/.test(ip)
@@ -27,4 +43,4 @@ type Outcome<T> = Success<T> | Failure
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
 const Ok = <T>(result: unknown): result is Success<T> => (result as Failure).error == null
 
-export { Abnormal, html, isEmpty, isValidIPv4, isValidMACAddress, Ok, Outcome, sleep }
+export { Abnormal, dupeChecker, html, isEmpty, isValidIPv4, isValidMACAddress, Ok, Outcome, sleep }
