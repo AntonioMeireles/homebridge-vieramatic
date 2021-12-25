@@ -6,14 +6,14 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
+import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
 import { xml2obj, xml } from './helpers.server'
 import UPnPSubscription from './upnpsub'
 
 // helpers and default settings
 const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
 type VieraSpecs =
-  | Record<string, never>
+  | EmptyObject
   | {
       friendlyName: string
       modelName: string
@@ -33,7 +33,7 @@ type VieraApps = VieraApp[]
 type RequestType = 'command' | 'render'
 
 type VieraSession =
-  | Record<string, never>
+  | EmptyObject
   | {
       iv: Buffer
       key: Buffer
@@ -44,7 +44,7 @@ type VieraSession =
     }
 
 type VieraAuth =
-  | Record<string, never>
+  | EmptyObject
   | {
       appId: string
       key: string

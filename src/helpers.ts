@@ -1,5 +1,16 @@
 import { UserConfig } from './accessory'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isSame = (a: any, b: any): boolean => {
+  if (a === b) return true
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime()
+  if (!a || !b || (typeof a !== 'object' && typeof b !== 'object')) return a === b
+  if (a.prototype !== b.prototype) return false
+  const keys = Object.keys(a)
+  if (keys.length !== Object.keys(b).length) return false
+  return keys.every((k) => isSame(a[k], b[k]))
+}
+
 const dupeChecker = (devices: UserConfig[]): Outcome<void> => {
   const unique: string[] = []
   let error: Error = Error()
@@ -30,9 +41,10 @@ const lit = (s: TemplateStringsArray, ...args: string[]): string =>
   s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
 const html = lit
 
+type EmptyObject = Record<string, never>
 // error handling
 type Success<T> =
-  | Record<string, never>
+  | EmptyObject
   | {
       value: T
     }
@@ -41,6 +53,18 @@ interface Failure {
 }
 type Outcome<T> = Success<T> | Failure
 const Abnormal = (result: unknown): result is Failure => (result as Failure).error != null
-const Ok = <T>(result: unknown): result is Success<T> => (result as Failure).error == null
+const Ok = <T>(result: unknown): result is Success<T> => !Abnormal(result)
 
-export { Abnormal, dupeChecker, html, isEmpty, isValidIPv4, isValidMACAddress, Ok, Outcome, sleep }
+export {
+  Abnormal,
+  dupeChecker,
+  EmptyObject,
+  html,
+  isEmpty,
+  isSame,
+  isValidIPv4,
+  isValidMACAddress,
+  Ok,
+  Outcome,
+  sleep
+}

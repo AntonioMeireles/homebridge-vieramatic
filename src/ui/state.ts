@@ -1,35 +1,38 @@
-import { PluginConfig } from '@homebridge/plugin-ui-utils/dist/ui.interface'
-
 import { UserConfig } from '../accessory'
 import { VieraSpecs } from '../viera'
 
-type Selected =
-  | Record<string, never>
-  | {
-      config: UserConfig
-      specs: VieraSpecs
-      reachable: boolean
-    }
-
-type GlobalState =
-  | Record<string, never>
-  | {
-      abnormal: boolean
-      config: PluginConfig
-      frontPage: boolean
-      killSwitch: boolean
-      selected: Selected
-    }
-
-const InitialState: GlobalState = {
-  abnormal: false.valueOf(),
-  config: [],
-  frontPage: true,
-  killSwitch: false,
-
-  selected: {}
+type PluginConfig = {
+  platform: string
+  tvs: UserConfig[]
 }
 
-const getUntrackedObject = (obj: unknown) => (obj != null ? JSON.parse(JSON.stringify(obj)) : null)
+type Selected = {
+  config: UserConfig
+  specs?: VieraSpecs
+  reachable: boolean
+  onHold: boolean
+}
 
-export { getUntrackedObject, InitialState }
+type GlobalState = {
+  abnormal: boolean
+  frontPage: boolean
+  killSwitch: boolean
+  pluginConfig: PluginConfig
+  selected?: Selected
+  loading: boolean
+}
+
+const InitialState: GlobalState = {
+  abnormal: false,
+  frontPage: true,
+  killSwitch: false,
+  loading: true,
+  pluginConfig: {
+    platform: '',
+    tvs: []
+  }
+}
+
+const objPurifier = (obj: unknown) => (obj != null ? JSON.parse(JSON.stringify(obj)) : null)
+
+export { InitialState, objPurifier, Selected }

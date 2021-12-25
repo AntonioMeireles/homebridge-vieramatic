@@ -81,9 +81,8 @@ const VieraLogo = (props: JSX.SVGAttributes<SVGSVGElement>): JSX.Element => (
 
 const logosCSS: JSX.CSSProperties = { fill: '#124686', height: '2em' }
 const Header = () => (
-  <header>
-    <PanasonicLogo style={logosCSS} /> &nbsp;
-    <VieraLogo style={logosCSS} />
+  <header className="d-flex justify-content-start">
+    <PanasonicLogo style={logosCSS} /> &nbsp; <VieraLogo style={logosCSS} />
   </header>
 )
 

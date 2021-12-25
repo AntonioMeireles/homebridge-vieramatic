@@ -4,13 +4,14 @@ import util from 'util'
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, sleep, Ok, Outcome } from './helpers'
+import { Abnormal, sleep, Ok, Outcome, EmptyObject } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
 type InputVisibility = 0 | 1
 
 type OnDisk =
+  | EmptyObject
   | {
       data: {
         inputs: {
@@ -22,7 +23,6 @@ type OnDisk =
         specs: VieraSpecs
       }
     }
-  | Record<string, never>
 
 interface HdmiInput {
   name: string
