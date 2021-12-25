@@ -286,12 +286,6 @@ not allow to switch inputs with Siri directly (would love to be proven wrong).
 The workaround is either to make shortcuts that do the input change and invoke those from Siri,
 or to create scenes straight in the home app that achieve the same and then invoke them.
 
-### regarding containerized homebridge setups
-
-If your **homebridge** setup is a _containerized_ one please do note that in order for this plugin to fully
-work you need to also expose to the outside port `8973`, otherwise you won't be able to access to endpoint that
-generates your encryption credentials.
-
 ### upgrading from pre `2.0.0` releases of this plugin
 
 The upgrade should be transparent, and painless.
