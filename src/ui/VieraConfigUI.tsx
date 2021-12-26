@@ -57,9 +57,11 @@ const updateGlobalConfig = async (): Promise<void> => {
 }
 
 const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: actionType) => {
-  await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...next] }])
-  await homebridge.savePluginConfig()
-  await updateGlobalConfig()
+  if (type !== actionType.none) {
+    await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...next] }])
+    await homebridge.savePluginConfig()
+    await updateGlobalConfig()
+  }
   homebridge.toast.success(`${ip} ${type}.`)
 }
 
