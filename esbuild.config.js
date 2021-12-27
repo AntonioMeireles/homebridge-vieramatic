@@ -29,12 +29,10 @@ const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
       ...(target === targets.Node
         ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node12' }
         : {
-            define: { 'process.env.NODE_ENV': "'production'" },
-            format: 'esm',
             inject: ['src/ui/react-shim.ts'],
             jsxFactory: 'h',
             jsxFragment: 'Fragment',
-            platform: 'browser'
+            target: ['chrome58', 'firefox57', 'safari11', 'edge18']
           })
     })
     .then((result) => esbuild.analyzeMetafile(result.metafile))
