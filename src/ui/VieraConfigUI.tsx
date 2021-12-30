@@ -32,7 +32,7 @@ const enum actionType {
 const { homebridge } = window
 
 const updateGlobalConfig = async () => {
-  const pluginConfig = (await homebridge.getPluginConfig())[0]
+  const [pluginConfig] = await homebridge.getPluginConfig()
   pluginConfig.tvs ??= []
   const abnormal = !!Abnormal(dupeChecker(pluginConfig.tvs))
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -49,7 +49,11 @@ const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: acti
   homebridge.toast.success(`${ip} ${type}.`)
 }
 
-const useSingleton = (callBack = () => undefined): void => {
+const useSingleton = (
+  callBack = () => {
+    return
+  }
+): void => {
   const hasBeenCalled = useState(false)
   if (hasBeenCalled.value) return
   callBack()
@@ -80,7 +84,7 @@ const Body = () => {
 
   const onEdition = async (raw?: string): Promise<void> => {
     const pair = (challenge: string) => {
-      const pinForm = homebridge.createForm(pinRequestSchema, null, 'Next', 'Cancel')
+      const pinForm = homebridge.createForm(pinRequestSchema, undefined, 'Next', 'Cancel')
       pinForm.onCancel(pinForm.end)
       pinForm.onSubmit(
         async (data) =>
@@ -105,15 +109,15 @@ const Body = () => {
 
     if (!raw) {
       state.frontPage.set(false)
-      const newTvForm = homebridge.createForm(tvAddressSchema, null, 'Next', 'Cancel')
-      newTvForm.onCancel(() => backToMain(newTvForm))
+      const tvForm = homebridge.createForm(tvAddressSchema, undefined, 'Next', 'Cancel')
+      tvForm.onCancel(() => backToMain(tvForm))
 
-      newTvForm.onSubmit(async (data) => {
+      tvForm.onSubmit(async (data) => {
         if (isValidIPv4(data.ipAddress)) {
           if (previousConfig(data.ipAddress))
             homebridge.toast.error('Trying to add an already configured TV set!', data.ipAddress)
           else {
-            newTvForm.end()
+            tvForm.end()
             const config = { hdmiInputs: [], ipAddress: data.ipAddress }
             state.selected.merge({ config, onHold: true })
           }
@@ -124,7 +128,7 @@ const Body = () => {
         s.selected.merge({ config: JSON.parse(raw), onHold: true }), s.frontPage.set(false)
       })
 
-    while (state.selected.value?.config == null) await sleep(250)
+    while (!state.selected.value?.config) await sleep(250)
     const tv = state.selected.value.config
     await request('/ping', tv.ipAddress).then(async (reachable: boolean) => {
       /* eslint-disable promise/no-nesting*/
@@ -145,7 +149,9 @@ const Body = () => {
     const label = `${state.killSwitch.value ? 'deletion' : 'edition'} mode`
     const doIt = (tv: string) => (state.killSwitch.value ? onDeletion(tv) : onEdition(tv))
     const KillBox = () =>
-      !state.pluginConfig.value.tvs.length ? null : state.abnormal.value ? (
+      state.pluginConfig.value.tvs.length === 0 ? (
+        <></>
+      ) : state.abnormal.value ? (
         <Alert variant="warning" className="d-flex justify-content-center mt-3 mb-5">
           <b>more than one TV with same IP address found: please delete the bogus ones!</b>
         </Alert>
@@ -156,7 +162,9 @@ const Body = () => {
       )
     const style = { height: '4em', width: '10em' }
     const AddNew = () =>
-      state.killSwitch.value ? null : (
+      state.killSwitch.value ? (
+        <></>
+      ) : (
         <div className="d-flex justify-content-center mt-3 mb-5">
           <Button
             className="my-4"
@@ -172,8 +180,8 @@ const Body = () => {
     const Available = () => {
       const variant = state.killSwitch.value ? 'danger' : 'info'
       const onClick = (tv: UserConfig) => doIt(JSON.stringify(tv))
-      const tvs = state.pluginConfig.value.tvs.map((tv, idx) => (
-        <Button variant={variant} style={style} key={idx} onClick={() => onClick(tv)}>
+      const tvs = state.pluginConfig.value.tvs.map((tv, index) => (
+        <Button variant={variant} style={style} key={index} onClick={() => onClick(tv)}>
           <Icon fixedWidth size="lg" icon={state.killSwitch.value ? faTrash : faTv} />
           <br /> {tv.ipAddress}
         </Button>
@@ -189,7 +197,7 @@ const Body = () => {
   }
 
   const Results = (props: { selected: State<Selected> | undefined }) => {
-    if (!props.selected || props.selected.onHold.value) return null
+    if (!props.selected || props.selected.onHold.value) return <></>
 
     const Offline = (props: { selected: State<Selected> }) => (
       <Alert variant="danger" className="mt-3">
@@ -244,7 +252,7 @@ const Body = () => {
     }
 
     const Editor = (props: { selected: State<Selected> }) => {
-      if (props.selected.specs?.ornull?.requiresEncryption.value)
+      if (props.selected.specs.ornull?.requiresEncryption.value)
         commonFormLayout.splice(1, 0, authLayout)
 
       const schema = { layout: commonFormLayout, schema: commonSchema }
@@ -259,7 +267,7 @@ const Body = () => {
         let [others, type] = [[] as UserConfig[], actionType.none]
 
         if (!isSame(before, queued)) {
-          const modded = before != null
+          const modded = before !== undefined
           const { tvs } = state.pluginConfig.value
           others = modded ? objPurifier(tvs.filter((v) => v.ipAddress != queued.ipAddress)) : []
           type = modded ? actionType.update : actionType.create
@@ -268,7 +276,7 @@ const Body = () => {
           state.loading.set(false)
         )
       })
-      return null
+      return <></>
     }
 
     if (state.killSwitch.value) return <ConfirmDeletion selected={props.selected} />
@@ -280,7 +288,7 @@ const Body = () => {
 }
 
 const Template = (props: { children: ComponentChildren }) => (
-  <main className="align-items-center text-center align-content-center"> {props.children}</main>
+  <main className="align-items-center text-center align-content-center">{props.children}</main>
 )
 
 const VieraConfigUI = () => (

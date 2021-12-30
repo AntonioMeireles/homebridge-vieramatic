@@ -1,8 +1,8 @@
-import crypto from 'crypto'
 import { Logger } from 'homebridge'
-import net from 'net'
+import crypto from 'node:crypto'
+import net from 'node:net'
 
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import got, { Got, RequestError, OptionsOfTextResponseBody } from 'got'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
@@ -51,16 +51,16 @@ type VieraAuth =
     }
 
 class VieraTV implements VieraTV {
-  private static readonly NRC = '/nrc/control_0'
-  private static readonly DMR = '/dmr/control_0'
-  private static readonly INFO = '/nrc/ddd.xml'
-  private static readonly ACTIONS = '/nrc/sdd_0.xml'
+  private static readonly NRC = 'nrc/control_0'
+  private static readonly DMR = 'dmr/control_0'
+  private static readonly INFO = 'nrc/ddd.xml'
+  private static readonly ACTIONS = 'nrc/sdd_0.xml'
 
   private static readonly RemoteURN = 'panasonic-com:service:p00NetworkControl:1'
   private static readonly RenderingURN = 'schemas-upnp-org:service:RenderingControl:1'
   private static readonly plainText = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
 
-  static readonly port = 55000
+  static readonly port = 55_000
 
   readonly address: string
 
@@ -70,7 +70,7 @@ class VieraTV implements VieraTV {
 
   apps: Outcome<VieraApps> = {}
   auth: VieraAuth = {}
-  #client: AxiosInstance
+  #client: Got
   #session: VieraSession = {}
 
   specs: VieraSpecs = {}
@@ -80,8 +80,7 @@ class VieraTV implements VieraTV {
     this.log = log
     this.mac = mac
 
-    this.#client = axios.create({
-      baseURL: `http://${this.address}:${VieraTV.port}`,
+    this.#client = got.extend({
       headers: {
         Accept: 'application/xml',
         'Cache-Control': 'no-cache',
@@ -89,7 +88,9 @@ class VieraTV implements VieraTV {
         Host: `${this.address}:${VieraTV.port}`,
         Pragma: 'no-cache'
       },
-      timeout: 3500
+      prefixUrl: `http://${this.address}:${VieraTV.port}`,
+      retry: { limit: 0 },
+      timeout: { request: 3500 }
     })
   }
 
@@ -102,21 +103,21 @@ class VieraTV implements VieraTV {
     tv.specs = await tv.#getSpecs()
     settings.bootstrap ??= false
     if (!settings.bootstrap) {
-      if (isEmpty(tv.specs) && settings?.cached != null) {
+      if (isEmpty(tv.specs) && settings.cached) {
         tv.log.warn(`Unable to fetch specs from TV at '${ip}'.`)
-        tv.log.warn('Using the previously cached ones:\n\n', JSON.stringify(settings?.cached))
-        if (settings?.cached?.requiresEncryption) {
+        tv.log.warn('Using the previously cached ones:\n\n', JSON.stringify(settings.cached))
+        if (settings.cached.requiresEncryption) {
           const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`
           return { error: Error(err) }
         }
-        tv.specs ??= settings?.cached
+        tv.specs ??= settings.cached
       }
 
       if (tv.specs.requiresEncryption) {
         const err = `'${ip} ('${tv.specs.modelName}')' ignored, as it is from a Panasonic TV that
         requires  encryption and no working credentials were supplied.`
 
-        if (settings?.auth != null) tv.auth = settings.auth
+        if (settings.auth) tv.auth = settings.auth
         if (isEmpty(tv.auth)) return { error: Error(err) }
 
         tv.#deriveSessionKey(tv.auth.key)
@@ -187,8 +188,7 @@ class VieraTV implements VieraTV {
   #needsCrypto = async (): Promise<boolean> =>
     await this.#client
       .get(VieraTV.ACTIONS)
-      // @ts-expect-error (ts2352)
-      .then((resp) => !!((resp.data as string).match(/X_GetEncryptSessionId/u) as boolean))
+      .then((resp) => !!/X_GetEncryptSessionId/u.test(resp.body))
       .catch(() => false)
 
   #requestSessionId = async (): Promise<Outcome<void>> => {
@@ -198,7 +198,7 @@ class VieraTV implements VieraTV {
       const match = /<X_SessionId>(?<sessionId>\d+)<\/X_SessionId>/u.exec(data)
       const number = match?.groups?.sessionId
 
-      if (number == null || Number.isNaN(number)) return { error }
+      if (!number || Number.isNaN(number)) return { error }
 
       this.#session.seqNum = 1
       this.#session.id = Number.parseInt(number, 10)
@@ -265,7 +265,7 @@ class VieraTV implements VieraTV {
     return await this.#client
       .get(VieraTV.INFO)
       .then(async (raw): Promise<VieraSpecs> => {
-        const jsonObject = xml2obj(raw.data as string)
+        const jsonObject = xml2obj(raw.body)
         // @ts-expect-error ts(2339)
         const { device } = jsonObject.root
         const specs: VieraSpecs = {
@@ -318,11 +318,11 @@ class VieraTV implements VieraTV {
       : outcome
   }
 
-  #renderRequest = (action: string, urn: string, parameters: string): AxiosRequestConfig => {
-    const method: AxiosRequestConfig['method'] = 'POST'
-    const responseType: AxiosRequestConfig['responseType'] = 'text'
+  #renderRequest = (action: string, urn: string, parameters: string): OptionsOfTextResponseBody => {
+    const method: OptionsOfTextResponseBody['method'] = 'POST'
+    const responseType: OptionsOfTextResponseBody['responseType'] = 'text'
     const headers = { SOAPACTION: `"urn:${urn}#${action}"` }
-    const data = '<?xml version="1.0" encoding="utf-8"?>'.concat(
+    const body = '<?xml version="1.0" encoding="utf-8"?>'.concat(
       xml({
         's:Envelope': {
           '@_s:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/',
@@ -331,8 +331,7 @@ class VieraTV implements VieraTV {
         }
       })
     )
-
-    return { data, headers, method, responseType }
+    return { body, headers, method, responseType }
   }
 
   #post = async <T>(
@@ -356,19 +355,19 @@ class VieraTV implements VieraTV {
         else return outcome
       } else [action, parameters] = [realAction, realParameters]
 
-      return await this.#client(urL, this.#renderRequest(action, urn, parameters))
+      return (await this.#client(urL, this.#renderRequest(action, urn, parameters))
         .then((r) => {
           const replacer = (_match: string, _offset: string, content: string): string =>
             this.#decryptPayload(content, this.#session.key, this.#session.iv)
-          const value = r.data.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer)
+          const value = r.body.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer)
 
           return { value }
         })
-        .catch((error) =>
-          error.response?.status === 500 && (error.response.data as string)?.includes(sessionGone)
+        .catch((error: RequestError) =>
+          error.response?.statusCode === 500 && error.response.statusMessage?.includes(sessionGone)
             ? { error: Error(sessionGone) }
             : { error }
-        )
+        )) as Outcome<T>
     }
 
     if (Abnormal((payload = await doIt())))
@@ -390,7 +389,7 @@ class VieraTV implements VieraTV {
     const callback = (data: string): Outcome<string> => {
       const match = /<X_ChallengeKey>(?<challenge>\S*)<\/X_ChallengeKey>/u.exec(data)
 
-      if (match?.groups?.challenge == null) return { error: Error(unexpectedErr) }
+      if (!match?.groups?.challenge) return { error: Error(unexpectedErr) }
 
       this.#session.challenge = Buffer.from(match.groups.challenge, 'base64')
       return { value: match.groups.challenge }
@@ -464,8 +463,8 @@ class VieraTV implements VieraTV {
       platform: 'PanasonicVieraTV',
       tvs: [
         {
-          appId: this.auth?.appId ?? undefined,
-          encKey: this.auth?.key ?? undefined,
+          appId: this.auth.appId,
+          encKey: this.auth.key,
           hdmiInputs: []
         }
       ]
@@ -473,7 +472,7 @@ class VieraTV implements VieraTV {
 
     console.info(
       '\n',
-      'Please add, as a starting point, the snippet bellow inside the ',
+      'Please add, as a starting point, the snippet bellow inside the',
       "'platforms' array of your homebridge's 'config.json'\n--x--"
     )
 
@@ -513,7 +512,7 @@ class VieraTV implements VieraTV {
   getVolume = async (): Promise<Outcome<string>> => {
     const callback = (data: string): Outcome<string> => {
       const match = /<CurrentVolume>(?<volume>\d*)<\/CurrentVolume>/u.exec(data)
-      return match?.groups?.volume != null ? { value: match.groups.volume } : { value: '0' }
+      return match?.groups?.volume ? { value: match.groups.volume } : { value: '0' }
     }
     return await this.#post('render', 'GetVolume', AudioChannel, callback)
   }
@@ -532,7 +531,7 @@ class VieraTV implements VieraTV {
     const callback = (data: string): Outcome<boolean> => {
       const match = /<CurrentMute>(?<mute>[01])<\/CurrentMute>/u.exec(data)
 
-      return match?.groups?.mute != null ? { value: match.groups.mute === '1' } : { value: true }
+      return match?.groups?.mute ? { value: match.groups.mute === '1' } : { value: true }
     }
 
     return await this.#post('render', 'GetMute', AudioChannel, callback)
@@ -551,12 +550,12 @@ class VieraTV implements VieraTV {
     const callback = (data: string): Outcome<VieraApps> => {
       const value: VieraApps = []
       const raw = /<X_AppList>(?<appList>.*)<\/X_AppList>/u.exec(data)?.groups?.appList
+      // '' is NOT to be catched bellow, but later, so we can't use !raw
+      if ((raw as unknown) === undefined)
+        return { error: Error('X_AppList returned originally:\n'.concat(data)) }
 
-      if (raw == null) return { error: Error('X_AppList returned originally:\n'.concat(data)) }
-
-      for (const i of decode(raw).matchAll(/'product_id=(?<id>[\dA-Z]+)'(?<name>[^']+)/gu))
-        i.groups != null && value.push(i.groups as unknown as VieraApp)
-
+      for (const index of decode(raw).matchAll(/'product_id=(?<id>[\dA-Z]+)'(?<name>[^']+)/gu))
+        index.groups && value.push(index.groups as unknown as VieraApp)
       return value.length === 0 ? { error: Error('The TV is in standby!') } : { value }
     }
     return await this.#postRemote('X_GetAppList', undefined, callback)

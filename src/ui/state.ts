@@ -33,6 +33,7 @@ const InitialState: GlobalState = {
   }
 }
 
-const objPurifier = (obj: unknown) => (obj != null ? JSON.parse(JSON.stringify(obj)) : null)
+const objPurifier = (obj: unknown) =>
+  obj !== undefined ? JSON.parse(JSON.stringify(obj)) : undefined
 
 export { InitialState, objPurifier, Selected }

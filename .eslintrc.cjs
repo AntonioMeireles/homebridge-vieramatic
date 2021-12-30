@@ -1,7 +1,11 @@
 module.exports = {
+  env: {
+    es6: true,
+    node: true
+  },
   extends: [
     'eslint:recommended',
-
+    'preact',
     'plugin:import/errors',
     'plugin:import/warnings',
     'plugin:import/typescript',
@@ -12,12 +16,10 @@ module.exports = {
     'plugin:promise/recommended',
     'plugin:eslint-comments/recommended',
 
-    'preact',
-
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
     // 'plugin:@typescript-eslint/recommended-requiring-type-checking',
-
+    'plugin:unicorn/recommended',
     'plugin:prettier/recommended'
   ],
   ignorePatterns: ['dist'],
@@ -25,14 +27,18 @@ module.exports = {
 
   parserOptions: {
     ecmaFeatures: {
-      jsx: true
+      impliedStrict: true,
+      jsx: true,
+      modules: true
     },
     ecmaVersion: 'latest',
+    extraFileExtensions: ['.cjs'],
     project: './tsconfig.json',
     sourceType: 'module'
   },
   plugins: [
-    '@typescript-eslint',
+    '@typescript-eslint/eslint-plugin',
+    'unicorn',
     'eslint-comments',
     'import',
     'jest',
@@ -45,6 +51,7 @@ module.exports = {
   ],
   root: true,
   rules: {
+    '@typescript-eslint/no-unnecessary-condition': 'error',
     '@typescript-eslint/no-unused-vars': [
       'error',
       {
@@ -55,6 +62,7 @@ module.exports = {
     'eslint-comments/no-unused-disable': 'error',
     'import/exports-last': 'error',
     'import/group-exports': 'error',
+    'import/no-unresolved': 'off',
     'import/order': [
       'error',
       {
@@ -65,9 +73,10 @@ module.exports = {
         'newlines-between': 'always'
       }
     ],
+
     'json/*': ['error', 'allowComments'],
     'node/no-missing-import': 'off',
-    'node/no-unsupported-features/es-syntax': 'off',
+    'node/no-unsupported-features/es-syntax': ['error', { ignores: ['dynamicImport', 'modules'] }],
     'node/shebang': 'off',
     'sort-exports/sort-exports': [
       'error',
@@ -90,9 +99,19 @@ module.exports = {
       {
         ignoreCase: true
       }
-    ]
+    ],
+    'unicorn/consistent-function-scoping': 'off',
+    'unicorn/filename-case': 'off',
+    'unicorn/new-for-builtins': 'off',
+    'unicorn/prevent-abbreviations': 'off'
   },
   settings: {
-    'import/core-modules': ['homebridge']
+    'import/core-modules': ['homebridge'],
+    'import/parsers': { '@typescript-eslint/parser': ['.ts', '.tsx'] },
+    'import/resolver': {
+      node: {
+        extensions: ['.ts', '.tsx']
+      }
+    }
   }
 }

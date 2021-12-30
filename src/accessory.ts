@@ -1,10 +1,10 @@
 import { Characteristic, CharacteristicValue, Logger, PlatformAccessory, Service } from 'homebridge'
-import util from 'util'
+import util from 'node:util'
 
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, sleep, Ok, Outcome, EmptyObject } from './helpers'
+import { Abnormal, Ok, Outcome, EmptyObject } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
@@ -17,7 +17,7 @@ type OnDisk =
         inputs: {
           applications: VieraApps
           hdmi: HdmiInput[]
-          TUNER: { hidden: InputVisibility }
+          TUNER: { hidden?: InputVisibility }
         }
         ipAddress: string
         specs: VieraSpecs
@@ -97,7 +97,7 @@ class VieramaticPlatformAccessory {
 
     const svc = this.accessory.getService(this.Service.AccessoryInformation)
     const model = `${this.device.specs.modelName} ${this.device.specs.modelNumber}`
-    if (svc != null)
+    if (svc)
       svc
         .setCharacteristic(this.Characteristic.Manufacturer, this.device.specs.manufacturer)
         .setCharacteristic(this.Characteristic.SerialNumber, this.device.specs.serialNumber)
@@ -210,7 +210,7 @@ class VieramaticPlatformAccessory {
       return true
     })
     const apps = Ok(this.device.apps) ? this.device.apps.value : []
-    if (this.storage.data == null)
+    if (!(this.storage.data as unknown))
       this.storage.data = {
         inputs: {
           applications: { ...apps },
@@ -239,14 +239,14 @@ class VieramaticPlatformAccessory {
         }
       )
       // check for new user added inputs
-      userConfig.hdmiInputs.forEach((input) => {
+      for (const input of userConfig.hdmiInputs) {
         const found = this.storage.data.inputs.hdmi.findIndex((x) => sameNameId(x, input))
         if (found === -1) {
           const msg = `appending HDMI input '${input.id}':'${input.name}' as it was appended to config.json`
           this.log.info(msg)
           this.storage.data.inputs.hdmi.push(input)
         }
-      })
+      }
       // check for user removed inputs
       this.storage.data.inputs.hdmi = this.storage.data.inputs.hdmi.filter((input) => {
         const found = userConfig.hdmiInputs.findIndex((x) => sameId(x, input))
@@ -261,21 +261,21 @@ class VieramaticPlatformAccessory {
       this.storage.data.specs = { ...this.device.specs }
       if (apps.length > 0) {
         const next: VieraApps = []
-        Object.entries(this.storage.data.inputs.applications).forEach((line) => {
+        for (const line of Object.entries(this.storage.data.inputs.applications)) {
           const [_, app] = line
           const found = [...apps].some((x: VieraApp): boolean => x.name === app.name)
           if (!found) {
             this.log.warn(`deleting TV App '${app.name}' as it wasn't removed from your TV's`)
           } else next.push(app)
-        })
-        Object.entries([...apps]).forEach((line) => {
+        }
+        for (const line of Object.entries([...apps])) {
           const [_, app] = line
           const found = next.some((x: VieraApp): boolean => x.name === app.name)
           if (!found) {
             this.log.warn(`adding TV App '${app.name}' since it was added to your TV`)
             next.push(app)
           }
-        })
+        }
         this.storage.data.inputs.applications = { ...next }
       } else this.log.warn('Using previously cached App listing.')
     }
@@ -288,7 +288,7 @@ class VieramaticPlatformAccessory {
         // catch gracefully user cfg errors (#67)
         try {
           this.configureInputSource('HDMI', input.name, Number.parseInt(input.id, 10))
-        } catch (error) {
+        } catch {
           this.log.error(
             "Unable to add as an accessory to your TV 'HDMI' input:\n%s\n\n%s",
             JSON.stringify(input, undefined, 2),
@@ -303,11 +303,11 @@ class VieramaticPlatformAccessory {
       }
     )
     // Apps
-    Object.entries(this.storage.data.inputs.applications).forEach((line) => {
+    for (const line of Object.entries(this.storage.data.inputs.applications)) {
       const [id, app] = line
       const sig = 1000 + Number.parseInt(id, 10)
       this.configureInputSource('APPLICATION', app.name, sig)
-    })
+    }
   }
 
   private async setInput(value: CharacteristicValue): Promise<void> {
@@ -358,7 +358,7 @@ class VieramaticPlatformAccessory {
           // by default TUNER is visible
           hidden = inputs.TUNER.hidden ?? 0
       }
-      return hidden.toFixed()
+      return hidden.toFixed(0)
     }
 
     const source = this.accessory.addService(
@@ -407,7 +407,7 @@ class VieramaticPlatformAccessory {
     source.getCharacteristic(this.Characteristic.TargetVisibilityState).onSet(visibilityState)
 
     const svc = this.accessory.getService(this.Service.Television)
-    if (svc != null) svc.addLinkedService(source)
+    if (svc) svc.addLinkedService(source)
   }
 
   async setPowerStatus(nextState: CharacteristicValue): Promise<void> {
@@ -416,7 +416,7 @@ class VieramaticPlatformAccessory {
     this.log.debug('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState)
       this.log.debug('TV is already %s: Ignoring!', message)
-    else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac != null) {
+    else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac) {
       this.log.debug('sending WOL packets to awake TV')
       await wakeOnLan(this.device.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
@@ -481,17 +481,17 @@ class VieramaticPlatformAccessory {
     if (Abnormal(cmd)) this.log.error('(setVolumeSelector) unable to change volume', cmd.error)
   }
 
-  async updateTVstatus(newState: CharacteristicValue): Promise<void> {
+  async updateTVstatus(nextState: CharacteristicValue): Promise<void> {
     const tvService = this.accessory.getService(this.Service.Television)
     const speakerService = this.accessory.getService(this.Service.TelevisionSpeaker)
     const customSpeakerService = this.accessory.getService(this.Service.Fan)
 
-    if (tvService === undefined || speakerService === undefined) return
+    if (!tvService || !speakerService) return
 
-    speakerService.updateCharacteristic(this.Characteristic.Active, newState)
-    tvService.updateCharacteristic(this.Characteristic.Active, newState)
+    speakerService.updateCharacteristic(this.Characteristic.Active, nextState)
+    tvService.updateCharacteristic(this.Characteristic.Active, nextState)
 
-    if (newState === true) {
+    if (nextState === true) {
       const [cmd, volume] = [await this.device.getMute(), await this.getVolume()]
       const muted = Ok(cmd) ? cmd.value : true
 
@@ -499,12 +499,12 @@ class VieramaticPlatformAccessory {
         .updateCharacteristic(this.Characteristic.Mute, muted)
         .updateCharacteristic(this.Characteristic.Volume, volume)
 
-      if (customSpeakerService != null)
+      if (customSpeakerService)
         customSpeakerService
           .updateCharacteristic(this.Characteristic.On, !muted)
           .updateCharacteristic(this.Characteristic.RotationSpeed, volume)
-    } else if (customSpeakerService != null)
-      customSpeakerService.updateCharacteristic(this.Characteristic.On, newState)
+    } else if (customSpeakerService)
+      customSpeakerService.updateCharacteristic(this.Characteristic.On, nextState)
   }
 
   async remoteControl(keyId: CharacteristicValue): Promise<void> {
@@ -545,4 +545,4 @@ class VieramaticPlatformAccessory {
   }
 }
 
-export { InputVisibility, OnDisk, sleep, UserConfig, VieramaticPlatformAccessory }
+export { InputVisibility, OnDisk, UserConfig, VieramaticPlatformAccessory }

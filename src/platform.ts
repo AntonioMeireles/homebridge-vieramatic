@@ -50,7 +50,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [cachedAccessory])
     )
 
-    const devices = (this.config.tvs as UserConfig[]) || []
+    const devices = (this.config.tvs ?? []) as UserConfig[]
 
     const sanityCheck = dupeChecker(devices)
     if (Abnormal(sanityCheck)) {
@@ -63,17 +63,16 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       return
     }
 
-    devices.forEach(async (device: UserConfig) => {
+    for (const device of devices) {
       const outcome = await this.#deviceSetup(device)
       if (Abnormal(outcome)) {
         this.log.error(outcome.error.message)
-        return
+        continue
       }
 
       this.api.publishExternalAccessories(PLUGIN_NAME, [outcome.value.accessory])
-
       this.log.info('successfully loaded', outcome.value.accessory.displayName)
-    })
+    }
   }
 
   #deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
@@ -84,7 +83,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (!isValidIPv4(device.ipAddress)) return { error: invalid('ip') }
 
     const { mac } = device
-    if (mac != null && !isValidMACAddress(mac)) return { error: invalid('MAC') }
+    if (mac && !isValidMACAddress(mac)) return { error: invalid('MAC') }
 
     return {}
   }
@@ -127,8 +126,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
       cached,
       mac: device.mac
     }
-    if (device.appId != null && device.encKey != null)
-      creds.auth = { appId: device.appId, key: device.encKey }
+    if (device.appId && device.encKey) creds.auth = { appId: device.appId, key: device.encKey }
 
     const conn = await VieraTV.connect(ip, this.log, creds)
     if (Abnormal(conn)) return conn
@@ -144,17 +142,15 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     accessory.context.device = tv
 
     const accessories = this.storage.accessories
-    const firstTime = isEmpty(accessories) || accessories[tv.specs.serialNumber] === undefined
+    const firstTime = isEmpty(accessories) || !accessories[tv.specs.serialNumber]
 
     if (firstTime) this.log.info(`Initializing '${tv.specs.friendlyName}' first time ever.`)
 
-    if (device?.disabledAppSupport == null || !device.disabledAppSupport) {
-      if (Abnormal(tv.apps)) {
-        const err = `Unable to fetch Apps list from the TV: ${tv.apps.error.message}.`
-        const ft = `Unable to finish initial setup of ${tv.specs.friendlyName}. ${err}. This TV must be powered ON and NOT in stand-by.`
-        if (firstTime) return { error: Error(ft) }
-        this.log.debug(err)
-      }
+    if (!device.disabledAppSupport && Abnormal(tv.apps)) {
+      const err = `Unable to fetch Apps list from the TV: ${tv.apps.error.message}.`
+      const ft = `Unable to finish initial setup of ${tv.specs.friendlyName}. ${err}. This TV must be powered ON and NOT in stand-by.`
+      if (firstTime) return { error: Error(ft) }
+      this.log.debug(err)
     }
 
     return { value: new VieramaticPlatformAccessory(this, accessory, device) }

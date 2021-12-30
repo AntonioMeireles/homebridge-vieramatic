@@ -1,9 +1,9 @@
 // loosely based in the previously used https://github.com/bazwilliams/node-upnp-subscription
 
-import { EventEmitter } from 'events'
-import http from 'http'
-import { AddressInfo } from 'net'
-import { networkInterfaces } from 'os'
+import { EventEmitter } from 'node:events'
+import http from 'node:http'
+import { AddressInfo } from 'node:net'
+import { networkInterfaces } from 'node:os'
 
 import { xml2obj } from './helpers.server'
 
@@ -21,7 +21,7 @@ class UPNPSubscription extends EventEmitter {
   readonly #publicIP =
     Object.values(networkInterfaces())
       .flat()
-      .find((i) => i?.family === 'IPv4' && !i?.internal)?.address ?? ''
+      .find((i) => i?.family === 'IPv4' && !i.internal)?.address ?? ''
 
   constructor(host: string, port: number, eventSub: string) {
     super()
@@ -43,8 +43,8 @@ class UPNPSubscription extends EventEmitter {
           .on('data', (chunk: string) => (data += chunk))
           .on('end', () => {
             const emitter = this.#subscriptions.get(this.#sid)
-            if (res != null) res.end()
-            if (emitter != null) emitter.emit('message', { body: xml2obj(data), sid: this.#sid })
+            if (res as unknown) res.end()
+            if (emitter) emitter.emit('message', { body: xml2obj(data), sid: this.#sid })
           })
       })
 
@@ -76,7 +76,7 @@ class UPNPSubscription extends EventEmitter {
     const didIt = (): boolean => this.emit('unsubscribed', { sid: this.#sid })
     const didnt = (error: Error): boolean => this.emit('error:unsubscribe', error)
 
-    if (this.#sid != null) {
+    if (this.#sid) {
       const method = { headers: { SID: this.#sid }, method: 'UNSUBSCRIBE' }
       http
         .request(Object.assign(this.#baseConfig, method), didIt)

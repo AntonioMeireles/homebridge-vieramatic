@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESnext",
-    "module": "commonjs",
+    "module": "ESnext",
     "lib": [
       "esnext",
     ],
@@ -27,6 +27,6 @@
   },
   "include": [
     "src/",
-    "**.js"
+    "**.cjs"
   ]
 }

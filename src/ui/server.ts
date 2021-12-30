@@ -66,7 +66,7 @@ class VieramaticUiServer extends HomebridgePluginUiServer {
     if (Abnormal(probe))
       throw new RequestError(probe.error.message, UIServerRequestErrorType.NotConnectable)
     else if (probe.value.specs.requiresEncryption) {
-      if (tv.encKey != null && tv.appId != null) {
+      if (tv.encKey && tv.appId) {
         const auth: VieraAuth = { appId: tv.appId, key: tv.encKey }
         const validate = await VieraTV.connect(tv.ipAddress, console, { auth })
         if (Abnormal(validate))

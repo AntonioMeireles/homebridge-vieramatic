@@ -1,5 +1,4 @@
-/* eslint-disable node/no-unpublished-require */
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable node/no-unpublished-require, no-process-exit, unicorn/no-process-exit, @typescript-eslint/no-var-requires */
 const fs = require('fs')
 
 const esbuild = require('esbuild')
@@ -9,13 +8,13 @@ const makeAllPackagesExternalPlugin = {
   name: 'make-all-packages-external',
   setup(build) {
     const filter = /^[^./]|^\.[^./]|^\.\.[^/]/ // Must not start with "/" or "./" or "../"
-    build.onResolve({ filter }, (args) => ({ external: true, path: args.path }))
+    build.onResolve({ filter }, (arguments_) => ({ external: true, path: arguments_.path }))
   }
 }
 
-const catcher = (err) => {
-  console.log(err)
-  // eslint-disable-next-line no-process-exit
+const catcher = (error) => {
+  console.error(error)
+
   process.exit(1)
 }
 const targets = { Browser: 'browser', Node: 'node' }
@@ -23,9 +22,13 @@ const targets = { Browser: 'browser', Node: 'node' }
 const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
   esbuild
     .build({
-      ...{ bundle: true, metafile: true, minify: true, sourcemap: true },
+      bundle: true,
       entryPoints,
+      format: 'esm',
+      metafile: true,
+      minify: true,
       outdir,
+      sourcemap: true,
       ...(target === targets.Node
         ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node12' }
         : {
@@ -47,4 +50,4 @@ const deliverables = [
   [['src/ui/index.tsx'], 'dist/homebridge-ui/public/', targets.Browser]
 ]
 
-deliverables.forEach((payload) => builder(...payload).catch(catcher))
+for (const payload of deliverables) builder(...payload).catch(catcher)

@@ -1,6 +1,9 @@
+// eslint-disable-next-line node/no-extraneous-import
+import { jest } from '@jest/globals'
+
 import { isValidMACAddress, sleep, isEmpty } from './helpers'
 
-jest.setTimeout(30000)
+jest.setTimeout(30_000)
 
 describe('isValidMacAddress', () => {
   it('should verify a valid mac address', () => {
