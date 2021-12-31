@@ -1,15 +1,18 @@
 // loosely based in the previously used https://github.com/bazwilliams/node-upnp-subscription
 
+import dgram from 'node:dgram'
 import { EventEmitter } from 'node:events'
 import http from 'node:http'
 import { AddressInfo } from 'node:net'
-import { networkInterfaces } from 'node:os'
+import { networkInterfaces, NetworkInterfaceInfo } from 'node:os'
 
+import { Outcome } from './helpers'
 import { xml2obj } from './helpers.server'
+import { VieraTV } from './viera'
 
 const TIMEOUT_IN_SECONDS = 2
 
-class UPNPSubscription extends EventEmitter {
+class UPnPSubscription extends EventEmitter {
   readonly #subscriptions = new Map()
   #sid: string | string[] | undefined
 
@@ -90,4 +93,40 @@ class UPNPSubscription extends EventEmitter {
   }
 }
 
-export default UPNPSubscription
+const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>> => {
+  const mcast = { host: '239.255.255.250', port: 1900 }
+  const timeout = 5000
+  const found = new Set<string>()
+  const message = Buffer.from(
+    [
+      'M-SEARCH * HTTP/1.1',
+      `HOST:${mcast.host}:${mcast.port}`,
+      'MAN:"ssdp:discover"',
+      `ST:${st}`,
+      'MX:1',
+      '\r\n'
+    ].join('\r\n')
+  )
+  const interfaces = ((Object.values(networkInterfaces())
+    .flat()
+    .filter((i) => i?.family === 'IPv4' && !i.internal) as unknown) || []) as NetworkInterfaceInfo[]
+
+  const sockets = interfaces.map((i) => {
+    const socket = dgram.createSocket({ reuseAddr: true, type: 'udp4' })
+    socket
+      .bind(0, i.address)
+      .on('message', (_, tv: dgram.RemoteInfo) => !found.has(tv.address) && found.add(tv.address))
+      .send(message, 0, message.length, mcast.port, mcast.host)
+
+    return socket
+  })
+
+  return await new Promise((resolve) =>
+    setTimeout(() => {
+      resolve({ value: [...found] })
+      for (const socket of sockets) socket.close()
+    }, timeout)
+  )
+}
+
+export { UPnPSubscription, vieraFinder }

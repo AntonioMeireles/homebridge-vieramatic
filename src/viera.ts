@@ -8,7 +8,7 @@ import { decode } from 'html-entities'
 import { InputVisibility } from './accessory'
 import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
 import { xml2obj, xml } from './helpers.server'
-import UPnPSubscription from './upnpsub'
+import { UPnPSubscription } from './upnpsub'
 
 // helpers and default settings
 const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
@@ -57,6 +57,7 @@ class VieraTV implements VieraTV {
   private static readonly ACTIONS = 'nrc/sdd_0.xml'
 
   private static readonly RemoteURN = 'panasonic-com:service:p00NetworkControl:1'
+  static readonly URN = `urn:${this.RemoteURN}`
   private static readonly RenderingURN = 'schemas-upnp-org:service:RenderingControl:1'
   private static readonly plainText = ['X_GetEncryptSessionId', 'X_DisplayPinCode', 'X_RequestAuth']
 
