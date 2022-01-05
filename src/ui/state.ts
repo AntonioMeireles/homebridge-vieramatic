@@ -17,9 +17,9 @@ type GlobalState = {
   abnormal: boolean
   frontPage: boolean
   killSwitch: boolean
+  loading: boolean
   pluginConfig: PluginConfig
   selected?: Selected
-  loading: boolean
 }
 
 const InitialState: GlobalState = {
@@ -36,4 +36,4 @@ const InitialState: GlobalState = {
 const objPurifier = (obj: unknown) =>
   obj !== undefined ? JSON.parse(JSON.stringify(obj)) : undefined
 
-export { InitialState, objPurifier, Selected }
+export { InitialState, objPurifier, PluginConfig, Selected }

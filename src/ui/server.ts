@@ -1,9 +1,11 @@
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils'
 
 import { Abnormal, Outcome } from '../helpers'
+import { vieraFinder } from '../upnpsub'
 import { VieraAuth, VieraSpecs, VieraTV } from '../viera'
 
 const enum UIServerRequestErrorType {
+  DiscoveryFailed,
   NotConnectable,
   AuthFailed,
   PinChallengeError,
@@ -19,6 +21,7 @@ class VieramaticUiServer extends HomebridgePluginUiServer {
   constructor() {
     super()
 
+    this.onRequest('/discover', this.handleDiscovery.bind(this))
     this.onRequest('/ping', this.handleLivenessProbe.bind(this))
     this.onRequest('/specs', this.handleSpecs.bind(this))
     this.onRequest('/pin', this.handlePin.bind(this))
@@ -28,7 +31,7 @@ class VieramaticUiServer extends HomebridgePluginUiServer {
   }
 
   async handleLivenessProbe(ip: string): Promise<boolean> {
-    const reachable = await VieraTV.livenessProbe(ip)
+    const reachable = await VieraTV.isTurnedOn(ip)
     console.log('---> (ping)', ip, reachable)
     return reachable
   }
@@ -59,6 +62,14 @@ class VieramaticUiServer extends HomebridgePluginUiServer {
 
     return auth.value
   }
+
+  async handleDiscovery(): Promise<string[]> {
+    const found = await vieraFinder()
+    if (Abnormal(found))
+      throw new RequestError(found.error.message, UIServerRequestErrorType.DiscoveryFailed)
+    return found.value
+  }
+
   async handleSpecs(payload: string): Promise<VieraSpecs> {
     const tv = JSON.parse(payload)
     console.log('---> (specs)', tv.ipAddress)

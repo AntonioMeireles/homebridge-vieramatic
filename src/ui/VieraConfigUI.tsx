@@ -18,7 +18,7 @@ import {
   pinRequestSchema
 } from './forms'
 import { Header } from './imagery'
-import { objPurifier, InitialState, Selected } from './state'
+import { objPurifier, InitialState, PluginConfig, Selected } from './state'
 
 const globalState = createState(InitialState)
 
@@ -31,20 +31,44 @@ const enum actionType {
 
 const { homebridge } = window
 
-const updateGlobalConfig = async () => {
-  const [pluginConfig] = await homebridge.getPluginConfig()
+const updateGlobalConfig = async (discover = true) => {
+  const [pluginConfig] = (await homebridge.getPluginConfig()) as PluginConfig[]
   pluginConfig.tvs ??= []
   const abnormal = !!Abnormal(dupeChecker(pluginConfig.tvs))
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore ts(2739)
   globalState.merge({ abnormal, killSwitch: abnormal, loading: false, pluginConfig })
+
+  if (!abnormal && discover) {
+    globalState.loading.set(true)
+    const around = (await homebridge.request('/discover')) as string[]
+    const found = around.filter((t) => !pluginConfig.tvs.some((e) => e.ipAddress === t))
+    const fn = (ip: string): UserConfig => {
+      return { hdmiInputs: [], ipAddress: ip }
+    }
+    if (found.length > 0) {
+      const discovered = found.map((ip: string) => fn(ip))
+      await homebridge.updatePluginConfig([
+        {
+          platform: 'PanasonicVieraTV',
+          tvs: [...pluginConfig.tvs, ...discovered]
+        }
+      ])
+      await homebridge.savePluginConfig()
+      for (const ip of found)
+        homebridge.toast.info(
+          `A new Panasonic Viera TV was discovered at ${ip}, on your network, and added to your homebridge. Click it to finish its' setup.`
+        )
+      await updateGlobalConfig(false)
+    } else globalState.loading.set(false)
+  }
 }
 
 const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: actionType) => {
   if (type !== actionType.none) {
     await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...next] }])
     await homebridge.savePluginConfig()
-    await updateGlobalConfig()
+    await updateGlobalConfig(false)
   }
   homebridge.toast.success(`${ip} ${type}.`)
 }
@@ -199,7 +223,7 @@ const Body = () => {
     const Offline = (props: { selected: State<Selected> }) => (
       <Alert variant="danger" className="mt-3">
         <Alert.Heading>
-          The Viera TV at <b>{props.selected.config.ipAddress.value}</b> could not be reached.
+          The Viera TV at <b>{props.selected.config.ipAddress.value}</b> could not be edited.
         </Alert.Heading>
         <hr />
         <p className="mb-2">
