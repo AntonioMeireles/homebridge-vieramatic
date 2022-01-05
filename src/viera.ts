@@ -157,31 +157,34 @@ class VieraTV implements VieraTV {
         .connect(VieraTV.port, tv, isUp)
     })
 
-  isTurnedOn = async (): Promise<boolean> =>
+  static isTurnedOn = async (address: string): Promise<boolean> =>
     await new Promise<boolean>((resolve) => {
-      const watcher = new UPnPSubscription(this.address, VieraTV.port, '/nrc/event_0')
-      setTimeout(() => watcher.unsubscribe(), 1500)
+      const watcher = new UPnPSubscription(address, VieraTV.port, '/nrc/event_0')
+      setTimeout(() => {
+        watcher.unsubscribe()
+        resolve(false)
+      }, 1500)
       watcher
-        .once('message', (message): void => {
-          const properties = message.body['e:propertyset']['e:property']
-          if (!Array.isArray(properties)) {
-            this.log.error('Unsuccessful (!) communication with TV.')
+        .on('message', (message): void => {
+          const fn = () => {
+            console.error('Unexpected (!) communication with TV. Got:', message, properties)
+            console.error(
+              'please fill a bug at',
+              'https://github.com/AntonioMeireles/homebridge-vieramatic/issues',
+              'with the data above, plus your specific Viera model'
+            )
             resolve(false)
-          } else {
-            const match = properties.filter((prop) => ['on', 'off'].includes(prop.X_ScreenState))
-            /* TODO: FIXME
-             *
-             * if we do not get a match, we assume that we're facing an older TV set
-             * which may only reply when it is ON (which is what we want to spot after all)
-             *
-             * heuristic bellow is likely not enough to cover all angles as it seems
-             * that there are old models which shutdown the wifi interface when in
-             * standby but not the wired one i.e the exact same model may behave
-             * differently depending on how it is connected to the network
-             *
-             */
-            match.length > 0 ? resolve(match[0].X_ScreenState === 'on') : resolve(true)
           }
+
+          const properties = message.body['e:propertyset']['e:property']
+          // when in standby isn't an array
+          if (properties.X_ScreenState) {
+            resolve(properties.X_ScreenState === 'on')
+          } else if (Array.isArray(properties)) {
+            const match = properties.find((prop) => ['on', 'off'].includes(prop.X_ScreenState))
+            if (match) resolve(match.X_ScreenState === 'on')
+            else fn()
+          } else fn()
         })
         .on('error', () => resolve(false))
     })
@@ -398,7 +401,7 @@ class VieraTV implements VieraTV {
 
     return !this.specs.requiresEncryption
       ? { error: Error(overreachErr) }
-      : !(await this.isTurnedOn())
+      : !(await VieraTV.isTurnedOn(this.address))
       ? { error: Error(notReadyErr) }
       : await this.#postRemote('X_DisplayPinCode', parameters, callback)
   }

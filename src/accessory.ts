@@ -412,7 +412,7 @@ class VieramaticPlatformAccessory {
 
   async setPowerStatus(nextState: CharacteristicValue): Promise<void> {
     const message = nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
-    const currentState = await this.device.isTurnedOn()
+    const currentState = await VieraTV.isTurnedOn(this.device.address)
     this.log.debug('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState)
       this.log.debug('TV is already %s: Ignoring!', message)
@@ -433,7 +433,7 @@ class VieramaticPlatformAccessory {
   }
 
   async getPowerStatus(): Promise<boolean> {
-    const currentState = await this.device.isTurnedOn()
+    const currentState = await VieraTV.isTurnedOn(this.device.address)
 
     await this.updateTVstatus(currentState)
 
@@ -441,7 +441,7 @@ class VieramaticPlatformAccessory {
   }
 
   async getMute(): Promise<boolean> {
-    const state = await this.device.isTurnedOn()
+    const state = await VieraTV.isTurnedOn(this.device.address)
     let mute: boolean
 
     if (state) {
