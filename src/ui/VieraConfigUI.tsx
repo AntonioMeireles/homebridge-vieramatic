@@ -49,11 +49,8 @@ const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: acti
   homebridge.toast.success(`${ip} ${type}.`)
 }
 
-const useSingleton = (
-  callBack = () => {
-    return
-  }
-): void => {
+// https://dev.to/bytebodger/constructors-in-functional-components-with-hooks-280m
+const useSingleton = (callBack = () => void 0): void => {
   const hasBeenCalled = useState(false)
   if (hasBeenCalled.value) return
   callBack()
