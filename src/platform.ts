@@ -107,17 +107,12 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const [reachable, cached] = [await VieraTV.livenessProbe(ip), this.#knownWorking(ip)]
 
     if (!reachable && isEmpty(cached)) {
-      this.log.error(
-        'cached:',
-        cached,
-        '\nreachable:',
-        reachable,
-        '\nall Known:\n',
-        JSON.stringify(this.storage.accessories, undefined, 4)
+      const error = Error(
+        `IGNORING '${ip}' as it is not reachable.\n` +
+          "(As we can't rely on cached data since it seems that it was never ever seen and " +
+          'fully setup before)\n\n' +
+          'Please make sure that your TV is powered ON and connected to the network.'
       )
-      const error = Error(`IGNORING '${ip}' as it is not reachable, and we can't rely on cached data
-        as it seems that it was never ever seen and setup before.\n\n
-        Please make sure that your TV is powered ON and connected to the network.`)
 
       return { error }
     }
