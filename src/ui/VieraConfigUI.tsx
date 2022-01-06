@@ -230,6 +230,26 @@ const Body = () => {
           Please, do make sure that it is <b>turned on</b> and <b>connected to the network</b>, and
           then try again.
         </p>
+        <div className="mt-4 w-75 mx-auto">
+          <p className="text-left ">
+            Also, <b>if you haven't done it already</b>...
+          </p>
+          <p className="text-left">
+            ...on your TV go to <b>Menu / Network / TV Remote App Settings</b> and make sure that
+            the following settings are <b>all</b> turned <b>ON</b>:
+            <ul className="mt-2">
+              <li>
+                <b>TV Remote</b>
+              </li>
+              <li>
+                <b>Powered On by Apps</b>
+              </li>
+              <li>
+                <b>Networked Standby</b>
+              </li>
+            </ul>
+          </p>
+        </div>
         <div className="d-flex justify-content-end mt-5">
           <Button onClick={() => backToMain()} variant="primary">
             OK
