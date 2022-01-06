@@ -32,6 +32,8 @@
   > changes](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#breaking-changes)**
   > section in order to see if anything there applies to your particular setup.
 
+- A actively supported LTS nodejs release. Minimum from 4.x onwards is Node 14.
+
 ## TV setup
 
 1. On your TV go to `Menu -> Network -> TV Remote App Settings` and make sure that the following settings are **all** turned **ON**:
@@ -59,12 +61,17 @@
 
 5. Go again to the plugins tab, and click on 'settings' from this plugin.
 
-6. Just follow the instructions and that's it.
+6. that's it! The plugin will even detect automatically all TVs on your local network (and
+   if it doesn't you can still add them manually...)
 
 7. If for some reason, things do not progress as expected, it is probably a bug.
    Please just [report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it.
 
-### the old fashioned way
+> if using a containerized homebridge setup in order for the automated discovery of
+> available TV on your local network to work you need to have docker's networking for the
+> homebridge container set in host mode
+
+### the old fashioned way [you shouldn't need to do this anymore really!]
 
 1. Get [**homebridge**](http://homebridge.io).
 
