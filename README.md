@@ -32,7 +32,8 @@
   > changes](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#breaking-changes)**
   > section in order to see if anything there applies to your particular setup.
 
-- A actively supported LTS nodejs release. Minimum from 4.x onwards is Node 14.
+- A actively supported [LTS](https://nodejs.org/en/about/releases/) nodejs release. So, the minimum
+  from 4.x onwards is Node 12.
 
 ## TV setup
 
