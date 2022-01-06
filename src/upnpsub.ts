@@ -45,8 +45,8 @@ class UPnPSubscription extends EventEmitter {
           .setEncoding('utf8')
           .on('data', (chunk: string) => (data += chunk))
           .on('end', () => {
+            res.end()
             const emitter = this.#subscriptions.get(this.#sid)
-            if (res as unknown) res.end()
             if (emitter) emitter.emit('message', { body: xml2obj(data), sid: this.#sid })
           })
       })
