@@ -166,25 +166,16 @@ class VieraTV implements VieraTV {
       }, 1500)
       watcher
         .on('message', (message): void => {
-          const fn = () => {
-            console.error('Unexpected (!) communication with TV. Got:', message, properties)
-            console.error(
-              'please fill a bug at',
-              'https://github.com/AntonioMeireles/homebridge-vieramatic/issues',
-              'with the data above, plus your specific Viera model'
-            )
-            resolve(false)
-          }
-
           const properties = message.body['e:propertyset']['e:property']
           // when in standby isn't an array
+          // XXX: in some cases X_ScreenState simply doesn't pop up (in array or no array form)
+          //      when that happens we assume it's off.
           if (properties.X_ScreenState) {
             resolve(properties.X_ScreenState === 'on')
           } else if (Array.isArray(properties)) {
             const match = properties.find((prop) => ['on', 'off'].includes(prop.X_ScreenState))
-            if (match) resolve(match.X_ScreenState === 'on')
-            else fn()
-          } else fn()
+            match ? resolve(match.X_ScreenState === 'on') : resolve(false)
+          } else resolve(false)
         })
         .on('error', () => resolve(false))
     })
