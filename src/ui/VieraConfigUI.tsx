@@ -31,7 +31,7 @@ const enum actionType {
 
 const { homebridge } = window
 
-const updateGlobalConfig = async (discover = true) => {
+const updateGlobalConfig = async (discover = false) => {
   const [pluginConfig] = (await homebridge.getPluginConfig()) as PluginConfig[]
   pluginConfig.tvs ??= []
   const abnormal = !!Abnormal(dupeChecker(pluginConfig.tvs))

@@ -62,15 +62,14 @@
 
 5. Go again to the plugins tab, and click on 'settings' from this plugin.
 
-6. that's it! The plugin will even detect automatically all TVs on your local network (and
-   if it doesn't you can still add them manually...)
-
+6. that's it! ~~The plugin will even detect automatically all TVs on your local network (and
+   if it doesn't you can still add them manually...)~~
+    > early 4.x releases shipped with automated discovery of available TV on your local network, via
+    > SSDP multicast discovery. That is causing issues in several setups - namely docker ones, so it
+    > become disabled until it becomes completely reliable for the common case.
+    >
 7. If for some reason, things do not progress as expected, it is probably a bug.
    Please just [report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it.
-
-> if using a containerized homebridge setup in order for the automated discovery of
-> available TV on your local network to work you need to have docker's networking for the
-> homebridge container set in host mode
 
 ### the old fashioned way [you shouldn't need to do this anymore really!]
 
