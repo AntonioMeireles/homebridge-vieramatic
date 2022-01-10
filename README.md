@@ -71,7 +71,14 @@
 7. If for some reason, things do not progress as expected, it is probably a bug.
    Please just [report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it.
 
-### the old fashioned way [you shouldn't need to do this anymore really!]
+> This plugin assumes and expects that the user has
+> [homebridge-plugin-ui-x](https://github.com/oznu/homebridge-config-ui-x) installed for all its UI
+> functionality. So, there's no integration UI wise of any kind for third party homebridge UIs like
+> HOOBS. So, if you are an HOOBS user you need to use `viera-pair` (see bellow) to generate the
+> encryption tuple!
+>
+
+### the old fashioned way [you shouldn't need to do this anymore really, except if using HOOBS or similar]
 
 1. Get [**homebridge**](http://homebridge.io).
 
