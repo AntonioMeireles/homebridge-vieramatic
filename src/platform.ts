@@ -127,7 +127,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (Abnormal(conn)) return conn
     const tv = conn.value
 
-    tv.specs.friendlyName = device.friendlyName ?? tv.specs.friendlyName
+    tv.specs.friendlyName = (device.friendlyName ?? tv.specs.friendlyName).trim()
     const accessory = new this.api.platformAccessory(
       tv.specs.friendlyName,
       tv.specs.serialNumber,
