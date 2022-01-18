@@ -127,28 +127,36 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     if (Abnormal(conn)) return conn
     const tv = conn.value
 
-    tv.specs.friendlyName = (device.friendlyName ?? tv.specs.friendlyName).trim()
-    const accessory = new this.api.platformAccessory(
-      tv.specs.friendlyName,
-      tv.specs.serialNumber,
-      this.api.hap.Categories.TELEVISION
-    )
+    if (device.friendlyName) tv.specs.friendlyName = device.friendlyName
+    tv.specs.friendlyName = tv.specs.friendlyName.trim()
 
-    accessory.context.device = tv
+    try {
+      const accessory = new this.api.platformAccessory(
+        tv.specs.friendlyName,
+        tv.specs.serialNumber,
+        this.api.hap.Categories.TELEVISION
+      )
 
-    const accessories = this.storage.accessories
-    const firstTime = isEmpty(accessories) || !accessories[tv.specs.serialNumber]
+      accessory.context.device = tv
 
-    if (firstTime) this.log.info(`Initializing '${tv.specs.friendlyName}' first time ever.`)
+      const accessories = this.storage.accessories
+      const firstTime = isEmpty(accessories) || !accessories[tv.specs.serialNumber]
 
-    if (!device.disabledAppSupport && Abnormal(tv.apps)) {
-      const err = `Unable to fetch Apps list from the TV: ${tv.apps.error.message}.`
-      const ft = `Unable to finish initial setup of ${tv.specs.friendlyName}. ${err}. This TV must be powered ON and NOT in stand-by.`
-      if (firstTime) return { error: Error(ft) }
-      this.log.debug(err)
+      if (firstTime) this.log.info(`Initializing '${tv.specs.friendlyName}' first time ever.`)
+
+      if (!device.disabledAppSupport && Abnormal(tv.apps)) {
+        const err = `Unable to fetch Apps list from the TV: ${tv.apps.error.message}.`
+        const ft = `Unable to finish initial setup of ${tv.specs.friendlyName}. ${err}. This TV must be powered ON and NOT in stand-by.`
+        if (firstTime) return { error: Error(ft) }
+        this.log.debug(err)
+      }
+
+      return { value: new VieramaticPlatformAccessory(this, accessory, device) }
+    } catch (error) {
+      this.log.error('device:', JSON.stringify(device))
+      this.log.error('specs:', JSON.stringify(tv.specs))
+      return { error: error as Error }
     }
-
-    return { value: new VieramaticPlatformAccessory(this, accessory, device) }
   }
 }
 
