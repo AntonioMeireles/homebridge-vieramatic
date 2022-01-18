@@ -52,9 +52,9 @@ interface Failure {
   error: Error
 }
 type Outcome<T> = Success<T> | Failure
-const Abnormal = (result: unknown): result is Failure =>
-  (result as { error?: Error }).error !== undefined
-const Ok = <T>(result: unknown): result is Success<T> => !Abnormal(result)
+const Abnormal = (outcome: unknown): outcome is Failure =>
+  (outcome as { error?: Error }).error !== undefined
+const Ok = <T>(outcome: unknown): outcome is Success<T> => !Abnormal(outcome)
 
 export {
   Abnormal,
