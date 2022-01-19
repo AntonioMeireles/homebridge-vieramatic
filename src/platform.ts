@@ -84,13 +84,11 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   }
 
   #deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
-    const raw = prettyPrint(device)
+    const { ipAddress, mac } = device
     const invalid = (type: string): Error =>
-      Error(`IGNORED '${device.ipAddress}' as it has an invalid ${type} address.\n\n${raw}`)
+      Error(`IGNORED '${ipAddress}': it has an invalid ${type} address.\n\n${prettyPrint(device)}`)
 
-    if (!isValidIPv4(device.ipAddress)) return { error: invalid('ip') }
-
-    const { mac } = device
+    if (!isValidIPv4(ipAddress)) return { error: invalid('ip') }
     if (mac && !isValidMACAddress(mac)) return { error: invalid('MAC') }
 
     return {}
