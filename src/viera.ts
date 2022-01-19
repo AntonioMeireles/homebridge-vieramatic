@@ -104,14 +104,23 @@ class VieraTV implements VieraTV {
     tv.specs = await tv.#getSpecs()
     settings.bootstrap ??= false
     if (!settings.bootstrap) {
-      if (isEmpty(tv.specs) && settings.cached) {
+      if (isEmpty(tv.specs) && settings.cached && !isEmpty(settings.cached)) {
         tv.log.warn(`Unable to fetch specs from TV at '${ip}'.`)
         tv.log.warn('Using the previously cached ones:\n\n', JSON.stringify(settings.cached))
-        if (settings.cached.requiresEncryption) {
-          const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`
-          return { error: Error(err) }
+        const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`
+        if (settings.cached.requiresEncryption) return { error: Error(err) }
+
+        tv.specs = settings.cached
+      }
+      if (isEmpty(tv.specs)) {
+        tv.log.error(
+          'please fill a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues with data bellow'
+        )
+        return {
+          error: Error(
+            `${ip}: offline initialization failure!\n${JSON.stringify(settings, undefined, 2)}`
+          )
         }
-        tv.specs ??= settings.cached
       }
 
       if (tv.specs.requiresEncryption) {

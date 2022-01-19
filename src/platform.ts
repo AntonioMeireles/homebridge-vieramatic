@@ -153,8 +153,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
       return { value: new VieramaticPlatformAccessory(this, accessory, device) }
     } catch (error) {
-      this.log.error('device:', JSON.stringify(device))
-      this.log.error('specs:', JSON.stringify(tv.specs))
+      this.log.error('device:', JSON.stringify(device, undefined, 2))
+      this.log.error('specs:', JSON.stringify(tv.specs, undefined, 2))
       return { error: error as Error }
     }
   }
