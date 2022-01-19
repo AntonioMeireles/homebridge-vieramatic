@@ -199,7 +199,7 @@ class VieraTV implements VieraTV {
       const match = /<X_SessionId>(?<sessionId>\d+)<\/X_SessionId>/u.exec(data)
       const number = match?.groups?.sessionId
 
-      if (!number || Number.isNaN(number)) return { error }
+      if (!number) return { error }
 
       this.#session.seqNum = 1
       this.#session.id = Number.parseInt(number, 10)
