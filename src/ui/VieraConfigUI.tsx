@@ -7,7 +7,7 @@ import { useEffect } from 'preact/compat'
 import { Alert, Button, Form } from 'react-bootstrap'
 
 import { UserConfig } from '../accessory'
-import { sleep, isValidIPv4, Abnormal, dupeChecker, isSame } from '../helpers'
+import { sleep, isValidIPv4, Abnormal, dupeChecker, isSame, prettyPrint } from '../helpers'
 import { VieraAuth, VieraSpecs } from '../viera'
 
 import {
@@ -275,7 +275,7 @@ const Body = () => {
               <p className="mb-2">Please, make sure you know what you are doing...</p>
               <hr />
               <pre class="text-monospace text-left bg-light p-2">
-                {JSON.stringify(props.selected.config.value, undefined, 2)}
+                {prettyPrint(props.selected.config.value)}
               </pre>
               <hr />
             </div>

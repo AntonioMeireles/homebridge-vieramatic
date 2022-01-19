@@ -35,6 +35,8 @@ const sleep = async (ms: number): Promise<unknown> =>
 const isEmpty = (obj: Record<string, unknown>): boolean =>
   obj.constructor === Object && Object.keys(obj).length === 0
 
+const prettyPrint = (obj: unknown) => JSON.stringify(obj, undefined, 2)
+
 // vscode decorator trickery
 // istanbul ignore next
 const lit = (s: TemplateStringsArray, ...args: string[]): string =>
@@ -67,5 +69,6 @@ export {
   isValidMACAddress,
   Ok,
   Outcome,
+  prettyPrint,
   sleep
 }

@@ -6,7 +6,7 @@ import got, { Got, RequestError, OptionsOfTextResponseBody } from 'got'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome } from './helpers'
+import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome, prettyPrint } from './helpers'
 import { xml2obj, xml } from './helpers.server'
 import { UPnPSubscription } from './upnpsub'
 
@@ -106,7 +106,7 @@ class VieraTV implements VieraTV {
     if (!settings.bootstrap) {
       if (isEmpty(tv.specs) && settings.cached && !isEmpty(settings.cached)) {
         tv.log.warn(`Unable to fetch specs from TV at '${ip}'.`)
-        tv.log.warn('Using the previously cached ones:\n\n', JSON.stringify(settings.cached))
+        tv.log.warn('Using the previously cached ones:\n\n', prettyPrint(settings.cached))
         const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`
         if (settings.cached.requiresEncryption) return { error: Error(err) }
 
@@ -116,11 +116,8 @@ class VieraTV implements VieraTV {
         tv.log.error(
           'please fill a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues with data bellow'
         )
-        return {
-          error: Error(
-            `${ip}: offline initialization failure!\n${JSON.stringify(settings, undefined, 2)}`
-          )
-        }
+        const error = Error(`${ip}: offline initialization failure!\n${prettyPrint(settings)}`)
+        return { error }
       }
 
       if (tv.specs.requiresEncryption) {
@@ -481,7 +478,7 @@ class VieraTV implements VieraTV {
     )
 
     console.group()
-    console.log(JSON.stringify(sample, undefined, 4))
+    console.log(prettyPrint(sample))
     console.groupEnd()
     console.log('--x--')
   }

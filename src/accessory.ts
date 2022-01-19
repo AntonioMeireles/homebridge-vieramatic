@@ -4,7 +4,7 @@ import util from 'node:util'
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, Ok, Outcome, EmptyObject } from './helpers'
+import { Abnormal, Ok, Outcome, EmptyObject, prettyPrint } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
@@ -65,7 +65,7 @@ class VieramaticPlatformAccessory {
     this.Service = this.platform.Service
     this.Characteristic = this.platform.Characteristic
 
-    this.log.debug(JSON.stringify(this.userConfig, undefined, 2))
+    this.log.debug(prettyPrint(this.userConfig))
 
     const handler = {
       get: <T, K extends keyof T>(obj: T, prop: K): T[K] | boolean | undefined => {
@@ -200,7 +200,7 @@ class VieramaticPlatformAccessory {
       for (const req of required)
         if (!Object.prototype.hasOwnProperty.call(input, req)) {
           this.log.warn(
-            `ignoring hdmi input "${JSON.stringify(
+            `ignoring hdmi input "${prettyPrint(
               input
             )}" as it has a missing required field ("${req}" is required)`
           )
@@ -291,7 +291,7 @@ class VieramaticPlatformAccessory {
         } catch {
           this.log.error(
             "Unable to add as an accessory to your TV 'HDMI' input:\n%s\n\n%s",
-            JSON.stringify(input, undefined, 2),
+            prettyPrint(input),
             "If you do believe that your homebridge's 'config.json' is in order and",
             'has absolutelly no duplicated entries for HDMI inputs then please fill',
             'a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues,',

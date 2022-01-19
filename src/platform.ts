@@ -9,7 +9,15 @@ import {
 } from 'homebridge'
 
 import { UserConfig, VieramaticPlatformAccessory } from './accessory'
-import { Abnormal, Outcome, isEmpty, isValidMACAddress, isValidIPv4, dupeChecker } from './helpers'
+import {
+  Abnormal,
+  Outcome,
+  isEmpty,
+  isValidMACAddress,
+  isValidIPv4,
+  dupeChecker,
+  prettyPrint
+} from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
 import { VieraAuth, VieraSpecs, VieraTV } from './viera'
@@ -76,7 +84,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
   }
 
   #deviceSetupPreFlight = (device: UserConfig): Outcome<void> => {
-    const raw = JSON.stringify(device, undefined, 2)
+    const raw = prettyPrint(device)
     const invalid = (type: string): Error =>
       Error(`IGNORED '${device.ipAddress}' as it has an invalid ${type} address.\n\n${raw}`)
 
@@ -153,8 +161,8 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
       return { value: new VieramaticPlatformAccessory(this, accessory, device) }
     } catch (error) {
-      this.log.error('device:', JSON.stringify(device, undefined, 2))
-      this.log.error('specs:', JSON.stringify(tv.specs, undefined, 2))
+      this.log.error('device:', prettyPrint(device))
+      this.log.error('specs:', prettyPrint(tv.specs))
       return { error: error as Error }
     }
   }
