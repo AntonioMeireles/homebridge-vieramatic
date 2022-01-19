@@ -104,7 +104,7 @@ class VieraTV implements VieraTV {
     tv.specs = await tv.#getSpecs()
     settings.bootstrap ??= false
     if (!settings.bootstrap) {
-      if (isEmpty(tv.specs) && settings.cached && !isEmpty(settings.cached)) {
+      if (isEmpty(tv.specs) && settings.cached !== undefined && !isEmpty(settings.cached)) {
         tv.log.warn(`Unable to fetch specs from TV at '${ip}'.`)
         tv.log.warn('Using the previously cached ones:\n\n', prettyPrint(settings.cached))
         const err = `IGNORING '${ip}' as we do not support offline initialization, from cache, for models that require encryption.`

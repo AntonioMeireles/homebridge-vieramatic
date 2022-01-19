@@ -132,10 +132,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
     const conn = await VieraTV.connect(ip, this.log, creds)
     if (Abnormal(conn)) return conn
     const tv = conn.value
-
-    if (device.friendlyName) tv.specs.friendlyName = device.friendlyName
+    tv.log.info('A', prettyPrint(tv), device)
+    if (device.friendlyName !== undefined) tv.specs.friendlyName = device.friendlyName
     tv.specs.friendlyName = tv.specs.friendlyName.trim()
-
+    tv.log.info('B', prettyPrint(tv.specs))
     try {
       const accessory = new this.api.platformAccessory(
         tv.specs.friendlyName,
