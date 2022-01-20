@@ -418,9 +418,9 @@ class VieramaticPlatformAccessory {
     this.log.info('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState)
       this.log.info('TV is already %s: Ignoring!', message)
-    else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac) {
+    else if (nextState === this.Characteristic.Active.ACTIVE && this.userConfig.mac) {
       this.log.info('sending WOL packets to awake TV')
-      await wakeOnLan(this.device.mac, { packets: 10 })
+      await wakeOnLan(this.userConfig.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
       this.log.info('Turned TV', message)
     } else {

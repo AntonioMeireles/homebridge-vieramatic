@@ -76,10 +76,9 @@ class VieraTV implements VieraTV {
 
   specs: VieraSpecs = {}
 
-  private constructor(ip: string, log: Logger | Console, mac?: string) {
+  private constructor(ip: string, log: Logger | Console) {
     this.address = ip
     this.log = log
-    this.mac = mac
 
     this.#client = got.extend({
       headers: {
@@ -98,9 +97,9 @@ class VieraTV implements VieraTV {
   static async connect(
     ip: string,
     log: Logger | Console,
-    settings: { auth?: VieraAuth; bootstrap?: boolean; cached?: VieraSpecs; mac?: string } = {}
+    settings: { auth?: VieraAuth; bootstrap?: boolean; cached?: VieraSpecs } = {}
   ): Promise<Outcome<VieraTV>> {
-    const tv = new VieraTV(ip, log, settings.mac)
+    const tv = new VieraTV(ip, log)
     tv.specs = await tv.#getSpecs()
     settings.bootstrap ??= false
     if (!settings.bootstrap) {

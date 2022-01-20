@@ -122,14 +122,10 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
       return { error }
     }
+    const hasAuth = device.appId && device.encKey
+    const auth = hasAuth ? ({ appId: device.appId, key: device.encKey } as VieraAuth) : undefined
 
-    const creds: { auth?: VieraAuth; mac?: string; cached: VieraSpecs } = {
-      cached,
-      mac: device.mac
-    }
-    if (device.appId && device.encKey) creds.auth = { appId: device.appId, key: device.encKey }
-
-    const conn = await VieraTV.connect(ip, this.log, creds)
+    const conn = await VieraTV.connect(ip, this.log, { auth, cached })
     if (Abnormal(conn)) return conn
     const tv = conn.value
 
