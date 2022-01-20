@@ -413,21 +413,23 @@ class VieramaticPlatformAccessory {
   async setPowerStatus(nextState: CharacteristicValue): Promise<void> {
     const message = nextState === this.Characteristic.Active.ACTIVE ? 'ON' : 'into STANDBY'
     const currentState = await VieraTV.isTurnedOn(this.device.address)
-    this.log.debug('(setPowerStatus)', nextState, currentState)
+    this.log.info('(setPowerStatus) this.device:', prettyPrint(this.device))
+    this.log.info('(setPowerStatus) this.userConfig:', prettyPrint(this.userConfig))
+    this.log.info('(setPowerStatus)', nextState, currentState)
     if ((nextState === this.Characteristic.Active.ACTIVE) === currentState)
-      this.log.debug('TV is already %s: Ignoring!', message)
+      this.log.info('TV is already %s: Ignoring!', message)
     else if (nextState === this.Characteristic.Active.ACTIVE && this.device.mac) {
-      this.log.debug('sending WOL packets to awake TV')
+      this.log.info('sending WOL packets to awake TV')
       await wakeOnLan(this.device.mac, { packets: 10 })
       await this.updateTVstatus(nextState)
-      this.log.debug('Turned TV', message)
+      this.log.info('Turned TV', message)
     } else {
       const cmd = await this.device.sendKey('POWER')
       if (Abnormal(cmd))
         this.log.error('(setPowerStatus)/-> %s - unable to power cycle TV - unpowered ?', message)
       else {
         await this.updateTVstatus(nextState)
-        this.log.debug('Turned TV', message)
+        this.log.info('Turned TV', message)
       }
     }
   }
