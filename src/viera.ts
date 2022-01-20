@@ -122,7 +122,7 @@ class VieraTV implements VieraTV {
 
       if (tv.specs.requiresEncryption) {
         const err = `'${ip} ('${tv.specs.modelName}')' ignored, as it is from a Panasonic TV that
-        requires  encryption and no working credentials were supplied.`
+        requires encryption and no working credentials were supplied.`
 
         if (settings.auth) tv.auth = settings.auth
         if (isEmpty(tv.auth)) return { error: Error(err) }
