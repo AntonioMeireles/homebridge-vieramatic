@@ -127,7 +127,6 @@ class VieraTV implements VieraTV {
         if (settings.auth) tv.auth = settings.auth
         if (isEmpty(tv.auth)) return { error: Error(err) }
 
-        tv.#deriveSessionKey(tv.auth.key)
         const result = await tv.#requestSessionId()
 
         if (Abnormal(result)) return { error: Error(err) }
@@ -206,6 +205,8 @@ class VieraTV implements VieraTV {
       return {}
     }
 
+    if (isEmpty(this.#session)) this.#deriveSessionKey()
+
     return Ok((outcome = this.#encryptPayload(xml({ X_ApplicationId: this.auth.appId }))))
       ? await this.#postRemote(
           'X_GetEncryptSessionId',
@@ -215,9 +216,9 @@ class VieraTV implements VieraTV {
       : outcome
   }
 
-  #deriveSessionKey = (key: string): void => {
+  #deriveSessionKey = (): void => {
     let [i, j]: number[] = []
-    const iv = Buffer.from(key, 'base64')
+    const iv = Buffer.from(this.auth.key, 'base64')
     const keyVals = Buffer.alloc(16)
 
     for (i = j = 0; j < 16; i = j += 4) {
