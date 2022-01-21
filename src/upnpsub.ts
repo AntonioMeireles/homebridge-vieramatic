@@ -10,7 +10,7 @@ import { Outcome } from './helpers'
 import { xml2obj } from './helpers.server'
 import { VieraTV } from './viera'
 
-const TIMEOUT_IN_SECONDS = 2
+const TIMEOUT_IN_SECONDS = 1
 
 class UPnPSubscription extends EventEmitter {
   readonly #subscriptions = new Map()

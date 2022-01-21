@@ -4,7 +4,7 @@ import util from 'node:util'
 // @ts-expect-error noImplicityAny...
 import wakeOnLan from '@mi-sec/wol'
 
-import { Abnormal, Ok, Outcome, EmptyObject, prettyPrint } from './helpers'
+import { Abnormal, Ok, Outcome, EmptyObject, prettyPrint, sleep } from './helpers'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
@@ -420,7 +420,10 @@ class VieramaticPlatformAccessory {
       this.log.info('TV is already %s: Ignoring!', message)
     else if (nextState === this.Characteristic.Active.ACTIVE && this.userConfig.mac) {
       this.log.info('sending WOL packets to awake TV')
+      // takes 1 sec (10 magic qpkts sent with 100ms interval)
       await wakeOnLan(this.userConfig.mac, { address: this.device.address, packets: 10 })
+      // wait another sec for older sets with slowish CPUs
+      await sleep(1000)
       await this.updateTVstatus(nextState)
       this.log.info('Turned TV', message)
     } else {

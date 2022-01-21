@@ -90,7 +90,7 @@ class VieraTV implements VieraTV {
       },
       prefixUrl: `http://${this.address}:${VieraTV.port}`,
       retry: { limit: 0 },
-      timeout: { request: 3500 }
+      timeout: { request: 1500 }
     })
   }
 
