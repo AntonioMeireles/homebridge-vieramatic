@@ -177,8 +177,10 @@ class VieraTV implements VieraTV {
           if (properties.X_ScreenState) {
             resolve(properties.X_ScreenState === 'on')
           } else if (Array.isArray(properties)) {
-            const match = properties.find((prop) => ['on', 'off'].includes(prop.X_ScreenState))
-            match ? resolve(match.X_ScreenState === 'on') : resolve(false)
+            const match = properties.find((prop) =>
+              ['on', 'off', 'none'].includes(prop.X_ScreenState)
+            )
+            match ? resolve(match.X_ScreenState !== 'off') : resolve(false)
           } else resolve(false)
         })
         .on('error', () => resolve(false))
