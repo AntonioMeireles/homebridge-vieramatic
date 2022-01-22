@@ -206,6 +206,10 @@ plugin could do.
 > ```
 >
 > so that the the plugin could turn the TV ON.
+>
+> Please do note that, on older sets, the **Wake On Lan** feature is only
+> expected to work if the TV is connected to the network via a cable and not via
+> wi-fi. On some sets, specially less older ones, it _may_ work also wirelessly.
 
 ### Disabling TV app support in very old TV sets
 
