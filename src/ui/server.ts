@@ -1,7 +1,7 @@
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils'
 
 import { Abnormal, Outcome } from '../helpers'
-import { vieraFinder } from '../upnpsub'
+import { vieraFinder } from '../networkUtils'
 import { VieraAuth, VieraSpecs, VieraTV } from '../viera'
 
 const enum UIServerRequestErrorType {

@@ -8,7 +8,7 @@ import { decode } from 'html-entities'
 import { InputVisibility } from './accessory'
 import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome, prettyPrint } from './helpers'
 import { xml2obj, xml } from './helpers.server'
-import { UPnPSubscription } from './upnpsub'
+import { UPnPSubscription } from './networkUtils'
 
 // helpers and default settings
 const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
