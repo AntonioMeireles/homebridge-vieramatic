@@ -131,8 +131,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
 
     if (device.friendlyName !== undefined) tv.specs.friendlyName = device.friendlyName
     tv.specs.friendlyName = tv.specs.friendlyName.trim()
-    tv.log.info('userConfig', prettyPrint(device))
-    tv.log.info('accessory.context.device', prettyPrint(tv))
+
     try {
       const accessory = new this.api.platformAccessory(
         tv.specs.friendlyName,
