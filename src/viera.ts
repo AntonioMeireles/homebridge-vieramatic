@@ -171,6 +171,7 @@ class VieraTV implements VieraTV {
       watcher
         .on('message', (message): void => {
           const properties = message.body['e:propertyset']['e:property']
+          console.log(prettyPrint(properties))
           // when in standby isn't an array
           // XXX: in some cases X_ScreenState simply doesn't pop up (in array or no array form)
           //      when that happens we assume it's off.
