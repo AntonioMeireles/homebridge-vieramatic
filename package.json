@@ -91,6 +91,6 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "watch": "npm run build && npm link && nodemon"
   },
-  "version": "4.0.18",
+  "version": "4.0.19",
   "type": "module"
 }
