@@ -11,7 +11,6 @@
     "@fortawesome/react-fontawesome": "^0.1.16",
     "@homebridge/plugin-ui-utils": "^0.0.19",
     "@hookstate/core": "^3.0.13",
-    "@mi-sec/wol": "^1.0.13",
     "fast-xml-parser": "^4.0.1",
     "fs-extra": "^10.0.0",
     "got": "^12.0.1",

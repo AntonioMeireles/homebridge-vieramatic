@@ -1,10 +1,8 @@
 import { Characteristic, CharacteristicValue, Logger, PlatformAccessory, Service } from 'homebridge'
 import util from 'node:util'
 
-// @ts-expect-error noImplicityAny...
-import wakeOnLan from '@mi-sec/wol'
-
 import { Abnormal, Ok, Outcome, EmptyObject, prettyPrint, sleep } from './helpers'
+import { wakeOnLan } from './networkUtils'
 import VieramaticPlatform from './platform'
 import { VieraApp, VieraApps, VieraSpecs, VieraTV } from './viera'
 
@@ -418,19 +416,8 @@ class VieramaticPlatformAccessory {
       this.log.debug('TV is already %s: Ignoring!', message)
     else if (nextState === this.Characteristic.Active.ACTIVE && this.userConfig.mac) {
       this.log.debug('sending WOL packets to awake TV')
-      // takes 1 sec (10 magic qpkts sent with 100ms interval)
-      try {
-        await wakeOnLan(this.userConfig.mac, { packets: 10 })
-      } catch {
-        // XXX on macOs above returning: Error: send EADDRNOTAVAIL 255.255.255.255:9
-        //     setting TV's address fixes that and WOL then works...
-        //     OTOH that is not a general purpose solution as elsewhere we actually need to
-        //     target 255.255.255.255 for WOL to work
-        // XXX fully understand root issue here as this is too hackish...
-        this.log.warn('fallback WOL route. (%s instead of 255.255.255.255)', this.device.address)
-        await wakeOnLan(this.userConfig.mac, { address: this.device.address, packets: 10 })
-      }
-      // wait another sec for older sets with slowish CPUs
+      // takes 1 sec (10 magic pkts sent with 100ms interval)
+      await wakeOnLan(this.userConfig.mac, this.device.address, 10)
       await sleep(1000)
       await this.updateTVstatus(nextState)
       this.log.debug('Turned TV', message)

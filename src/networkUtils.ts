@@ -6,7 +6,7 @@ import http from 'node:http'
 import { AddressInfo } from 'node:net'
 import { networkInterfaces, NetworkInterfaceInfo } from 'node:os'
 
-import { Outcome } from './helpers'
+import { Outcome, sleep } from './helpers'
 import { xml2obj } from './helpers.server'
 import { VieraTV } from './viera'
 
@@ -129,4 +129,49 @@ const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>>
   )
 }
 
-export { UPnPSubscription, vieraFinder }
+const wakeOnLan = async (mac: string, address: string, packets = 3) => {
+  const port = 9
+  const interval = 100
+
+  const socket = dgram.createSocket({ reuseAddr: true, type: 'udp4' })
+
+  const createMagicPacket = (mac: string): Buffer => {
+    /**
+     * Magic packet is:
+     * FF (repeat 6)
+     * MAC Address (repeat 16)
+     */
+    const MAC_BYTES = 6
+    const MAC_REPETITIONS = 16
+    const macBuffer = Buffer.alloc(MAC_BYTES)
+    const magic = Buffer.alloc(MAC_BYTES + MAC_REPETITIONS * MAC_BYTES)
+
+    for (const [i, value] of mac.split(':').entries()) macBuffer[i] = Number.parseInt(value, 16)
+
+    // start the magic packet from 6 bytes of FF
+    for (let i = 0; i < MAC_BYTES; i++) magic[i] = 0xff
+    // copy mac address 16 times
+    for (let i = 0; i < MAC_REPETITIONS; i++)
+      macBuffer.copy(magic, (i + 1) * MAC_BYTES, 0, macBuffer.length)
+
+    return magic
+  }
+  const buffer = createMagicPacket(mac)
+
+  const sendMagicPacket = async (address: string) => {
+    const BROADCAST = '255.255.255.255'
+    // wired
+    socket.send(buffer, 0, buffer.length, port, BROADCAST)
+    // with luck wirelessly
+    socket.send(buffer, 0, buffer.length, port, address)
+    await sleep(interval)
+  }
+
+  socket.once('listening', () => socket.setBroadcast(true))
+
+  for (let i = 0; i < packets; i++) await sendMagicPacket(address)
+
+  socket.close()
+}
+
+export { UPnPSubscription, vieraFinder, wakeOnLan }
