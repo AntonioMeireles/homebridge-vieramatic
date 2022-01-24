@@ -32,8 +32,10 @@ const enum actionType {
 const { homebridge } = window
 
 const updateGlobalConfig = async (discover = false) => {
-  const [pluginConfig] = (await homebridge.getPluginConfig()) as PluginConfig[]
-  pluginConfig.tvs ??= []
+  let [pluginConfig] = await homebridge.getPluginConfig()
+  pluginConfig ??= { platform: 'PanasonicVieraTV' } as PluginConfig
+  pluginConfig.tvs ??= [] as UserConfig[]
+
   const abnormal = !!Abnormal(dupeChecker(pluginConfig.tvs))
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore ts(2739)
@@ -42,7 +44,7 @@ const updateGlobalConfig = async (discover = false) => {
   if (!abnormal && discover) {
     globalState.loading.set(true)
     const around = (await homebridge.request('/discover')) as string[]
-    const found = around.filter((t) => !pluginConfig.tvs.some((e) => e.ipAddress === t))
+    const found = around.filter((t) => !pluginConfig.tvs.some((e: UserConfig) => e.ipAddress === t))
     const fn = (ip: string): UserConfig => {
       return { hdmiInputs: [], ipAddress: ip }
     }
