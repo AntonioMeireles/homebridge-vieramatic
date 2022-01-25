@@ -32,30 +32,33 @@ const enum actionType {
 const { homebridge } = window
 
 const updateGlobalConfig = async (discover = false) => {
-  let [pluginConfig] = await homebridge.getPluginConfig()
-  pluginConfig ??= { platform: 'PanasonicVieraTV' } as PluginConfig
-  pluginConfig.tvs ??= [] as UserConfig[]
+  const bareMinimal = new PluginConfig()
+  const pluginConfig = await homebridge
+    .getPluginConfig()
+    .catch(() => [bareMinimal])
+    .then((found): PluginConfig[] => {
+      found.length === 0 && found.push(bareMinimal)
+      return found as unknown as PluginConfig[]
+    })
+    .then((found) => {
+      const [cfg] = found
+      cfg.tvs ??= []
+      return cfg
+    })
 
-  const abnormal = !!Abnormal(dupeChecker(pluginConfig.tvs))
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore ts(2739)
+  const abnormal = Abnormal(dupeChecker(pluginConfig.tvs))
   globalState.merge({ abnormal, killSwitch: abnormal, loading: false, pluginConfig })
 
   if (!abnormal && discover) {
     globalState.loading.set(true)
     const around = (await homebridge.request('/discover')) as string[]
-    const found = around.filter((t) => !pluginConfig.tvs.some((e: UserConfig) => e.ipAddress === t))
+    const found = around.filter((t) => !pluginConfig.tvs.some((e) => e.ipAddress === t))
     const fn = (ip: string): UserConfig => {
       return { hdmiInputs: [], ipAddress: ip }
     }
     if (found.length > 0) {
       const discovered = found.map((ip: string) => fn(ip))
-      await homebridge.updatePluginConfig([
-        {
-          platform: 'PanasonicVieraTV',
-          tvs: [...pluginConfig.tvs, ...discovered]
-        }
-      ])
+      await homebridge.updatePluginConfig([new PluginConfig([...pluginConfig.tvs, ...discovered])])
       await homebridge.savePluginConfig()
       for (const ip of found)
         homebridge.toast.info(
@@ -68,7 +71,7 @@ const updateGlobalConfig = async (discover = false) => {
 
 const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: actionType) => {
   if (type !== actionType.none) {
-    await homebridge.updatePluginConfig([{ platform: 'PanasonicVieraTV', tvs: [...next] }])
+    await homebridge.updatePluginConfig([new PluginConfig([...next])])
     await homebridge.savePluginConfig()
     await updateGlobalConfig(false)
   }

@@ -1,9 +1,13 @@
 import { UserConfig } from '../accessory'
+import { PLATFORM_NAME } from '../settings'
 import { VieraSpecs } from '../viera'
 
-type PluginConfig = {
-  platform: string
+class PluginConfig implements PluginConfig {
+  readonly platform = PLATFORM_NAME
   tvs: UserConfig[]
+  constructor(tvs: UserConfig[] = []) {
+    this.tvs = tvs
+  }
 }
 
 type Selected = {
@@ -27,10 +31,7 @@ const InitialState: GlobalState = {
   frontPage: true,
   killSwitch: false,
   loading: true,
-  pluginConfig: {
-    platform: '',
-    tvs: []
-  }
+  pluginConfig: new PluginConfig()
 }
 
 const objPurifier = (obj: unknown) =>

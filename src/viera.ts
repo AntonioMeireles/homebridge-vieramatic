@@ -9,6 +9,7 @@ import { InputVisibility } from './accessory'
 import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome, prettyPrint } from './helpers'
 import { xml2obj, xml } from './helpers.server'
 import { UPnPSubscription } from './networkUtils'
+import { PluginConfig } from './ui/state'
 
 // helpers and default settings
 const AudioChannel: string = xml({ Channel: 'Master', InstanceID: 0 })
@@ -462,16 +463,14 @@ class VieraTV implements VieraTV {
   }
 
   renderSampleConfig = (): void => {
-    const sample = {
-      platform: 'PanasonicVieraTV',
-      tvs: [
-        {
-          appId: this.auth.appId,
-          encKey: this.auth.key,
-          hdmiInputs: []
-        }
-      ]
-    }
+    const sample = new PluginConfig([
+      {
+        appId: this.auth.appId,
+        encKey: this.auth.key,
+        hdmiInputs: [],
+        ipAddress: this.address
+      }
+    ])
 
     console.info(
       '\n',
