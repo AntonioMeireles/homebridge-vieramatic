@@ -35,7 +35,8 @@ const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
             inject: ['src/ui/react-shim.ts'],
             jsxFactory: 'h',
             jsxFragment: 'Fragment',
-            target: ['chrome58', 'firefox57', 'safari11', 'edge18']
+            platform: 'browser',
+            target: ['es2018', 'chrome58', 'firefox57', 'safari11', 'edge18', 'ios11']
           })
     })
     .then((result) => esbuild.analyzeMetafile(result.metafile))
