@@ -30,7 +30,7 @@ const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
       outdir,
       sourcemap: true,
       ...(target === targets.Node
-        ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node12' }
+        ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node14' }
         : {
             inject: ['src/ui/react-shim.ts'],
             jsxFactory: 'h',
