@@ -3,15 +3,6 @@ const fs = require('fs')
 
 const esbuild = require('esbuild')
 
-// https://github.com/evanw/esbuild/issues/619#issuecomment-751995294
-const makeAllPackagesExternalPlugin = {
-  name: 'make-all-packages-external',
-  setup(build) {
-    const filter = /^[^./]|^\.[^./]|^\.\.[^/]/ // Must not start with "/" or "./" or "../"
-    build.onResolve({ filter }, (arguments_) => ({ external: true, path: arguments_.path }))
-  }
-}
-
 const catcher = (error) => {
   console.error(error)
 
@@ -19,7 +10,7 @@ const catcher = (error) => {
 }
 const targets = { Browser: 'browser', Node: 'node' }
 
-const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
+const builder = (entryPoints, outdir = 'dist', platform = targets.Node) =>
   esbuild
     .build({
       bundle: true,
@@ -28,14 +19,14 @@ const builder = (entryPoints, outdir = 'dist', target = targets.Node) =>
       metafile: true,
       minify: true,
       outdir,
+      platform,
       sourcemap: true,
-      ...(target === targets.Node
-        ? { platform: 'node', plugins: [makeAllPackagesExternalPlugin], target: 'node14' }
+      ...(platform === targets.Node
+        ? { external: ['./node_modules/*'], target: 'node14' }
         : {
             inject: ['src/ui/react-shim.ts'],
             jsxFactory: 'h',
             jsxFragment: 'Fragment',
-            platform: 'browser',
             target: ['es2018', 'chrome58', 'firefox57', 'safari11', 'edge18', 'ios11']
           })
     })
