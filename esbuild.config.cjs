@@ -1,11 +1,10 @@
-/* eslint-disable node/no-unpublished-require, no-process-exit, unicorn/no-process-exit, @typescript-eslint/no-var-requires */
 const fs = require('fs')
 
 const esbuild = require('esbuild')
 
 const catcher = (error) => {
   console.error(error)
-
+  // eslint-disable-next-line unicorn/no-process-exit
   process.exit(1)
 }
 const targets = { Browser: 'browser', Node: 'node' }

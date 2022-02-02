@@ -2,6 +2,7 @@ import { Logger } from 'homebridge'
 import crypto from 'node:crypto'
 import net from 'node:net'
 
+// eslint-disable-next-line import/no-unresolved
 import got, { Got, RequestError, OptionsOfTextResponseBody } from 'got'
 import { decode } from 'html-entities'
 

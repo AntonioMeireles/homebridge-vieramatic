@@ -1,8 +1,5 @@
 module.exports = {
-  env: {
-    es6: true,
-    node: true
-  },
+  env: { es6: true, node: true },
   extends: [
     'eslint:recommended',
     'preact',
@@ -23,14 +20,10 @@ module.exports = {
     'plugin:prettier/recommended'
   ],
   ignorePatterns: ['dist'],
+  overrides: [{ files: ['**.cjs'], rules: { '@typescript-eslint/no-var-requires': 'off' } }],
   parser: '@typescript-eslint/parser',
-
   parserOptions: {
-    ecmaFeatures: {
-      impliedStrict: true,
-      jsx: true,
-      modules: true
-    },
+    ecmaFeatures: { impliedStrict: true, jsx: true, modules: true },
     ecmaVersion: 'latest',
     extraFileExtensions: ['.cjs'],
     project: './tsconfig.json',
@@ -52,54 +45,27 @@ module.exports = {
   root: true,
   rules: {
     '@typescript-eslint/no-unnecessary-condition': 'error',
-    '@typescript-eslint/no-unused-vars': [
-      'error',
-      {
-        varsIgnorePattern: '^_'
-      }
-    ],
+    '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
     'eslint-comments/disable-enable-pair': 'off',
     'eslint-comments/no-unused-disable': 'error',
     'import/exports-last': 'error',
     'import/group-exports': 'error',
-    'import/no-unresolved': 'off',
     'import/order': [
       'error',
-      {
-        alphabetize: {
-          caseInsensitive: true,
-          order: 'asc'
-        },
-        'newlines-between': 'always'
-      }
+      { alphabetize: { caseInsensitive: true, order: 'asc' }, 'newlines-between': 'always' }
     ],
-
     'json/*': ['error', 'allowComments'],
+    'no-process-exit': 'off', // unicorn already covers this
     'node/no-missing-import': 'off',
+    'node/no-unpublished-require': ['error', { allowModules: ['esbuild'] }],
     'node/no-unsupported-features/es-syntax': ['error', { ignores: ['dynamicImport', 'modules'] }],
     'node/shebang': 'off',
     'sort-exports/sort-exports': [
       'error',
-      {
-        ignoreCase: true,
-        sortDir: 'asc',
-        sortExportKindFirst: 'type'
-      }
+      { ignoreCase: true, sortDir: 'asc', sortExportKindFirst: 'type' }
     ],
-    'sort-keys': [
-      'error',
-      'asc',
-      {
-        caseSensitive: false,
-        natural: true
-      }
-    ],
-    'sort-vars': [
-      'error',
-      {
-        ignoreCase: true
-      }
-    ],
+    'sort-keys': ['error', 'asc', { caseSensitive: false, natural: true }],
+    'sort-vars': ['error', { ignoreCase: true }],
     'unicorn/consistent-function-scoping': 'off',
     'unicorn/filename-case': 'off',
     'unicorn/new-for-builtins': 'off',
@@ -107,11 +73,8 @@ module.exports = {
   },
   settings: {
     'import/core-modules': ['homebridge'],
+    'import/extensions': ['.ts', '.tsx'],
     'import/parsers': { '@typescript-eslint/parser': ['.ts', '.tsx'] },
-    'import/resolver': {
-      node: {
-        extensions: ['.ts', '.tsx']
-      }
-    }
+    'import/resolver': { node: { extensions: ['.ts', '.tsx'] } }
   }
 }
