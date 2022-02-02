@@ -60,15 +60,18 @@
 
 4. Restart homebridge
 
-5. Go again to the plugins tab, and click on 'settings' from this plugin.
+5. Go again to the 'plugins' _tab_, click on 'settings' from this plugin and follow the instructions.
 
-6. that's it! ~~The plugin will even detect automatically all TVs on your local network (and
+6. [add your newly configured Viera TV to HomeKit](https://github.com/homebridge/homebridge/wiki/Connecting-Homebridge-To-HomeKit#how-to-add-homebridge-cameras--tvs).
+
+7. that's it! ~~The plugin will even detect automatically all TVs on your local network (and
    if it doesn't you can still add them manually...)~~
     > early 4.x releases shipped with automated discovery of available TV on your local network, via
     > SSDP multicast discovery. That is causing issues in several setups - namely docker ones, so it
     > become disabled until it becomes completely reliable for the common case.
     >
-7. If for some reason, things do not progress as expected, it is probably a bug.
+
+8. If for some reason, things do not progress as expected, it is probably a bug.
    Please just [report](https://github.com/AntonioMeireles/homebridge-vieramatic/issues) it.
 
 > This plugin assumes and expects that the user has
