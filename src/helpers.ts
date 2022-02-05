@@ -12,15 +12,12 @@ const isSame = (a: any, b: any): boolean => {
 }
 
 const dupeChecker = (devices: UserConfig[] = []): Outcome<void> => {
-  const unique: string[] = []
-  let error = Error('.')
+  const unique = new Set<string>()
+  let error = undefined as unknown as Error
   const state = devices.some((it) => {
-    if (!unique.includes(it.ipAddress)) {
-      unique.push(it.ipAddress)
-      return false
-    }
-    error = Error(it.ipAddress)
-    return true
+    if (unique.has(it.ipAddress)) error = Error(it.ipAddress)
+    else unique.add(it.ipAddress)
+    return (error as unknown) !== undefined
   })
   return state ? { error } : {}
 }
@@ -37,32 +34,19 @@ const isEmpty = (obj: Record<string, unknown>): boolean =>
 
 const prettyPrint = (obj: unknown) => JSON.stringify(obj, undefined, 2)
 
-// vscode decorator trickery
-// istanbul ignore next
-const lit = (s: TemplateStringsArray, ...args: string[]): string =>
-  s.map((ss, i) => `${ss}${args[i] ?? ''}`).join('')
-const html = lit
-
 type EmptyObject = Record<string, never>
 // error handling
-type Success<T> =
-  | EmptyObject
-  | {
-      value: T
-    }
-interface Failure {
-  error: Error
-}
+type Success<T> = EmptyObject | { value: T }
+type Failure = { error: Error }
 type Outcome<T> = Success<T> | Failure
 const Abnormal = (outcome: unknown): outcome is Failure =>
-  (outcome as { error?: Error }).error !== undefined
+  (outcome as Partial<Failure>).error !== undefined
 const Ok = <T>(outcome: unknown): outcome is Success<T> => !Abnormal(outcome)
 
 export {
   Abnormal,
   dupeChecker,
   EmptyObject,
-  html,
   isEmpty,
   isSame,
   isValidIPv4,
