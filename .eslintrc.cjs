@@ -57,8 +57,6 @@ module.exports = {
     'json/*': ['error', 'allowComments'],
     'no-process-exit': 'off', // unicorn already covers this
     'node/no-missing-import': 'off',
-    'node/no-unpublished-require': ['error', { allowModules: ['esbuild'] }],
-    'node/no-unsupported-features/es-syntax': ['error', { ignores: ['dynamicImport', 'modules'] }],
     'node/shebang': 'off',
     'sort-exports/sort-exports': [
       'error',
