@@ -42,7 +42,7 @@
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-jest": "^26.1.0",
-    "eslint-plugin-json": "^3.1.0",
+    "eslint-plugin-jsonc": "^2.1.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-promise": "^6.0.0",
@@ -87,7 +87,7 @@
   "scripts": {
     "build": "npm run clean && node esbuild.config.cjs",
     "clean": "rimraf dist/",
-    "lint": "eslint --ext .js,.ts,.cjs,.tsx src/ --max-warnings=0",
+    "lint": "eslint --ext .js,.ts,.cjs,.tsx,.json src/ --max-warnings=0",
     "prepublishOnly": "npm run lint && npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "watch": "npm run build && npm link && nodemon"

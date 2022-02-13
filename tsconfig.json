@@ -2,9 +2,7 @@
   "compilerOptions": {
     "target": "ESnext",
     "module": "ESnext",
-    "lib": [
-      "esnext",
-    ],
+    "lib": ["esnext"],
     "allowJs": true,
     "emitDeclarationOnly": true,
     "declaration": true,
@@ -23,10 +21,7 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "preserveConstEnums": true,
-    "resolveJsonModule": true,
+    "resolveJsonModule": true
   },
-  "include": [
-    "src/",
-    "**.cjs"
-  ]
+  "include": ["src/", "**.cjs"]
 }
