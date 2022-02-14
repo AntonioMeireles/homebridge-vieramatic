@@ -32,6 +32,7 @@ const builder = (entryPoints, outdir = 'dist', platform = targets.Node) =>
       outdir,
       platform,
       sourcemap: true,
+      sourcesContent: false,
       ...(platform === targets.Node
         ? { plugins: [makeAllPackagesExternalPlugin], target: 'node14' }
         : {
