@@ -238,7 +238,7 @@ class VieraTV implements VieraTV {
   #decryptPayload(payload: string, key: Buffer, iv: Buffer): string {
     const aes = crypto.createDecipheriv('aes-128-cbc', key, iv)
     const decrypted = aes.update(Buffer.from(payload, 'base64'))
-    return decrypted.toString('utf-8', 16, decrypted.indexOf('\u0000', 16))
+    return decrypted.toString('utf8', 16, decrypted.indexOf('\u0000', 16))
   }
 
   #encryptPayload(
