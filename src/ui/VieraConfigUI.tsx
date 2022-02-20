@@ -18,7 +18,7 @@ import {
   pinRequestSchema
 } from './forms'
 import { Header } from './imagery'
-import { objPurifier, InitialState, PluginConfig, Selected } from './state'
+import { InitialState, PluginConfig, rawClone, Selected } from './state'
 
 const globalState = createState(InitialState)
 
@@ -265,7 +265,7 @@ const Body = () => {
 
     const ConfirmDeletion = (props: { selected: State<Selected> }) => {
       const { ipAddress } = props.selected.config.value
-      const nxt = objPurifier(state.pluginConfig.value.tvs.filter((o) => o.ipAddress !== ipAddress))
+      const nxt = rawClone(state.pluginConfig.value.tvs.filter((o) => o.ipAddress !== ipAddress))
       const dropIt = async () =>
         await updateHomebridgeConfig(ipAddress, nxt, actionType.delete).then(() => backToMain())
 
@@ -302,7 +302,7 @@ const Body = () => {
         commonFormLayout.splice(1, 0, authLayout)
 
       const schema = { layout: commonFormLayout, schema: commonSchema }
-      const data = objPurifier(props.selected.config.value)
+      const data = rawClone(props.selected.config.value)
       const tvform = homebridge.createForm(schema, data, 'Submit', 'Cancel')
       tvform.onCancel(() => backToMain(tvform))
       tvform.onSubmit(async (submited) => {
@@ -315,7 +315,7 @@ const Body = () => {
         if (!isSame(before, queued)) {
           const modded = before !== undefined
           const { tvs } = state.pluginConfig.value
-          others = modded ? objPurifier(tvs.filter((v) => v.ipAddress != queued.ipAddress)) : []
+          others = modded ? rawClone(tvs.filter((v) => v.ipAddress != queued.ipAddress)) : []
           type = modded ? actionType.update : actionType.create
         }
         await updateHomebridgeConfig(queued.ipAddress, [...others, queued], type).finally(() =>

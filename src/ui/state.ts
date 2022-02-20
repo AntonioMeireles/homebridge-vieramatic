@@ -34,7 +34,7 @@ const InitialState: GlobalState = {
   pluginConfig: new PluginConfig()
 }
 
-const objPurifier = (obj: unknown) =>
-  obj !== undefined ? JSON.parse(JSON.stringify(obj)) : undefined
+const rawClone = <T = unknown>(data: T): T =>
+  data !== undefined ? JSON.parse(JSON.stringify(data)) : undefined
 
-export { InitialState, objPurifier, PluginConfig, Selected }
+export { InitialState, PluginConfig, rawClone, Selected }
