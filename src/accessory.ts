@@ -321,7 +321,7 @@ class VieramaticPlatformAccessory {
           app = this.storage.data.inputs.applications[real]
           this.log.debug('(setInput) switching to App', app.name)
           return await this.device.launchApp(app.id)
-        case value === 500:
+        // case value === 500:
         default:
           this.log.debug('(setInput) switching to internal TV tunner')
           return await this.device.sendKey('AD_CHANGE')
@@ -351,7 +351,7 @@ class VieramaticPlatformAccessory {
           // by default all apps will be hidden
           hidden = inputs.applications[idx].hidden ?? 1
           break
-        case 'TUNER':
+        // case 'TUNER':
         default:
           // by default TUNER is visible
           hidden = inputs.TUNER.hidden ?? 0
@@ -380,7 +380,7 @@ class VieramaticPlatformAccessory {
           idx = (id as number) - 1000
           inputs.applications[idx].hidden = state as InputVisibility
           break
-        case id === 500:
+        // case id === 500:
         default:
           inputs.TUNER.hidden = state as InputVisibility
           break
