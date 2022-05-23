@@ -88,6 +88,6 @@ module.exports = {
     'import/core-modules': ['homebridge'],
     'import/extensions': ['.ts', '.tsx'],
     'import/parsers': { '@typescript-eslint/parser': ['.ts', '.tsx'] },
-    'import/resolver': { node: { extensions: ['.ts', '.tsx'] } }
+    'import/resolver': { node: { extensions: ['.ts', '.tsx'] }, typescript: {} }
   }
 }
