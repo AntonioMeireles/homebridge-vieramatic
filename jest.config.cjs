@@ -6,16 +6,6 @@ module.exports = {
       useESM: true
     }
   },
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\.(ts|tsx)?$': [
-      'esbuild-jest',
-      {
-        format: 'esm',
-        sourcemap: true,
-        target: 'esnext'
-      }
-    ]
-  },
+  preset: 'ts-jest/presets/default-esm',
   verbose: true
 }
