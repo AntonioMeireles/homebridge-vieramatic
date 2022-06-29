@@ -67,6 +67,7 @@ module.exports = {
         'unicorn/consistent-function-scoping': 'off',
         'unicorn/filename-case': 'off',
         'unicorn/new-for-builtins': 'off',
+        'unicorn/prefer-top-level-await': 'off', // as, and until, we're still targeting node14...
         'unicorn/prevent-abbreviations': 'off'
       }
     }
