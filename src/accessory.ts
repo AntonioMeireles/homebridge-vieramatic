@@ -313,18 +313,21 @@ class VieramaticPlatformAccessory {
       let app: VieraApp, real: number
 
       switch (true) {
-        case value < 100:
+        case value < 100: {
           this.log.debug('(setInput) switching to HDMI INPUT ', value)
           return await this.device.switchToHDMI((value as number).toString())
-        case value > 999:
+        }
+        case value > 999: {
           real = (value as number) - 1000
           app = this.storage.data.inputs.applications[real]
           this.log.debug('(setInput) switching to App', app.name)
           return await this.device.launchApp(app.id)
+        }
         // case value === 500:
-        default:
+        default: {
           this.log.debug('(setInput) switching to internal TV tunner')
           return await this.device.sendKey('AD_CHANGE')
+        }
       }
     }
 
@@ -341,20 +344,23 @@ class VieramaticPlatformAccessory {
       const { inputs } = this.storage.data
 
       switch (type) {
-        case 'HDMI':
+        case 'HDMI': {
           idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
           // by default all hdmiInputs will be visible
           hidden = inputs.hdmi[idx].hidden ?? 0
           break
-        case 'APPLICATION':
+        }
+        case 'APPLICATION': {
           idx = identifier - 1000
           // by default all apps will be hidden
           hidden = inputs.applications[idx].hidden ?? 1
           break
+        }
         // case 'TUNER':
-        default:
+        default: {
           // by default TUNER is visible
           hidden = inputs.TUNER.hidden ?? 0
+        }
       }
       return hidden.toFixed(0)
     }
@@ -370,20 +376,23 @@ class VieramaticPlatformAccessory {
       const { inputs } = this.storage.data
 
       switch (true) {
-        case id < 100:
+        case id < 100: {
           // hdmi input
           idx = inputs.hdmi.findIndex((x: HdmiInput) => fn(x))
           inputs.hdmi[idx].hidden = state as InputVisibility
           break
-        case id > 999:
+        }
+        case id > 999: {
           // APP
           idx = (id as number) - 1000
           inputs.applications[idx].hidden = state as InputVisibility
           break
+        }
         // case id === 500:
-        default:
+        default: {
           inputs.TUNER.hidden = state as InputVisibility
           break
+        }
       }
       source.updateCharacteristic(this.Characteristic.CurrentVisibilityState, state)
     }
