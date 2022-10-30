@@ -25,9 +25,6 @@
   "description": "Homebridge plugin for Panasonic™ Viera™ TVs (with full support for 2018 and later models)",
   "devDependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.2.0",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^14.4.3",
     "@types/fs-extra": "^9.0.13",
     "@types/jest": "^29.2.0",
     "@types/node": "^18.11.7",
