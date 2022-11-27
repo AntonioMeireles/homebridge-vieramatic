@@ -89,6 +89,6 @@
     "test": "NODE_OPTIONS='--no-warnings --experimental-vm-modules' node_modules/.bin/jest --no-cache",
     "watch": "npm run build && npm link && nodemon"
   },
-  "version": "4.0.44",
+  "version": "4.0.45",
   "type": "module"
 }
