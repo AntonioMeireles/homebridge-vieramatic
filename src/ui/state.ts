@@ -35,6 +35,6 @@ const InitialState: GlobalState = {
 }
 
 const rawClone = <T = unknown>(data: T): T =>
-  data !== undefined ? JSON.parse(JSON.stringify(data)) : undefined
+  data === undefined ? undefined : JSON.parse(JSON.stringify(data))
 
 export { InitialState, PluginConfig, rawClone, Selected }

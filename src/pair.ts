@@ -26,6 +26,6 @@ const setup = async (ip: string): Promise<void> => {
   tv.renderSampleConfig()
 }
 
-process.argv.length !== 3
-  ? oops(Error('Please specify your Panasonic TV IP address as the (only) argument'))
-  : setup(process.argv[2]).catch(oops)
+process.argv.length === 3
+  ? setup(process.argv[2]).catch(oops)
+  : oops(Error('Please specify your Panasonic TV IP address as the (only) argument'))

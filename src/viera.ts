@@ -140,11 +140,11 @@ class VieraTV implements VieraTV {
   }
 
   static probe = async (ip: string, log: Logger | Console = console): Promise<Outcome<VieraTV>> =>
-    !isValidIPv4(ip)
-      ? { error: Error('Please introduce a valid ip address!') }
-      : !(await VieraTV.livenessProbe(ip))
-      ? { error: Error(`The provided IP (${ip}) is unreachable.`) }
-      : await this.connect(ip, log, { bootstrap: true })
+    isValidIPv4(ip)
+      ? (await VieraTV.livenessProbe(ip))
+        ? await this.connect(ip, log, { bootstrap: true })
+        : { error: Error(`The provided IP (${ip}) is unreachable.`) }
+      : { error: Error('Please introduce a valid ip address!') }
 
   static livenessProbe = async (tv: string, timeout = 1500): Promise<boolean> =>
     await new Promise<boolean>((resolve) => {
@@ -399,11 +399,11 @@ class VieraTV implements VieraTV {
       return { value: match.groups.challenge }
     }
 
-    return !this.specs.requiresEncryption
-      ? { error: Error(overreachErr) }
-      : !(await VieraTV.isTurnedOn(this.address))
-      ? { error: Error(notReadyErr) }
-      : await this.#postRemote('X_DisplayPinCode', parameters, callback)
+    return this.specs.requiresEncryption
+      ? (await VieraTV.isTurnedOn(this.address))
+        ? await this.#postRemote('X_DisplayPinCode', parameters, callback)
+        : { error: Error(notReadyErr) }
+      : { error: Error(overreachErr) }
   }
 
   #postRemote = async <T>(

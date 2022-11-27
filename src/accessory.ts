@@ -70,6 +70,7 @@ class VieramaticPlatformAccessory {
         if (prop === 'isProxy') return true
 
         const property = obj[prop]
+        // eslint-disable-next-line unicorn/no-typeof-undefined
         if (typeof property === 'undefined') return
 
         if (!util.types.isProxy(property) && typeof property === 'object')
@@ -208,18 +209,7 @@ class VieramaticPlatformAccessory {
       return true
     })
     const apps = Ok(this.device.apps) ? this.device.apps.value : []
-    if (!(this.storage.data as unknown))
-      this.storage.data = {
-        inputs: {
-          applications: { ...apps },
-          hdmi: this.userConfig.hdmiInputs,
-          // add default TUNER (live TV)... visible by default
-          TUNER: { hidden: 0 }
-        },
-        ipAddress: this.userConfig.ipAddress,
-        specs: { ...this.device.specs }
-      }
-    else {
+    if (this.storage.data as unknown) {
       this.log.debug('Restoring', this.device.specs.friendlyName)
       // properly handle hdmi interface renaming (#78)
       const sameId = (a: HdmiInput, b: HdmiInput): boolean => a.id === b.id
@@ -262,9 +252,11 @@ class VieramaticPlatformAccessory {
         for (const line of Object.entries(this.storage.data.inputs.applications)) {
           const [_, app] = line
           const found = [...apps].some((x: VieraApp): boolean => x.name === app.name)
-          if (!found) {
+          if (found) {
+            next.push(app)
+          } else {
             this.log.warn(`deleting TV App '${app.name}' as it wasn't removed from your TV's`)
-          } else next.push(app)
+          }
         }
         for (const line of Object.entries([...apps])) {
           const [_, app] = line
@@ -276,6 +268,17 @@ class VieramaticPlatformAccessory {
         }
         this.storage.data.inputs.applications = { ...next }
       } else this.log.warn('Using previously cached App listing.')
+    } else {
+      this.storage.data = {
+        inputs: {
+          applications: { ...apps },
+          hdmi: this.userConfig.hdmiInputs,
+          // add default TUNER (live TV)... visible by default
+          TUNER: { hidden: 0 }
+        },
+        ipAddress: this.userConfig.ipAddress,
+        specs: { ...this.device.specs }
+      }
     }
 
     // TV Tuner
@@ -368,7 +371,7 @@ class VieramaticPlatformAccessory {
     const source = this.accessory.addService(
       this.Service.InputSource,
       configuredName.toLowerCase().replace(/\s/gu, ''),
-      identifier
+      identifier.toString()
     )
     const visibilityState = (state: CharacteristicValue): void => {
       let idx: number

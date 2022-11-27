@@ -133,7 +133,11 @@ const Body = () => {
       )
     }
 
-    if (!raw) {
+    if (raw) {
+      state.batch((s) => {
+        s.selected.merge({ config: JSON.parse(raw), onHold: true }), s.frontPage.set(false)
+      })
+    } else {
       state.frontPage.set(false)
       const tvForm = homebridge.createForm(tvAddressSchema, undefined, 'Next', 'Cancel')
       tvForm.onCancel(() => backToMain(tvForm))
@@ -149,10 +153,7 @@ const Body = () => {
           }
         } else homebridge.toast.error('Please insert a valid IP address...', data.ipAddress)
       })
-    } else
-      state.batch((s) => {
-        s.selected.merge({ config: JSON.parse(raw), onHold: true }), s.frontPage.set(false)
-      })
+    }
 
     while (!state.selected.value?.config) await sleep(250)
     const tv = state.selected.value.config
