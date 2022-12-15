@@ -1,18 +1,6 @@
-const fs = require('fs')
+const fs = require('node:fs')
 
 const esbuild = require('esbuild')
-
-// XXX taken from https://github.com/evanw/esbuild/issues/619#issuecomment-751995294
-// XXX   `plugins: [makeAllPackagesExternalPlugin]` were supposed to be superceeded by
-// XXX   `external: ['./node_modules/*']` but...
-// XXX ... we're blocked by what seems to be https://github.com/evanw/esbuild/issues/1958
-const makeAllPackagesExternalPlugin = {
-  name: 'make-all-packages-external',
-  setup: (build) => {
-    const filter = /^[^./]|^\.[^./]|^\.\.[^/]/ // Must not start with "/" or "./" or "../"
-    build.onResolve({ filter }, (arguments_) => ({ external: true, path: arguments_.path }))
-  }
-}
 
 const catcher = (error) => {
   console.error(error)
@@ -34,7 +22,7 @@ const builder = (entryPoints, outdir = 'dist', platform = targets.Node) =>
       sourcemap: true,
       sourcesContent: false,
       ...(platform === targets.Node
-        ? { plugins: [makeAllPackagesExternalPlugin], target: 'node14' }
+        ? { packages: 'external', target: 'node14' }
         : {
             inject: ['src/ui/react-shim.ts'],
             jsxFactory: 'h',
