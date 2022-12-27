@@ -1,4 +1,3 @@
-// istanbul ignore file
 import { API } from 'homebridge'
 
 import VieramaticPlatform from './platform'

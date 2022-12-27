@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// istanbul ignore file
 import { question } from 'readline-sync'
 
 import { Outcome, Abnormal } from './helpers'

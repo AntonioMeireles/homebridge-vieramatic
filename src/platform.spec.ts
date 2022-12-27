@@ -1,13 +1,12 @@
 // eslint-disable-next-line node/no-extraneous-import
 import { jest } from '@jest/globals'
+import { Service } from 'hap-nodejs'
 import { HomebridgeAPI, InternalAPIEvent, AccessoryPlugin } from 'homebridge/lib/api'
 
 import VieramaticPlatform from './platform'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 
 class ExampleAccessory implements AccessoryPlugin {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   getServices = () => [new Service.Switch('MyFakeTV')]
 }
 
