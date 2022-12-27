@@ -1,7 +1,7 @@
 import { faTv, faCartPlus, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon as Icon } from '@fortawesome/react-fontawesome'
 import { IHomebridgeUiFormHelper } from '@homebridge/plugin-ui-utils/dist/ui.interface'
-import { createState, none, State, useState } from '@hookstate/core'
+import { hookstate, none, State, useHookstate } from '@hookstate/core'
 import { ComponentChildren } from 'preact'
 import { useEffect } from 'preact/compat'
 import { Alert, Button, Form } from 'react-bootstrap'
@@ -18,9 +18,9 @@ import {
   pinRequestSchema
 } from './forms'
 import { Header } from './imagery'
-import { InitialState, PluginConfig, rawClone, Selected } from './state'
+import { InitialState, PluginConfig, Selected } from './state'
 
-const globalState = createState(InitialState)
+const globalState = hookstate(InitialState)
 
 const enum actionType {
   create = 'added',
@@ -80,7 +80,7 @@ const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: acti
 
 // https://dev.to/bytebodger/constructors-in-functional-components-with-hooks-280m
 const useSingleton = (callBack = () => void 0): void => {
-  const hasBeenCalled = useState(false)
+  const hasBeenCalled = useHookstate(false)
   if (hasBeenCalled.value) return
   callBack()
   hasBeenCalled.set(true)
@@ -88,7 +88,7 @@ const useSingleton = (callBack = () => void 0): void => {
 
 const Body = () => {
   useSingleton(() => void (async (): Promise<void> => await updateGlobalConfig())())
-  const state = useState(globalState)
+  const state = useHookstate(globalState)
 
   useEffect(
     () => (state.loading.value ? homebridge.showSpinner() : homebridge.hideSpinner()),
@@ -100,9 +100,10 @@ const Body = () => {
     return await homebridge.request(path, body).finally(() => state.loading.set(false))
   }
 
-  const previousConfig = (ip: string): UserConfig | undefined =>
-    state.pluginConfig.tvs.value.find((o) => o.ipAddress === ip)
-
+  const previousConfig = (ip: string): UserConfig | undefined => {
+    const existing = state.pluginConfig.tvs.value as unknown as UserConfig[]
+    return existing.find((o) => o.ipAddress === ip)
+  }
   const backToMain = (form?: IHomebridgeUiFormHelper) => {
     if (form) form.end()
     state.merge({ frontPage: true, selected: none })
@@ -134,9 +135,7 @@ const Body = () => {
     }
 
     if (raw) {
-      state.batch((s) => {
-        s.selected.merge({ config: JSON.parse(raw), onHold: true }), s.frontPage.set(false)
-      })
+      state.selected.merge({ config: JSON.parse(raw), onHold: true }), state.frontPage.set(false)
     } else {
       state.frontPage.set(false)
       const tvForm = homebridge.createForm(tvAddressSchema, undefined, 'Next', 'Cancel')
@@ -166,10 +165,9 @@ const Body = () => {
     })
   }
 
-  const onDeletion = (raw: string) =>
-    state.batch((s) => {
-      s.frontPage.set(false), s.selected.merge({ config: JSON.parse(raw), onHold: false })
-    })
+  const onDeletion = (raw: string) => {
+    state.frontPage.set(false), state.selected.merge({ config: JSON.parse(raw), onHold: false })
+  }
 
   const FrontPage = () => {
     const flip = () => !state.abnormal.value && state.killSwitch.set((k) => !k)
@@ -208,7 +206,12 @@ const Body = () => {
       const variant = state.killSwitch.value ? 'danger' : 'info'
       const onClick = (tv: UserConfig) => doIt(JSON.stringify(tv))
       const tvs = state.pluginConfig.value.tvs.map((tv, index) => (
-        <Button variant={variant} style={style} key={index} onClick={() => onClick(tv)}>
+        <Button
+          variant={variant}
+          style={style}
+          key={index}
+          onClick={() => onClick(tv as unknown as UserConfig)}
+        >
           <Icon fixedWidth size="lg" icon={state.killSwitch.value ? faTrash : faTv} />
           <br /> {tv.ipAddress}
         </Button>
@@ -224,7 +227,8 @@ const Body = () => {
   }
 
   const Results = (props: { selected: State<Selected> | undefined }) => {
-    if (!props.selected || props.selected.onHold.value) return <></>
+    const selected = props.selected
+    if (!selected || selected.onHold.value) return <></>
 
     const Offline = (props: { selected: State<Selected> }) => (
       <Alert variant="danger" className="mt-3">
@@ -265,10 +269,15 @@ const Body = () => {
     )
 
     const ConfirmDeletion = (props: { selected: State<Selected> }) => {
-      const { ipAddress } = props.selected.config.value
-      const nxt = rawClone(state.pluginConfig.value.tvs.filter((o) => o.ipAddress !== ipAddress))
+      const selected = props.selected
+      const { ipAddress } = selected.config.value
+      const nxt = state.pluginConfig.value.tvs.filter((o) => o.ipAddress !== ipAddress)
       const dropIt = async () =>
-        await updateHomebridgeConfig(ipAddress, nxt, actionType.delete).then(() => backToMain())
+        await updateHomebridgeConfig(
+          ipAddress,
+          nxt as unknown as UserConfig[],
+          actionType.delete
+        ).then(() => backToMain())
 
       return (
         <Alert variant="danger" className="mt-3">
@@ -299,11 +308,11 @@ const Body = () => {
     }
 
     const Editor = (props: { selected: State<Selected> }) => {
-      if (props.selected.specs.ornull?.requiresEncryption.value)
-        commonFormLayout.splice(1, 0, authLayout)
+      const selected = props.selected
+      if (selected.specs.ornull?.value.requiresEncryption) commonFormLayout.splice(1, 0, authLayout)
 
       const schema = { layout: commonFormLayout, schema: commonSchema }
-      const data = rawClone(props.selected.config.value)
+      const data = selected.value.config
       const tvform = homebridge.createForm(schema, data, 'Submit', 'Cancel')
       tvform.onCancel(() => backToMain(tvform))
       tvform.onSubmit(async (submited) => {
@@ -315,8 +324,8 @@ const Body = () => {
 
         if (!isSame(before, queued)) {
           const modded = before !== undefined
-          const { tvs } = state.pluginConfig.value
-          others = modded ? rawClone(tvs.filter((v) => v.ipAddress != queued.ipAddress)) : []
+          const { tvs } = state.pluginConfig.value as unknown as PluginConfig
+          others = modded ? tvs.filter((v) => v.ipAddress != queued.ipAddress) : []
           type = modded ? actionType.update : actionType.create
         }
         await updateHomebridgeConfig(queued.ipAddress, [...others, queued], type).finally(() =>
@@ -326,9 +335,9 @@ const Body = () => {
       return <></>
     }
 
-    if (state.killSwitch.value) return <ConfirmDeletion selected={props.selected} />
-    if (props.selected.reachable.value) return <Editor selected={props.selected} />
-    return <Offline selected={props.selected} />
+    if (state.killSwitch.value) return <ConfirmDeletion selected={selected} />
+    if (selected.reachable.value) return <Editor selected={selected} />
+    return <Offline selected={selected} />
   }
 
   return state.frontPage.value ? <FrontPage /> : <Results selected={state.selected.ornull} />

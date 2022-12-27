@@ -10,7 +10,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.2.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@homebridge/plugin-ui-utils": "^0.0.19",
-    "@hookstate/core": "^3.0.13",
+    "@hookstate/core": "^4.0.0",
     "fast-xml-parser": "^4.0.12",
     "fs-extra": "^11.1.0",
     "got": "^12.5.3",
