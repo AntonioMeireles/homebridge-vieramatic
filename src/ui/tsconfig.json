@@ -3,7 +3,13 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "jsx": "react-jsx",
-    "jsxImportSource": "preact"
+    "jsxImportSource": "preact",
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+      "react": ["../../node_modules/preact/compat/"],
+      "react-dom": ["../../node_modules/preact/compat/"]
+    }
   },
   "include": ["*.js", "*.ts", "*.tsx"]
 }

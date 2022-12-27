@@ -24,9 +24,7 @@ const builder = (entryPoints, outdir = 'dist', platform = targets.Node) =>
       ...(platform === targets.Node
         ? { packages: 'external', target: 'node14' }
         : {
-            inject: ['src/ui/react-shim.ts'],
-            jsxFactory: 'h',
-            jsxFragment: 'Fragment',
+            jsx: 'automatic',
             target: ['es2018', 'chrome58', 'firefox57', 'safari11', 'edge18', 'ios11']
           })
     })
