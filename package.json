@@ -86,7 +86,7 @@
     "clean": "rimraf dist/",
     "lint": "eslint --ext .js,.ts,.cjs,.tsx,.json src/ --max-warnings=0",
     "prepublishOnly": "npm run lint && npm run build",
-    "test": "NODE_OPTIONS='--no-warnings --experimental-vm-modules' node_modules/.bin/jest --no-cache",
+    "test": "NODE_OPTIONS='--no-warnings --experimental-vm-modules' npx jest --no-cache",
     "watch": "npm run build && npm link && nodemon"
   },
   "version": "4.0.46",
