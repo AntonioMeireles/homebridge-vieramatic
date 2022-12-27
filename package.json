@@ -81,10 +81,9 @@
     "url": "git+https://github.com/AntonioMeireles/homebridge-vieramatic.git"
   },
   "scripts": {
-    "build": "npm run clean && node esbuild.config.cjs",
+    "build": "npm run clean && npm run lint && node esbuild.config.cjs",
     "clean": "rimraf dist/",
     "lint": "eslint --ext .js,.ts,.cjs,.tsx,.json src/ --max-warnings=0",
-    "prepublishOnly": "npm run lint && npm run build",
     "test": "NODE_OPTIONS='--no-warnings --experimental-vm-modules' npx jest --no-cache"
   },
   "version": "4.0.46",
