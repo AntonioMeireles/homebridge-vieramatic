@@ -318,7 +318,7 @@ class VieramaticPlatformAccessory {
       switch (true) {
         case value < 100: {
           this.log.debug('(setInput) switching to HDMI INPUT ', value)
-          return await this.device.switchToHDMI((value as number).toString())
+          return await this.device.sendKey(`HDMI${value}`)
         }
         case value > 999: {
           real = (value as number) - 1000

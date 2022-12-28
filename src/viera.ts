@@ -6,7 +6,16 @@ import { got, Got, RequestError, OptionsOfTextResponseBody } from 'got'
 import { decode } from 'html-entities'
 
 import { InputVisibility } from './accessory'
-import { Abnormal, EmptyObject, isEmpty, isValidIPv4, Ok, Outcome, prettyPrint } from './helpers'
+import {
+  Abnormal,
+  EmptyObject,
+  isEmpty,
+  isValidIPv4,
+  Ok,
+  Outcome,
+  prettyPrint,
+  Success
+} from './helpers'
 import { xml2obj, xml } from './helpers.server'
 import { UPnPSubscription } from './networkUtils'
 import { PluginConfig } from './ui/state'
@@ -44,12 +53,7 @@ type VieraSession =
       id: number
     }
 
-type VieraAuth =
-  | EmptyObject
-  | {
-      appId: string
-      key: string
-    }
+type VieraAuth = EmptyObject | { appId: string; key: string }
 
 class VieraTV implements VieraTV {
   private static readonly NRC = 'nrc/control_0'
@@ -116,27 +120,26 @@ class VieraTV implements VieraTV {
         tv.log.error(
           'please fill a bug at https://github.com/AntonioMeireles/homebridge-vieramatic/issues with data bellow'
         )
-        const error = Error(`${ip}: offline initialization failure!\n${prettyPrint(settings)}`)
-        return { error }
+        return { error: Error(`${ip}: offline initialization failure!\n${prettyPrint(settings)}`) }
       }
 
       if (tv.specs.requiresEncryption) {
-        const err = `'${ip} ('${tv.specs.modelName}')' ignored, as it is from a Panasonic TV that
-        requires encryption and no working credentials were supplied.`
+        const prefix = `'${ip} ('${tv.specs.modelName}')' ignored`
+        const err = `${prefix}, as it is from a Panasonic TV that requires encryption and no working credentials were supplied.`
 
         if (settings.auth) tv.auth = settings.auth
         if (isEmpty(tv.auth)) return { error: Error(err) }
 
         const result = await tv.#requestSessionId()
 
-        if (Abnormal(result)) return { error: Error(err) }
+        if (Abnormal(result)) return { error: Error(`${prefix}: ${result.error.message}`) }
       }
     } else if (isEmpty(tv.specs))
       return { error: Error('An unexpected error occurred - Unable to fetch specs from the TV.') }
 
     tv.apps = await tv.#getApps()
 
-    return { value: tv }
+    return Success(tv)
   }
 
   static probe = async (ip: string, log: Logger | Console = console): Promise<Outcome<VieraTV>> =>
@@ -234,7 +237,7 @@ class VieraTV implements VieraTV {
     this.#session.hmacKey = Buffer.concat([iv, iv])
   }
 
-  #decryptPayload(payload: string, key: Buffer, iv: Buffer): string {
+  #decryptPayload(payload: string, key = this.#session.key, iv = this.#session.iv): string {
     const aes = crypto.createDecipheriv('aes-128-cbc', key, iv)
     const decrypted = aes.update(Buffer.from(payload, 'base64'))
     return decrypted.toString('utf8', 16, decrypted.indexOf('\u0000', 16))
@@ -256,7 +259,7 @@ class VieraTV implements VieraTV {
       const ciphered = Buffer.concat([aes.update(payload), aes.final()])
       const sig = crypto.createHmac('sha256', hmacKey).update(ciphered).digest()
 
-      return { value: Buffer.concat([ciphered, sig]).toString('base64') }
+      return Success(Buffer.concat([ciphered, sig]).toString('base64'))
     } catch (error) {
       return { error: error as Error }
     }
@@ -313,12 +316,10 @@ class VieraTV implements VieraTV {
     const outcome = this.#encryptPayload(encCommand)
 
     return Ok(outcome)
-      ? {
-          value: [
-            'X_EncryptedCommand',
-            xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
-          ]
-        }
+      ? Success([
+          'X_EncryptedCommand',
+          xml({ X_ApplicationId: this.auth.appId, X_EncInfo: outcome.value })
+        ])
       : outcome
   }
 
@@ -362,10 +363,9 @@ class VieraTV implements VieraTV {
       return (await this.#client(urL, this.#renderRequest(action, urn, parameters))
         .then((r) => {
           const replacer = (_match: string, _offset: string, content: string): string =>
-            this.#decryptPayload(content, this.#session.key, this.#session.iv)
-          const value = r.body.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer)
+            this.#decryptPayload(content)
 
-          return { value }
+          return Success(r.body.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer))
         })
         .catch((error: RequestError) =>
           error.response?.statusCode === 500 && error.response.statusMessage?.includes(sessionGone)
@@ -396,7 +396,7 @@ class VieraTV implements VieraTV {
       if (!match?.groups?.challenge) return { error: Error(unexpectedErr) }
 
       this.#session.challenge = Buffer.from(match.groups.challenge, 'base64')
-      return { value: match.groups.challenge }
+      return Success(match.groups.challenge)
     }
 
     return this.specs.requiresEncryption
@@ -446,7 +446,7 @@ class VieraTV implements VieraTV {
       const replacer = (_match: string, _offset: string, content: string): string =>
         this.#decryptPayload(content, key, iv)
 
-      return { value: KeyPair.exec(r.replace(AuthResult, replacer))?.groups as VieraAuth }
+      return Success(KeyPair.exec(r.replace(AuthResult, replacer))?.groups as VieraAuth)
     }
 
     return Abnormal((outcome = this.#encryptPayload(xml({ X_PinCode: pin }), key, iv, hmacKey)))
@@ -491,12 +491,6 @@ class VieraTV implements VieraTV {
     await this.#postRemote('X_SendKey', xml({ X_KeyEvent: `NRC_${cmd.toUpperCase()}-ONOFF` }))
 
   /**
-   * Send a change HDMI input to the TV
-   */
-  switchToHDMI = async <T>(hdmiInput: string): Promise<Outcome<T>> =>
-    await this.#postRemote('X_SendKey', xml({ X_KeyEvent: `NRC_HDMI${hdmiInput}-ONOFF` }))
-
-  /**
    * Send command to open app on the TV
    */
   launchApp = async <T>(appId: string): Promise<Outcome<T>> =>
@@ -504,7 +498,7 @@ class VieraTV implements VieraTV {
       'X_LaunchApp',
       xml({
         X_AppType: 'vc_app',
-        X_LaunchKeyword: appId.length === 16 ? `product_id=${appId}` : `resource_id=${appId}`
+        X_LaunchKeyword: `${appId.length === 16 ? 'product' : 'resource'}_id=${appId}`
       })
     )
 
@@ -514,7 +508,7 @@ class VieraTV implements VieraTV {
   getVolume = async (): Promise<Outcome<string>> => {
     const callback = (data: string): Outcome<string> => {
       const match = /<CurrentVolume>(?<volume>\d*)<\/CurrentVolume>/u.exec(data)
-      return match?.groups?.volume ? { value: match.groups.volume } : { value: '0' }
+      return Success(match?.groups?.volume ?? '0')
     }
     return await this.#post('render', 'GetVolume', AudioChannel, callback)
   }
@@ -533,7 +527,7 @@ class VieraTV implements VieraTV {
     const callback = (data: string): Outcome<boolean> => {
       const match = /<CurrentMute>(?<mute>[01])<\/CurrentMute>/u.exec(data)
 
-      return match?.groups?.mute ? { value: match.groups.mute === '1' } : { value: true }
+      return Success(match?.groups?.mute ? match.groups.mute === '1' : true)
     }
 
     return await this.#post('render', 'GetMute', AudioChannel, callback)
@@ -550,15 +544,15 @@ class VieraTV implements VieraTV {
    */
   #getApps = async (): Promise<Outcome<VieraApps>> => {
     const callback = (data: string): Outcome<VieraApps> => {
-      const value: VieraApps = []
+      const apps: VieraApps = []
       const raw = /<X_AppList>(?<appList>.*)<\/X_AppList>/u.exec(data)?.groups?.appList
       // '' is NOT to be catched bellow, but later, so we can't use !raw
-      if ((raw as unknown) === undefined)
+      if (raw === undefined)
         return { error: Error('X_AppList returned originally:\n'.concat(data)) }
 
       for (const index of decode(raw).matchAll(/'product_id=(?<id>[\dA-Z]+)'(?<name>[^']+)/gu))
-        index.groups && value.push(index.groups as unknown as VieraApp)
-      return value.length === 0 ? { error: Error('The TV is in standby!') } : { value }
+        index.groups && apps.push(index.groups as unknown as VieraApp)
+      return apps.length === 0 ? { error: Error('The TV is in standby!') } : Success(apps)
     }
     return await this.#postRemote('X_GetAppList', undefined, callback)
   }

@@ -16,7 +16,8 @@ import {
   isValidMACAddress,
   isValidIPv4,
   dupeChecker,
-  prettyPrint
+  prettyPrint,
+  Success
 } from './helpers'
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import Storage from './storage'
@@ -153,7 +154,7 @@ class VieramaticPlatform implements DynamicPlatformPlugin {
         this.log.debug(err)
       }
 
-      return { value: new VieramaticPlatformAccessory(this, accessory, device) }
+      return Success(new VieramaticPlatformAccessory(this, accessory, device))
     } catch (error) {
       this.log.error('device:', prettyPrint(device))
       this.log.error('specs:', prettyPrint(tv.specs))

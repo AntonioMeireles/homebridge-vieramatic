@@ -10,8 +10,8 @@ const oops = (error: Error): void => {
 }
 
 const setup = async (ip: string): Promise<void> => {
-  let probe: Outcome<VieraTV>
-  if (Abnormal((probe = await VieraTV.probe(ip)))) throw probe.error
+  const probe = await VieraTV.probe(ip)
+  if (Abnormal(probe)) throw probe.error
   const tv = probe.value
 
   if (tv.specs.requiresEncryption) {

@@ -6,11 +6,12 @@ import http from 'node:http'
 import { AddressInfo } from 'node:net'
 import { networkInterfaces, NetworkInterfaceInfo } from 'node:os'
 
-import { Outcome, sleep } from './helpers'
+import { Outcome, sleep, Success } from './helpers'
 import { xml2obj } from './helpers.server'
 import { VieraTV } from './viera'
 
 const TIMEOUT_IN_SECONDS = 1
+const BROADCAST = '255.255.255.255'
 
 class UPnPSubscription extends EventEmitter {
   readonly #subscriptions = new Map()
@@ -35,6 +36,12 @@ class UPnPSubscription extends EventEmitter {
     this.#httpSubscriptionResponseServer = http.createServer()
 
     this.#httpSubscriptionResponseServer.listen(0, () => {
+      const headers = {
+        CALLBACK: `<http://${this.#publicIP}:${this.#httpServerPort}>`,
+        NT: 'upnp:event',
+        TIMEOUT: `Second-${TIMEOUT_IN_SECONDS}`
+      }
+
       this.emit('started')
       this.#httpServerPort = (this.#httpSubscriptionResponseServer.address() as AddressInfo).port
 
@@ -52,20 +59,11 @@ class UPnPSubscription extends EventEmitter {
       })
 
       http
-        .request(
-          Object.assign(this.#baseConfig, {
-            headers: {
-              CALLBACK: `<http://${this.#publicIP}:${this.#httpServerPort}>`,
-              NT: 'upnp:event',
-              TIMEOUT: `Second-${TIMEOUT_IN_SECONDS}`
-            }
-          }),
-          (res) => {
-            this.#sid = res.headers.sid
-            this.emit('subscribed', { sid: this.#sid })
-            this.#subscriptions.set(this.#sid, this)
-          }
-        )
+        .request(Object.assign(this.#baseConfig, { headers }), (res) => {
+          this.#sid = res.headers.sid
+          this.emit('subscribed', { sid: this.#sid })
+          this.#subscriptions.set(this.#sid, this)
+        })
         .on('error', (error) => {
           this.emit('error', error)
           this.#subscriptions.delete(this.#sid)
@@ -95,7 +93,7 @@ class UPnPSubscription extends EventEmitter {
 
 const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>> => {
   const mcast = { host: '239.255.255.250', port: 1900 }
-  const timeout = 5000
+  const timeout = TIMEOUT_IN_SECONDS * 5
   const found = new Set<string>()
   const message = Buffer.from(
     [
@@ -115,7 +113,7 @@ const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>>
     const socket = dgram.createSocket({ reuseAddr: true, type: 'udp4' })
     socket
       .bind(0, i.address)
-      .on('message', (_, tv: dgram.RemoteInfo) => !found.has(tv.address) && found.add(tv.address))
+      .on('message', (_, tv: dgram.RemoteInfo) => found.add(tv.address))
       .send(message, 0, message.length, mcast.port, mcast.host)
 
     return socket
@@ -123,15 +121,14 @@ const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>>
 
   return await new Promise((resolve) =>
     setTimeout(() => {
-      resolve({ value: [...found] })
+      resolve(Success([...found]))
       for (const socket of sockets) socket.close()
     }, timeout)
   )
 }
 
 const wakeOnLan = async (mac: string, address: string, packets = 3) => {
-  const port = 9
-  const interval = 100
+  const [port, interval] = [9, 100]
 
   const socket = dgram.createSocket({ reuseAddr: true, type: 'udp4' })
 
@@ -141,8 +138,7 @@ const wakeOnLan = async (mac: string, address: string, packets = 3) => {
      * FF (repeat 6)
      * MAC Address (repeat 16)
      */
-    const MAC_BYTES = 6
-    const MAC_REPETITIONS = 16
+    const [MAC_BYTES, MAC_REPETITIONS] = [6, 16]
     const macBuffer = Buffer.alloc(MAC_BYTES)
     const magic = Buffer.alloc(MAC_BYTES + MAC_REPETITIONS * MAC_BYTES)
 
@@ -159,11 +155,9 @@ const wakeOnLan = async (mac: string, address: string, packets = 3) => {
   const buffer = createMagicPacket(mac)
 
   const sendMagicPacket = async (address: string) => {
-    const BROADCAST = '255.255.255.255'
-    // wired
-    socket.send(buffer, 0, buffer.length, port, BROADCAST)
-    // with luck wirelessly
-    socket.send(buffer, 0, buffer.length, port, address)
+    // wired and, with luck, wirelessly
+    for (const target of [BROADCAST, address]) socket.send(buffer, 0, buffer.length, port, target)
+
     await sleep(interval)
   }
 

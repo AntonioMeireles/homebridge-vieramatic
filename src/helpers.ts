@@ -29,7 +29,7 @@ const isValidIPv4 = (ip: string): boolean =>
 const sleep = async (ms: number): Promise<unknown> =>
   await new Promise((resolve) => setTimeout(resolve, ms))
 
-const isEmpty = (obj: Record<string, unknown>): boolean =>
+const isEmpty = (obj: Record<string, unknown>) =>
   obj.constructor === Object && Object.keys(obj).length === 0
 
 const prettyPrint = (obj: unknown) => JSON.stringify(obj, undefined, 2)
@@ -37,6 +37,7 @@ const prettyPrint = (obj: unknown) => JSON.stringify(obj, undefined, 2)
 type EmptyObject = Record<string, never>
 // error handling
 type Success<T> = EmptyObject | { value: T }
+const Success = <T>(x: T): Outcome<T> => ({ value: x })
 type Failure = { error: Error }
 type Outcome<T> = Success<T> | Failure
 const Abnormal = (outcome: unknown): outcome is Failure =>
@@ -54,5 +55,6 @@ export {
   Ok,
   Outcome,
   prettyPrint,
-  sleep
+  sleep,
+  Success
 }
