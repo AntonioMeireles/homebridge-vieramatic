@@ -174,11 +174,8 @@ class VieramaticPlatformAccessory {
         })
         .onSet(async (value: CharacteristicValue) => {
           this.log.debug('(customSpeakerService/On.set)', value)
-          const state =
-            this.service.getCharacteristic(this.Characteristic.Active).value ===
-            this.Characteristic.Active.INACTIVE
-              ? false
-              : !(value as boolean)
+          const previous = this.service.getCharacteristic(this.Characteristic.Active).value
+          const state = previous === this.Characteristic.Active.INACTIVE ? false : !value
           await this.device.setMute(state)
         })
 
