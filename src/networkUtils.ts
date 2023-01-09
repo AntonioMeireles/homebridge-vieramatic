@@ -93,7 +93,8 @@ class UPnPSubscription extends EventEmitter {
 
 const vieraFinder = async (st: string = VieraTV.URN): Promise<Outcome<string[]>> => {
   const mcast = { host: '239.255.255.250', port: 1900 }
-  const timeout = TIMEOUT_IN_SECONDS * 5
+  // 5s
+  const timeout = 5000
   const found = new Set<string>()
   const message = Buffer.from(
     [
