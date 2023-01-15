@@ -36,12 +36,6 @@ class UPnPSubscription extends EventEmitter {
     this.#httpSubscriptionResponseServer = http.createServer()
 
     this.#httpSubscriptionResponseServer.listen(0, () => {
-      const headers = {
-        CALLBACK: `<http://${this.#publicIP}:${this.#httpServerPort}>`,
-        NT: 'upnp:event',
-        TIMEOUT: `Second-${TIMEOUT_IN_SECONDS}`
-      }
-
       this.emit('started')
       this.#httpServerPort = (this.#httpSubscriptionResponseServer.address() as AddressInfo).port
 
@@ -57,6 +51,12 @@ class UPnPSubscription extends EventEmitter {
             if (emitter) emitter.emit('message', { body: xml2obj(data), sid: this.#sid })
           })
       })
+
+      const headers = {
+        CALLBACK: `<http://${this.#publicIP}:${this.#httpServerPort}>`,
+        NT: 'upnp:event',
+        TIMEOUT: `Second-${TIMEOUT_IN_SECONDS}`
+      }
 
       http
         .request(Object.assign(this.#baseConfig, { headers }), (res) => {
