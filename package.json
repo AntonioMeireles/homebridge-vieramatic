@@ -85,6 +85,6 @@
     "lint": "eslint --ext .js,.ts,.cjs,.tsx,.json src/ --max-warnings=0",
     "test": "NODE_OPTIONS='--no-warnings --experimental-vm-modules' npx jest --no-cache"
   },
-  "version": "4.0.49",
+  "version": "4.0.50",
   "type": "module"
 }
