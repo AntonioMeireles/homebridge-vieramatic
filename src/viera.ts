@@ -365,7 +365,7 @@ class VieraTV implements VieraTV {
           const replacer = (_match: string, _offset: string, content: string): string =>
             this.#decryptPayload(content)
 
-          return Success(r.body.replace(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer))
+          return Success(r.body.replaceAll(/(<X_EncResult>)(.*)(<\/X_EncResult>)/g, replacer))
         })
         .catch((error: RequestError) =>
           error.response?.statusCode === 500 && error.response.statusMessage?.includes(sessionGone)
@@ -446,7 +446,7 @@ class VieraTV implements VieraTV {
       const replacer = (_match: string, _offset: string, content: string): string =>
         this.#decryptPayload(content, key, iv)
 
-      return Success(KeyPair.exec(r.replace(AuthResult, replacer))?.groups as VieraAuth)
+      return Success(KeyPair.exec(r.replaceAll(AuthResult, replacer))?.groups as VieraAuth)
     }
 
     return Abnormal((outcome = this.#encryptPayload(xml({ X_PinCode: pin }), key, iv, hmacKey)))

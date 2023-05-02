@@ -18,6 +18,7 @@ class Storage {
   }
 
   get = (id: string): OnDisk => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     this.accessories[id] ??= {}
     return this.accessories[id]
   }

@@ -42,6 +42,7 @@ const updateGlobalConfig = async (discover = false) => {
     })
     .then((found) => {
       const [cfg] = found
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       cfg.tvs ??= []
       return cfg
     })

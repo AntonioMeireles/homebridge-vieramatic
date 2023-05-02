@@ -13,6 +13,7 @@ import { VieraTV } from './viera'
 const TIMEOUT_IN_SECONDS = 1
 const BROADCAST = '255.255.255.255'
 
+// eslint-disable-next-line unicorn/prefer-event-target
 class UPnPSubscription extends EventEmitter {
   readonly #subscriptions = new Map()
   #sid: string | string[] | undefined

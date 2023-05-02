@@ -187,6 +187,7 @@ class VieramaticPlatformAccessory {
 
     setInterval(async () => await this.getPowerStatus(), 5000)
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     this.userConfig.hdmiInputs ||= []
 
     // ignore HDMI configs
@@ -308,7 +309,8 @@ class VieramaticPlatformAccessory {
     }
   }
 
-  private async setInput(value: CharacteristicValue): Promise<void> {
+  private async setInput(_value: CharacteristicValue): Promise<void> {
+    const value = _value as number
     const fn = async (): Promise<Outcome<void>> => {
       let app: VieraApp, real: number
 
@@ -367,12 +369,12 @@ class VieramaticPlatformAccessory {
 
     const source = this.accessory.addService(
       this.Service.InputSource,
-      configuredName.toLowerCase().replace(/\s/gu, ''),
+      configuredName.toLowerCase().replaceAll(/\s/gu, ''),
       identifier.toString()
     )
     const visibilityState = (state: CharacteristicValue): void => {
       let idx: number
-      const id = source.getCharacteristic(this.Characteristic.Identifier).value ?? 500
+      const id = (source.getCharacteristic(this.Characteristic.Identifier).value ?? 500) as number
       const { inputs } = this.storage.data
 
       switch (true) {
