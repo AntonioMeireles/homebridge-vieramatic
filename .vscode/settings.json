@@ -1,7 +1,7 @@
 {
   "files.eol": "\n",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": "explicit"
   },
   "editor.formatOnSave": true,
   "spellright.language": [
@@ -13,5 +13,10 @@
   ],
   "recommendations": [
     "dbaeumer.vscode-eslint"
-  ]
+  ],
+  "[json]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
+  }
 }

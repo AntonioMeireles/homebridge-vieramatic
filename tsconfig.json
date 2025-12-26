@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "alwaysStrict": true,
-    "target": "ESnext",
-    "module": "ESnext",
-    "lib": ["esnext"],
+    "target": "es2022",
+    "module": "es2022",
+    "lib": ["ES2022", "DOM"],
     "allowJs": true,
     "emitDeclarationOnly": true,
     "declaration": true,
@@ -15,7 +15,7 @@
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,

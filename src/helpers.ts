@@ -22,7 +22,7 @@ const dupeChecker = (devices: UserConfig[] = []): Outcome<void> => {
   return state ? { error } : {}
 }
 
-const isValidMACAddress = (mac: string): boolean => /^(?:[\dA-Fa-f]{2}:){5}[\dA-Fa-f]{2}$/.test(mac)
+const isValidMACAddress = (mac: string): boolean => /^(?:[\da-f]{2}:){5}[\da-f]{2}$/i.test(mac)
 const isValidIPv4 = (ip: string): boolean =>
   /^(?:(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])$/.test(ip)
 

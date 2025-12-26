@@ -136,7 +136,7 @@ const Body = () => {
     }
 
     if (raw) {
-      state.selected.merge({ config: JSON.parse(raw), onHold: true }), state.frontPage.set(false)
+      ;(state.selected.merge({ config: JSON.parse(raw), onHold: true }), state.frontPage.set(false))
     } else {
       state.frontPage.set(false)
       const tvForm = homebridge.createForm(tvAddressSchema, undefined, 'Next', 'Cancel')
@@ -167,7 +167,7 @@ const Body = () => {
   }
 
   const onDeletion = (raw: string) => {
-    state.frontPage.set(false), state.selected.merge({ config: JSON.parse(raw), onHold: false })
+    ;(state.frontPage.set(false), state.selected.merge({ config: JSON.parse(raw), onHold: false }))
   }
 
   const FrontPage = () => {

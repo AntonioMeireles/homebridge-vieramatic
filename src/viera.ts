@@ -452,14 +452,14 @@ class VieraTV implements VieraTV {
     return Abnormal((outcome = this.#encryptPayload(xml({ X_PinCode: pin }), key, iv, hmacKey)))
       ? outcome
       : Ok(
-          (ack = await this.#postRemote(
-            'X_RequestAuth',
-            xml({ X_AuthInfo: outcome.value }),
-            callback
-          ))
-        )
-      ? ack
-      : { error }
+            (ack = await this.#postRemote(
+              'X_RequestAuth',
+              xml({ X_AuthInfo: outcome.value }),
+              callback
+            ))
+          )
+        ? ack
+        : { error }
   }
 
   renderSampleConfig = (): void => {
