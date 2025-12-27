@@ -1,14 +1,19 @@
-# homebridge-vieramatic - the [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs
+# homebridge-vieramatic - the [Homebridge](http://homebridge.io) plugin for Panasonic™ Viera™ TVs [ 2018-2024 models \]
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-[![License: Apache 2](https://img.shields.io/badge/License-Apache_2-blue.svg)](./LICENSE.md)
+[![License: Apache 2](https://img.shields.io/badge/License-Apache_2-blue.svg)](./LICENSE)
 [![npm version](https://img.shields.io/npm/v/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![downloads](https://img.shields.io/npm/dt/homebridge-vieramatic?color=blue)](https://www.npmjs.com/package/homebridge-vieramatic)
 [![GitHub last commit](https://img.shields.io/github/last-commit/AntonioMeireles/homebridge-vieramatic.svg?color=blue)](https://github.com/AntonioMeireles/homebridge-vieramatic)
 
+
+> NOTE: **this plugin is maintained very sparsely** as author's focus moved to elsewhere.
+>
+> help would be gladly accepted.
+
 ## features
 
-- **full support for 2018 and later models**
+- **full support for models released from 2018 to 2024**
   > Pin code and encryption (encapsulated in AES-CBC-128 encryption with
   > HMAC-SHA-256) was added as a requirement for communication with TV models
   > released on and after 2018 which has broken previously existing plugins.
@@ -23,17 +28,17 @@
 
 ## requirements
 
-- iOS 12.3 or later
-- Homebridge **v1.3.0** or _later_ (since **`homebridge-vieramatic@3.0.0`**)
+- iOS 26 or later
+- Homebridge **v1.8.0** or _later_ (since **`homebridge-vieramatic@4.5.0`**)
 
-  > before upgrading to **Homebridge v1.3.0** check please its
+  > before upgrading to **Homebridge v1.8.0** check please its
   > [ChangeLog](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#v130-2021-02-20)
   > specially the **[breaking
   > changes](https://github.com/homebridge/homebridge/blob/master/CHANGELOG.md#breaking-changes)**
   > section in order to see if anything there applies to your particular setup.
 
 - An actively supported [LTS](https://nodejs.org/en/about/releases/) nodejs release. So, the minimum
-  from 4.x onwards is Node 14.
+  from 4.5.x onwards is Node 20.
 
 ## TV setup
 
@@ -47,7 +52,7 @@
 
 ## plugin setup
 
-### the simple way [recommended]
+### the simple way [recommended\]
 
 1. Get [**homebridge**](http://homebridge.io).
 
@@ -81,7 +86,7 @@
 > encryption tuple!
 >
 
-### the old fashioned way [you shouldn't need to do this anymore really, except if using HOOBS or similar]
+### the old fashioned way [you shouldn't need to do this anymore really, except if using HOOBS or similar\]
 
 1. Get [**homebridge**](http://homebridge.io).
 
@@ -154,7 +159,7 @@
       "customVolumeSlider": false,
    ```
 
-7. [re]start homebridge
+7. [re\]start homebridge
 
 ## tips and tricks
 
@@ -327,8 +332,8 @@ This is an [open source](http://opensource.org/osd) project released under the [
 
 ## acknowledgments
 
-- **George Nick Gorzynski**'s [homebridge-panasonic](https://github.com/g30r93g/homebridge-panasonic)
+- **George Nick Gorzynski**'s [Homebridge-Panasonic](https://github.com/g30r93g/homebridge-panasonic)
   plugin which served as the base inspiration for this new one.
-- **Florian Holzapfel**'s [panasonic-viera](https://github.com/florianholzapfel/panasonic-viera)
+- **Florian Holzapfel**'s [Panasonic-Viera](https://github.com/florianholzapfel/panasonic-viera)
   python library which documented the new pin code authentication and communication scheme of 2018 and later models.
 - the [Homebridge](http://homebridge.io) community at large without whom this wouldn't just be possible.
