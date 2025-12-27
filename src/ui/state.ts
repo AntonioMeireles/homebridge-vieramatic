@@ -34,7 +34,4 @@ const InitialState: GlobalState = {
   pluginConfig: new PluginConfig()
 }
 
-const rawClone = <T = unknown>(data: T): T =>
-  data === undefined ? undefined : JSON.parse(JSON.stringify(data))
-
-export { InitialState, PluginConfig, rawClone, Selected }
+export { InitialState, PluginConfig, Selected }

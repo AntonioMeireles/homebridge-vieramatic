@@ -1,9 +1,9 @@
 import { faTv, faCartPlus, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon as Icon } from '@fortawesome/react-fontawesome'
-import { IHomebridgeUiFormHelper } from '@homebridge/plugin-ui-utils/dist/ui.interface'
-import { hookstate, none, State, useHookstate } from '@hookstate/core'
+import { IHomebridgeUiFormHelper } from '@homebridge/plugin-ui-utils/ui.interface'
+import { batch, signal, useSignalEffect } from '@preact/signals'
 import { ComponentChildren } from 'preact'
-import { useEffect } from 'preact/compat'
+import { useEffect, useRef } from 'preact/compat'
 import { Alert, Button, Form } from 'react-bootstrap'
 
 import { UserConfig } from '../accessory'
@@ -20,7 +20,23 @@ import {
 import { Header } from './imagery'
 import { InitialState, PluginConfig, Selected } from './state'
 
-const globalState = hookstate(InitialState)
+const { homebridge } = window
+
+// -----------------------------------------------------------------------------
+// Global signals (replaces hookstate(InitialState))
+// -----------------------------------------------------------------------------
+const abnormalSig = signal<boolean>(InitialState.abnormal)
+const killSwitchSig = signal<boolean>(InitialState.killSwitch)
+const loadingSig = signal<boolean>(InitialState.loading)
+const pluginConfigSig = signal<PluginConfig>(InitialState.pluginConfig)
+const frontPageSig = signal<boolean>(InitialState.frontPage)
+const selectedSig = signal<Selected | null>()
+
+const patchSelected = (patch: Partial<Selected>) => {
+  const current = selectedSig.value
+  if (!current) return
+  selectedSig.value = { ...current, ...patch }
+}
 
 const enum actionType {
   create = 'added',
@@ -28,8 +44,6 @@ const enum actionType {
   delete = 'deleted',
   none = 'unchanged'
 }
-
-const { homebridge } = window
 
 const updateGlobalConfig = async (discover = false) => {
   const bareMinimal = new PluginConfig()
@@ -48,25 +62,32 @@ const updateGlobalConfig = async (discover = false) => {
     })
 
   const abnormal = Abnormal(dupeChecker(pluginConfig.tvs))
-  globalState.merge({ abnormal, killSwitch: abnormal, loading: false, pluginConfig })
+
+  batch(() => {
+    abnormalSig.value = abnormal
+    killSwitchSig.value = abnormal
+    loadingSig.value = false
+    pluginConfigSig.value = pluginConfig
+  })
 
   if (!abnormal && discover) {
-    globalState.loading.set(true)
+    loadingSig.value = true
     const around = (await homebridge.request('/discover')) as string[]
     const found = around.filter((t) => !pluginConfig.tvs.some((e) => e.ipAddress === t))
-    const fn = (ip: string): UserConfig => {
-      return { hdmiInputs: [], ipAddress: ip }
-    }
+    const fn = (ip: string): UserConfig => ({ hdmiInputs: [], ipAddress: ip })
+
     if (found.length > 0) {
       const discovered = found.map((ip: string) => fn(ip))
       await homebridge.updatePluginConfig([new PluginConfig([...pluginConfig.tvs, ...discovered])])
       await homebridge.savePluginConfig()
+
       for (const ip of found)
         homebridge.toast.info(
           `A new Panasonic Viera TV was discovered at ${ip}, on your network, and added to your homebridge. Click it to finish its' setup.`
         )
+
       await updateGlobalConfig(false)
-    } else globalState.loading.set(false)
+    } else loadingSig.value = false
   }
 }
 
@@ -81,64 +102,81 @@ const updateHomebridgeConfig = async (ip: string, next: UserConfig[], type: acti
 
 // https://dev.to/bytebodger/constructors-in-functional-components-with-hooks-280m
 const useSingleton = (callBack = () => void 0): void => {
-  const hasBeenCalled = useHookstate(false)
-  if (hasBeenCalled.value) return
+  const hasBeenCalled = useRef(false)
+  if (hasBeenCalled.current) return
   callBack()
-  hasBeenCalled.set(true)
+  hasBeenCalled.current = true
 }
 
 const Body = () => {
   useSingleton(() => void (async (): Promise<void> => await updateGlobalConfig())())
-  const state = useHookstate(globalState)
 
-  useEffect(
-    () => (state.loading.value ? homebridge.showSpinner() : homebridge.hideSpinner()),
-    [state.loading.value]
-  )
+  useSignalEffect(() => {
+    if (loadingSig.value) homebridge.showSpinner()
+    else homebridge.hideSpinner()
+  })
+
+  useEffect(() => void 0, [])
 
   const request = async (path: string, body?: unknown) => {
-    state.loading.set(true)
-    return await homebridge.request(path, body).finally(() => state.loading.set(false))
+    loadingSig.value = true
+    return await homebridge.request(path, body).finally(() => (loadingSig.value = false))
   }
 
   const previousConfig = (ip: string): UserConfig | undefined => {
-    const existing = state.pluginConfig.tvs.value as unknown as UserConfig[]
+    const existing = pluginConfigSig.value.tvs as unknown as UserConfig[]
     return existing.find((o) => o.ipAddress === ip)
   }
+
   const backToMain = (form?: IHomebridgeUiFormHelper) => {
     if (form) form.end()
-    state.merge({ frontPage: true, selected: none })
+    batch(() => {
+      frontPageSig.value = true
+      selectedSig.value = undefined
+    })
   }
 
   const onEdition = async (raw?: string): Promise<void> => {
-    const pair = (challenge: string) => {
+    const pair = (challenge: string, tv: UserConfig) => {
       const pinForm = homebridge.createForm(pinRequestSchema, undefined, 'Next', 'Cancel')
       pinForm.onCancel(pinForm.end)
-      pinForm.onSubmit(
-        async (data) =>
-          await request('/pair', { challenge, ip: tv.ipAddress, pin: data.pin })
-            .then(async (auth: VieraAuth) => {
-              const body = JSON.stringify({ ...tv, appId: auth.appId, encKey: auth.key })
-              const specs: VieraSpecs = await request('/specs', body)
-              return { auth, specs }
-            })
-            // eslint-disable-next-line promise/always-return
-            .then((payload) => {
-              const config = { ...tv, appId: payload.auth.appId, encKey: payload.auth.key }
-              state.selected.merge({ config, onHold: false, reachable: true, specs: payload.specs })
-            })
-            .catch(() => {
-              homebridge.toast.error('Wrong PIN...', tv.ipAddress)
-              backToMain()
-            })
-            .finally(pinForm.end)
-      )
+      pinForm.onSubmit(async (data) => {
+        await request('/pair', { challenge, ip: tv.ipAddress, pin: data.pin })
+          .then(async (auth: VieraAuth) => {
+            const body = JSON.stringify({ ...tv, appId: auth.appId, encKey: auth.key })
+            const specs: VieraSpecs = await request('/specs', body)
+            return { auth, specs }
+          })
+          .then((payload) => {
+            const config = { ...tv, appId: payload.auth.appId, encKey: payload.auth.key }
+            selectedSig.value = {
+              config,
+              onHold: false,
+              reachable: true,
+              specs: payload.specs
+            }
+            return
+          })
+          .catch(() => {
+            homebridge.toast.error('Wrong PIN...', tv.ipAddress)
+            backToMain()
+          })
+          .finally(pinForm.end)
+      })
     }
 
     if (raw) {
-      ;(state.selected.merge({ config: JSON.parse(raw), onHold: true }), state.frontPage.set(false))
+      batch(() => {
+        selectedSig.value = {
+          config: JSON.parse(raw),
+          onHold: true,
+          reachable: false,
+          specs: undefined
+        }
+        frontPageSig.value = false
+      })
     } else {
-      state.frontPage.set(false)
+      frontPageSig.value = false
       const tvForm = homebridge.createForm(tvAddressSchema, undefined, 'Next', 'Cancel')
       tvForm.onCancel(() => backToMain(tvForm))
 
@@ -149,46 +187,66 @@ const Body = () => {
           else {
             tvForm.end()
             const config = { hdmiInputs: [], ipAddress: data.ipAddress }
-            state.selected.merge({ config, onHold: true })
+            selectedSig.value = {
+              config,
+              onHold: true,
+              reachable: false,
+              specs: undefined
+            }
           }
         } else homebridge.toast.error('Please insert a valid IP address...', data.ipAddress)
       })
     }
 
-    while (!state.selected.value?.config) await sleep(250)
-    const tv = state.selected.value.config
+    while (!selectedSig.value?.config) await sleep(250)
+    const tv = selectedSig.value!.config
+
     await request('/ping', tv.ipAddress).then(async (reachable: boolean) => {
       /* eslint-disable promise/no-nesting*/
-      if (!reachable) return state.selected.merge({ onHold: false, reachable })
+      if (!reachable) return patchSelected({ onHold: false, reachable })
+
       return await request('/specs', JSON.stringify(tv))
-        .then((specs) => state.selected.merge({ onHold: false, reachable, specs }))
-        .catch(async () => await request('/pin', tv.ipAddress).then((challenge) => pair(challenge)))
+        .then((specs) => patchSelected({ onHold: false, reachable, specs }))
+        .catch(
+          async () => await request('/pin', tv.ipAddress).then((challenge) => pair(challenge, tv))
+        )
     })
   }
 
   const onDeletion = (raw: string) => {
-    ;(state.frontPage.set(false), state.selected.merge({ config: JSON.parse(raw), onHold: false }))
+    batch(() => {
+      frontPageSig.value = false
+      selectedSig.value = {
+        config: JSON.parse(raw),
+        onHold: false,
+        reachable: false,
+        specs: undefined
+      }
+    })
   }
 
   const FrontPage = () => {
-    const flip = () => !state.abnormal.value && state.killSwitch.set((k) => !k)
-    const label = `${state.killSwitch.value ? 'deletion' : 'edition'} mode`
-    const doIt = (tv: string) => (state.killSwitch.value ? onDeletion(tv) : onEdition(tv))
+    const flip = () => !abnormalSig.value && (killSwitchSig.value = !killSwitchSig.value)
+    const label = `${killSwitchSig.value ? 'deletion' : 'edition'} mode`
+    const doIt = (tv: string) => (killSwitchSig.value ? onDeletion(tv) : onEdition(tv))
+
     const KillBox = () =>
-      state.pluginConfig.value.tvs.length === 0 ? (
+      pluginConfigSig.value.tvs.length === 0 ? (
         <></>
-      ) : state.abnormal.value ? (
+      ) : abnormalSig.value ? (
         <Alert variant="warning" className="d-flex justify-content-center mt-3 mb-5">
           <b>more than one TV with same IP address found: please delete the bogus ones!</b>
         </Alert>
       ) : (
         <Form className="d-flex justify-content-end mt-3 mb-5">
-          <Form.Switch onChange={flip} id="kS" label={label} checked={state.killSwitch.value} />
+          <Form.Switch onChange={flip} id="kS" label={label} checked={killSwitchSig.value} />
         </Form>
       )
-    const style = { height: '4em', width: '10em' }
+
+    const style = { height: '4em', margin: '.25em', width: '10em' }
+
     const AddNew = () =>
-      state.killSwitch.value ? (
+      killSwitchSig.value ? (
         <></>
       ) : (
         <div className="d-flex justify-content-center mt-3 mb-5">
@@ -198,22 +256,23 @@ const Body = () => {
             onClick={async () => await onEdition()}
             style={style}
           >
-            <Icon fixedWidth size="sm" icon={faTv} /> <br />
-            <Icon fixedWidth size="lg" icon={faCartPlus} />
+            <Icon size="sm" icon={faTv} /> <br />
+            <Icon size="lg" icon={faCartPlus} />
           </Button>
         </div>
       )
+
     const Available = () => {
-      const variant = state.killSwitch.value ? 'danger' : 'info'
+      const variant = killSwitchSig.value ? 'danger' : 'info'
       const onClick = (tv: UserConfig) => doIt(JSON.stringify(tv))
-      const tvs = state.pluginConfig.value.tvs.map((tv, index) => (
+      const tvs = pluginConfigSig.value.tvs.map((tv, index) => (
         <Button
           variant={variant}
           style={style}
           key={index}
-          onClick={() => onClick(tv as unknown as UserConfig)}
+          onClick={() => onClick(tv as UserConfig)}
         >
-          <Icon fixedWidth size="lg" icon={state.killSwitch.value ? faTrash : faTv} />
+          <Icon size="lg" icon={killSwitchSig.value ? faTrash : faTv} />
           <br /> {tv.ipAddress}
         </Button>
       ))
@@ -227,14 +286,14 @@ const Body = () => {
     )
   }
 
-  const Results = (props: { selected: State<Selected> | undefined }) => {
+  const Results = (props: { selected: Selected | null | undefined }) => {
     const selected = props.selected
-    if (!selected || selected.onHold.value) return <></>
+    if (!selected || selected.onHold) return <></>
 
-    const Offline = (props: { selected: State<Selected> }) => (
+    const Offline = (props: { selected: Selected }) => (
       <Alert variant="danger" className="mt-3">
         <Alert.Heading>
-          The Viera TV at <b>{props.selected.config.ipAddress.value}</b> could not be edited.
+          The Viera TV at <b>{props.selected.config.ipAddress}</b> could not be edited.
         </Alert.Heading>
         <hr />
         <p className="mb-2">
@@ -269,10 +328,9 @@ const Body = () => {
       </Alert>
     )
 
-    const ConfirmDeletion = (props: { selected: State<Selected> }) => {
-      const selected = props.selected
-      const { ipAddress } = selected.config.value
-      const nxt = state.pluginConfig.value.tvs.filter((o) => o.ipAddress !== ipAddress)
+    const ConfirmDeletion = (props: { selected: Selected }) => {
+      const { ipAddress } = props.selected.config
+      const nxt = pluginConfigSig.value.tvs.filter((o) => o.ipAddress !== ipAddress)
       const dropIt = async () =>
         await updateHomebridgeConfig(
           ipAddress,
@@ -291,7 +349,7 @@ const Body = () => {
               <p className="mb-2">Please, make sure you know what you are doing...</p>
               <hr />
               <pre class="text-monospace text-left bg-light p-2">
-                {prettyPrint(props.selected.config.value)}
+                {prettyPrint(props.selected.config)}
               </pre>
               <hr />
             </div>
@@ -308,40 +366,47 @@ const Body = () => {
       )
     }
 
-    const Editor = (props: { selected: State<Selected> }) => {
+    const Editor = (props: { selected: Selected }) => {
       const selected = props.selected
-      if (selected.specs.ornull?.value.requiresEncryption) commonFormLayout.splice(1, 0, authLayout)
+
+      if (selected.specs?.requiresEncryption && !commonFormLayout.includes(authLayout))
+        commonFormLayout.splice(1, 0, authLayout)
 
       const schema = { layout: commonFormLayout, schema: commonSchema }
-      const data = selected.value.config
+      const data = selected.config
       const tvform = homebridge.createForm(schema, data, 'Submit', 'Cancel')
+
       tvform.onCancel(() => backToMain(tvform))
+
       tvform.onSubmit(async (submited) => {
         const queued = submited as UserConfig
-        state.loading.set(true)
+        loadingSig.value = true
         backToMain(tvform)
+
         const before = previousConfig(queued.ipAddress)
         let [others, type] = [[] as UserConfig[], actionType.none]
 
         if (!isSame(before, queued)) {
           const modded = before !== undefined
-          const { tvs } = state.pluginConfig.value as unknown as PluginConfig
+          const { tvs } = pluginConfigSig.value as unknown as PluginConfig
           others = modded ? tvs.filter((v) => v.ipAddress != queued.ipAddress) : []
           type = modded ? actionType.update : actionType.create
         }
-        await updateHomebridgeConfig(queued.ipAddress, [...others, queued], type).finally(() =>
-          state.loading.set(false)
-        )
+
+        await updateHomebridgeConfig(queued.ipAddress, [...others, queued], type).finally(() => {
+          loadingSig.value = false
+        })
       })
+
       return <></>
     }
 
-    if (state.killSwitch.value) return <ConfirmDeletion selected={selected} />
-    if (selected.reachable.value) return <Editor selected={selected} />
+    if (killSwitchSig.value) return <ConfirmDeletion selected={selected} />
+    if (selected.reachable) return <Editor selected={selected} />
     return <Offline selected={selected} />
   }
 
-  return state.frontPage.value ? <FrontPage /> : <Results selected={state.selected.ornull} />
+  return frontPageSig.value ? <FrontPage /> : <Results selected={selectedSig.value} />
 }
 
 const Template = (props: { children: ComponentChildren }) => (
